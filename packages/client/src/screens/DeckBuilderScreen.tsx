@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
@@ -6,15 +6,24 @@ import { useCollectionStore } from '../stores/collectionStore';
 import { getCardById, Card, Pathway, getCardsForPathway, validateDeck } from 'game-engine';
 import { MiniCard } from '../components/MiniCard';
 import { getCurrentUserId } from '../lib/sessionContext';
-import { fetchActiveDeck, saveDeck } from '../sync/player-sync';
-import { isSupabaseConfigured } from '../lib/supabase';
+import {
+  activateDeck,
+  DECK_SLOT_COUNT,
+  ensureDeckSlots,
+  saveDeckToSlot,
+} from '../sync/player-sync';
+import { isSupabaseConfigured, type DbDeck } from '../lib/supabase';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
 }
 
+function cardsFromIds(ids: string[]): Card[] {
+  return ids.map((id) => getCardById(id)).filter((c): c is Card => !!c);
+}
+
 export function DeckBuilderScreen({ onNavigate }: Props) {
-  const { selectedPathway, activeDeckId, setActiveDeckFromCloud } = useGameStore();
+  const { selectedPathway, activeDeckId, setPathway, setActiveDeckFromCloud } = useGameStore();
   const ownsCard = useCollectionStore((s) => s.ownsCard);
   const getQuantity = useCollectionStore((s) => s.getQuantity);
   const [deckCards, setDeckCards] = useState<Card[]>([]);
@@ -22,22 +31,73 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
   const [filterType, setFilterType] = useState<'all' | 'beyonder' | 'ritual' | 'sealed-artifact' | 'mystical-item'>('all');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [savedSlots, setSavedSlots] = useState<(DbDeck | null)[]>(Array(DECK_SLOT_COUNT).fill(null));
+  const [selectedSlot, setSelectedSlot] = useState(0);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  const loadSlotIntoEditor = useCallback(
+    (slot: number, slots: (DbDeck | null)[]) => {
+      const deck = slots[slot];
+      if (deck && deck.cards.length > 0) {
+        setPathway(deck.pathway as Pathway);
+        setDeckName(deck.name);
+        setDeckCards(cardsFromIds(deck.cards));
+        if (deck.cards.length === 30) {
+          setActiveDeckFromCloud(deck.cards, deck.pathway as Pathway, deck.id);
+        }
+      } else {
+        setDeckName(`Deck ${slot + 1}`);
+        setDeckCards([]);
+      }
+    },
+    [setPathway, setActiveDeckFromCloud]
+  );
 
   useEffect(() => {
     const userId = getCurrentUserId();
     if (!userId || !isSupabaseConfigured) return;
 
+    setLoadingSlots(true);
     void (async () => {
-      const deck = await fetchActiveDeck(userId);
-      if (deck && deck.cards.length > 0) {
-        setDeckName(deck.name);
-        const cards = deck.cards
-          .map((id) => getCardById(id))
-          .filter((c): c is Card => !!c);
-        setDeckCards(cards);
+      try {
+        const slots = await ensureDeckSlots(userId, useGameStore.getState().selectedPathway);
+        setSavedSlots(slots);
+        const activeSlot = slots.findIndex((d) => d?.is_active);
+        const startSlot = activeSlot >= 0 ? activeSlot : 0;
+        setSelectedSlot(startSlot);
+        loadSlotIntoEditor(startSlot, slots);
+      } finally {
+        setLoadingSlots(false);
       }
     })();
+    // Load cloud slots once when opening the builder
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const selectSlot = async (slot: number) => {
+    if (slot === selectedSlot) return;
+
+    setSelectedSlot(slot);
+    loadSlotIntoEditor(slot, savedSlots);
+    setSaveMessage(null);
+
+    const deck = savedSlots[slot];
+    const userId = getCurrentUserId();
+    if (!deck || deck.cards.length !== 30 || !userId) return;
+
+    try {
+      const activated = await activateDeck(userId, deck.id);
+      const nextSlots = savedSlots.map((d, i) => {
+        if (!d) return null;
+        if (i === slot) return activated;
+        return { ...d, is_active: false };
+      });
+      setSavedSlots(nextSlots);
+      setActiveDeckFromCloud(activated.cards, activated.pathway as Pathway, activated.id);
+    } catch {
+      /* keep editing slot even if activation fails */
+    }
+  };
 
   const available = [
     ...getCardsForPathway(selectedPathway),
@@ -81,13 +141,18 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     setSaving(true);
     setSaveMessage(null);
     try {
-      const saved = await saveDeck(userId, {
-        id: activeDeckId ?? undefined,
-        name: deckName,
+      const saved = await saveDeckToSlot(userId, selectedSlot, {
+        id: savedSlots[selectedSlot]?.id,
+        name: deckName.trim() || `Deck ${selectedSlot + 1}`,
         pathway: selectedPathway,
         cards: cardIds,
         isActive: true,
       });
+      const nextSlots = savedSlots.map((d, i) => {
+        if (i === selectedSlot) return saved;
+        return d ? { ...d, is_active: false } : null;
+      });
+      setSavedSlots(nextSlots);
       setActiveDeckFromCloud(saved.cards, saved.pathway as Pathway, saved.id);
       setSaveMessage('Deck salvo!');
     } catch (e) {
@@ -96,6 +161,8 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
       setSaving(false);
     }
   };
+
+  const cloudEnabled = isSupabaseConfigured && !!getCurrentUserId();
 
   return (
     <div className="h-full flex flex-col relative">
@@ -111,6 +178,47 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
             {deckCards.length}/30
           </span>
         </div>
+
+        {cloudEnabled && (
+          <div className="flex-none px-4 pb-2">
+            <p className="text-[10px] text-void-500 uppercase tracking-wider mb-1.5">Seus decks na nuvem</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {Array.from({ length: DECK_SLOT_COUNT }, (_, slot) => {
+                const saved = savedSlots[slot];
+                const isSelected = selectedSlot === slot;
+                const isInUse = saved?.is_active ?? false;
+                const cardCount = saved?.cards.length ?? 0;
+
+                return (
+                  <button
+                    key={slot}
+                    type="button"
+                    disabled={loadingSlots}
+                    onClick={() => void selectSlot(slot)}
+                    className={`rounded-lg border px-2 py-2 text-left transition-all ${
+                      isSelected
+                        ? 'border-purple-400 bg-purple-900/40 shadow-md shadow-purple-900/20'
+                        : 'border-void-600 bg-void-800/80 hover:border-void-500'
+                    } ${loadingSlots ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-bold text-void-200">Slot {slot + 1}</span>
+                      {isInUse && (
+                        <span className="text-[8px] font-semibold text-green-400 uppercase">Em uso</span>
+                      )}
+                    </div>
+                    <p className="text-[9px] text-void-300 truncate mt-0.5">
+                      {saved?.name ?? 'Vazio'}
+                    </p>
+                    <p className="text-[8px] text-void-500 mt-0.5">
+                      {cardCount > 0 ? `${cardCount}/30 cartas` : 'Sem cartas'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex-none px-4 pb-2">
           <input
@@ -145,7 +253,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
                 const inDeckCount = deckCards.filter((c) => c.id === card.id).length;
                 const ownedQty = getQuantity(card.id);
                 const maxCopies = card.rarity === 'legendary' ? 1 : 2;
-                const atMax = inDeckCount >= maxCopies || (isSupabaseConfigured && getCurrentUserId() && inDeckCount >= ownedQty);
+                const atMax = inDeckCount >= maxCopies || (cloudEnabled && inDeckCount >= ownedQty);
                 const canAdd = deckCards.length < 30 && !atMax;
 
                 return (
@@ -195,13 +303,16 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         <div className="flex-none p-4 border-t border-void-700">
           <button
             onClick={() => void handleSave()}
-            disabled={saving || deckCards.length !== 30}
+            disabled={saving || deckCards.length !== 30 || !cloudEnabled}
             className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 rounded-xl font-bold text-sm"
           >
-            {saving ? 'Salvando...' : 'Salvar deck na nuvem'}
+            {saving ? 'Salvando...' : cloudEnabled ? 'Salvar deck na nuvem' : 'Login necessário para salvar'}
           </button>
           {saveMessage && (
             <p className="text-xs text-center mt-2 text-void-400">{saveMessage}</p>
+          )}
+          {cloudEnabled && activeDeckId && savedSlots[selectedSlot]?.id === activeDeckId && (
+            <p className="text-[10px] text-center mt-1 text-green-400/80">Este deck será usado nas partidas</p>
           )}
         </div>
       </div>

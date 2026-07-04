@@ -3,6 +3,8 @@ import { createStarterDeck, type Pathway } from 'game-engine';
 
 const LOCAL_COLLECTION_KEY = 'lotm-tcg-collection';
 
+export const DECK_SLOT_COUNT = 3;
+
 export type OwnedCards = Record<string, number>;
 
 export interface PlayerProgress {
@@ -180,9 +182,49 @@ export async function fetchDecks(userId: string): Promise<DbDeck[]> {
   const sb = getSupabase();
   if (!sb) return [];
 
-  const { data, error } = await sb.from('decks').select('*').eq('owner_id', userId).order('updated_at', { ascending: false });
+  const { data, error } = await sb
+    .from('decks')
+    .select('*')
+    .eq('owner_id', userId)
+    .order('slot_index', { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data ?? []) as DbDeck[];
+}
+
+export async function fetchDeckSlots(userId: string): Promise<(DbDeck | null)[]> {
+  const decks = await fetchDecks(userId);
+  const slots: (DbDeck | null)[] = Array(DECK_SLOT_COUNT).fill(null);
+
+  for (const deck of decks) {
+    if (deck.slot_index != null && deck.slot_index >= 0 && deck.slot_index < DECK_SLOT_COUNT) {
+      slots[deck.slot_index] = deck;
+    }
+  }
+
+  const unslotted = decks.filter((d) => d.slot_index == null);
+  for (const deck of unslotted) {
+    const free = slots.findIndex((s) => s === null);
+    if (free === -1) break;
+    const assigned = await assignDeckSlot(userId, deck.id, free);
+    slots[free] = assigned;
+  }
+
+  return slots;
+}
+
+async function assignDeckSlot(userId: string, deckId: string, slotIndex: number): Promise<DbDeck> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase not configured');
+
+  const { data, error } = await sb
+    .from('decks')
+    .update({ slot_index: slotIndex, updated_at: new Date().toISOString() })
+    .eq('id', deckId)
+    .eq('owner_id', userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DbDeck;
 }
 
 export async function fetchActiveDeck(userId: string): Promise<DbDeck | null> {
@@ -190,23 +232,48 @@ export async function fetchActiveDeck(userId: string): Promise<DbDeck | null> {
   return decks.find((d) => d.is_active) ?? decks[0] ?? null;
 }
 
-export async function saveDeck(
+export async function activateDeck(userId: string, deckId: string): Promise<DbDeck> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase not configured');
+
+  await sb.from('decks').update({ is_active: false }).eq('owner_id', userId);
+  const { data, error } = await sb
+    .from('decks')
+    .update({ is_active: true, updated_at: new Date().toISOString() })
+    .eq('id', deckId)
+    .eq('owner_id', userId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DbDeck;
+}
+
+export async function saveDeckToSlot(
   userId: string,
+  slotIndex: number,
   deck: { id?: string; name: string; pathway: Pathway; cards: string[]; isActive?: boolean }
 ): Promise<DbDeck> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase not configured');
+  if (slotIndex < 0 || slotIndex >= DECK_SLOT_COUNT) {
+    throw new Error('Slot de deck inválido');
+  }
+
+  const slots = await fetchDeckSlots(userId);
+  const existing = slots[slotIndex];
 
   if (deck.isActive) {
     await sb.from('decks').update({ is_active: false }).eq('owner_id', userId);
   }
 
+  const deckId = deck.id ?? existing?.id;
   const row = {
-    ...(deck.id ? { id: deck.id } : {}),
+    ...(deckId ? { id: deckId } : {}),
     owner_id: userId,
     name: deck.name,
     pathway: deck.pathway,
     cards: deck.cards,
+    slot_index: slotIndex,
     is_active: deck.isActive ?? false,
     updated_at: new Date().toISOString(),
   };
@@ -216,12 +283,46 @@ export async function saveDeck(
   return data as DbDeck;
 }
 
-export async function ensureStarterDeck(userId: string, pathway: Pathway): Promise<DbDeck> {
-  const existing = await fetchActiveDeck(userId);
-  if (existing && existing.cards.length === 30) return existing;
+/** @deprecated use saveDeckToSlot */
+export async function saveDeck(
+  userId: string,
+  deck: { id?: string; name: string; pathway: Pathway; cards: string[]; isActive?: boolean; slotIndex?: number }
+): Promise<DbDeck> {
+  const slotIndex = deck.slotIndex ?? 0;
+  return saveDeckToSlot(userId, slotIndex, deck);
+}
+
+export async function ensureDeckSlots(userId: string, pathway: Pathway): Promise<(DbDeck | null)[]> {
+  const slots = await fetchDeckSlots(userId);
+  const hasAny = slots.some((s) => s !== null);
+  if (hasAny) return slots;
 
   const starter = createStarterDeck(pathway);
-  return saveDeck(userId, {
+  const deck = await saveDeckToSlot(userId, 0, {
+    name: 'Starter Deck',
+    pathway,
+    cards: [...starter.cards],
+    isActive: true,
+  });
+  slots[0] = deck;
+  return slots;
+}
+
+export async function ensureStarterDeck(userId: string, pathway: Pathway): Promise<DbDeck> {
+  const slots = await ensureDeckSlots(userId, pathway);
+  const active = slots.find((d) => d?.is_active && d.cards.length === 30);
+  if (active) return active;
+
+  const firstComplete = slots.find((d) => d && d.cards.length === 30);
+  if (firstComplete) {
+    return activateDeck(userId, firstComplete.id);
+  }
+
+  const fallback = slots.find((d) => d !== null);
+  if (fallback) return fallback;
+
+  const starter = createStarterDeck(pathway);
+  return saveDeckToSlot(userId, 0, {
     name: 'Starter Deck',
     pathway,
     cards: [...starter.cards],

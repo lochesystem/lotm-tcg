@@ -51,6 +51,7 @@ export type DbDeck = {
   pathway: string;
   cards: string[];
   is_active: boolean;
+  slot_index: number | null;
   created_at: string;
   updated_at: string;
 };

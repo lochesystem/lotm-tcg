@@ -4,6 +4,7 @@ import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
 import { TurnBanner } from '../components/TurnBanner';
+import { StoryIntroBanner } from '../components/StoryIntroBanner';
 import { AnchorTooltip } from '../components/AnchorTooltip';
 import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
@@ -12,7 +13,7 @@ import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { PackOpening } from '../components/PackOpening';
-import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, getStoryChapterLabel, type Pathway } from 'game-engine';
+import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, type Pathway } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
@@ -643,9 +644,7 @@ export function BattleScreen({ onNavigate }: Props) {
       <TurnBanner turnNumber={gameState.turn} isYourTurn={isMyTurn} />
 
       {isStoryMode && storyOpponentPathway && (
-        <div className="absolute top-11 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full bg-purple-900/85 border border-purple-500/40 text-[10px] font-medium text-purple-200 pointer-events-none">
-          Modo História — {getStoryChapterLabel(storyOpponentPathway)}
-        </div>
+        <StoryIntroBanner matchId={gameState.id} pathway={storyOpponentPathway} />
       )}
 
       {!isGameOver && (

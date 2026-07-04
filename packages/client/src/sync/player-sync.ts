@@ -1,5 +1,5 @@
 import { getSupabase, isSupabaseConfigured, resetSupabaseClient, type DbDeck, type DbPlayerProgress, type DbProfile } from '../lib/supabase';
-import { createStarterDeck, type Pathway } from 'game-engine';
+import { createStarterDeck, getStoryWinUnlock, type Pathway } from 'game-engine';
 
 const LOCAL_COLLECTION_KEY = 'lotm-tcg-collection';
 
@@ -12,10 +12,11 @@ export interface PlayerProgress {
   winStreak: number;
   wins: number;
   losses: number;
+  storyProgress: number;
 }
 
 function emptyProgress(): PlayerProgress {
-  return { ownedCards: {}, winStreak: 0, wins: 0, losses: 0 };
+  return { ownedCards: {}, winStreak: 0, wins: 0, losses: 0, storyProgress: 0 };
 }
 
 function fromDb(row: DbPlayerProgress): PlayerProgress {
@@ -24,6 +25,7 @@ function fromDb(row: DbPlayerProgress): PlayerProgress {
     winStreak: row.win_streak ?? 0,
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
+    storyProgress: row.story_progress ?? 0,
   };
 }
 
@@ -114,6 +116,7 @@ export async function saveProgress(userId: string, progress: PlayerProgress): Pr
     win_streak: progress.winStreak,
     wins: progress.wins,
     losses: progress.losses,
+    story_progress: progress.storyProgress,
     updated_at: new Date().toISOString(),
   };
 
@@ -130,6 +133,21 @@ export async function addCardsToCloud(userId: string, cardIds: string[]): Promis
   const next = { ...current, ownedCards };
   await saveProgress(userId, next);
   return next;
+}
+
+export async function recordStoryWinCloud(
+  userId: string
+): Promise<{ progress: PlayerProgress; unlockedPathway: Pathway | null }> {
+  const current = await fetchProgress(userId);
+  const unlockedPathway = getStoryWinUnlock(current.storyProgress);
+  const progress: PlayerProgress = {
+    ...current,
+    storyProgress: current.storyProgress + 1,
+    winStreak: current.winStreak + 1,
+    wins: current.wins + 1,
+  };
+  await saveProgress(userId, progress);
+  return { progress, unlockedPathway };
 }
 
 export async function recordNpcWinCloud(userId: string): Promise<PlayerProgress> {

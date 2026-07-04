@@ -12,6 +12,9 @@ import {
   createStarterDeck,
   MinionInstance,
   PATHWAYS,
+  getCurrentStoryBoss,
+  isPathwayUnlocked,
+  isStoryComplete,
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
@@ -158,6 +161,8 @@ interface GameStore {
   isOnline: boolean;
   roomCode: string | null;
   npcTier: number;
+  isStoryMode: boolean;
+  storyOpponentPathway: Pathway | null;
   npcThinking: boolean;
   pendingAttack: PendingAttack | null;
   pendingHeroPower: PendingHeroPower | null;
@@ -167,6 +172,7 @@ interface GameStore {
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
+  startStoryBattle: () => void;
   performAction: (action: GameAction) => void;
   reset: () => void;
 }
@@ -420,6 +426,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isOnline: false,
   roomCode: null,
   npcTier: 1,
+  isStoryMode: false,
+  storyOpponentPathway: null,
   npcThinking: false,
   pendingAttack: null,
   pendingHeroPower: null,
@@ -427,6 +435,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   npcPlayReveal: null,
 
   setPathway: (pathway) => {
+    const storyProgress = useCollectionStore.getState().storyProgress;
+    if (!isPathwayUnlocked(pathway, storyProgress)) return;
+
     const { deck } = get();
     const nextDeck =
       deck && deck.pathway === pathway && deck.cards.length === 30
@@ -468,7 +479,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const stateAfterMulligan = applyAction(state, playerId, { type: 'mulligan', indices: [] });
     const finalState = applyAction(stateAfterMulligan, opponentId, { type: 'mulligan', indices: [] });
 
-    set({ gameState: finalState, deck: playerDeck });
+    set({ gameState: finalState, deck: playerDeck, isStoryMode: false, storyOpponentPathway: null });
+  },
+
+  startStoryBattle: () => {
+    const { playerId, opponentId, selectedPathway, deck } = get();
+    const storyProgress = useCollectionStore.getState().storyProgress;
+    const bossPathway = getCurrentStoryBoss(storyProgress) ?? 'demoness';
+    const tier = Math.min(storyProgress + 1, 5);
+
+    const playerDeck =
+      deck && deck.cards.length === 30 && deck.pathway === selectedPathway
+        ? deck
+        : createStarterDeck(selectedPathway);
+    const npcDeck = createStarterDeck(bossPathway);
+
+    if (!isSupabaseConfigured || !getCurrentUserId()) {
+      useCollectionStore.getState().initStarterCollection(selectedPathway);
+    }
+
+    const state = createGame(
+      `game-${Date.now()}`,
+      { id: playerId, deck: playerDeck },
+      { id: opponentId, deck: npcDeck },
+      Date.now()
+    );
+
+    const stateAfterMulligan = applyAction(state, playerId, { type: 'mulligan', indices: [] });
+    const finalState = applyAction(stateAfterMulligan, opponentId, { type: 'mulligan', indices: [] });
+
+    set({
+      gameState: finalState,
+      deck: playerDeck,
+      isStoryMode: true,
+      storyOpponentPathway: bossPathway,
+      npcTier: tier,
+    });
   },
 
   performAction: (action) => {
@@ -558,6 +604,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   reset: () => set({
     gameState: null,
+    isStoryMode: false,
+    storyOpponentPathway: null,
     npcThinking: false,
     pendingAttack: null,
     pendingHeroPower: null,

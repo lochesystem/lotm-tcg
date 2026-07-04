@@ -3,6 +3,7 @@ export * from './pathways.js';
 export * from './battle.js';
 export * from './deck.js';
 export * from './packs.js';
+export * from './story.js';
 export { getCardById, getAllCards, getCardsForPathway, getStarterCards } from './cards/index.js';
 export { NEUTRAL_CARDS } from './cards/neutral.js';
 export { FOOL_CARDS } from './cards/fool.js';

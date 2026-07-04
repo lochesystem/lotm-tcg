@@ -12,10 +12,9 @@ import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { PackOpening } from '../components/PackOpening';
-import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult } from 'game-engine';
+import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, getStoryChapterLabel, type Pathway } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
 import { cardNeedsTarget, getCardPlayTargets, isValidCardTarget } from '../utils/cardTargeting';
 import { getKeywordInfo } from '../components/KeywordTooltip';
@@ -36,7 +35,7 @@ interface BattleLogEntry {
 }
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -71,7 +70,9 @@ export function BattleScreen({ onNavigate }: Props) {
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
   const [heroPowerHover, setHeroPowerHover] = useState(false);
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
+  const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
+  const recordStoryWin = useCollectionStore((s) => s.recordStoryWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
 
   // Sync battle log from game engine events (player + NPC)
@@ -103,6 +104,7 @@ export function BattleScreen({ onNavigate }: Props) {
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
     setRewardPack(null);
+    setUnlockedPathway(null);
     setSelectedHandIndex(null);
     setTargetingHandIndex(null);
     setHoveredHandIndex(null);
@@ -123,7 +125,16 @@ export function BattleScreen({ onNavigate }: Props) {
       const turns = gameState.turn;
 
       if (gameState.winner === playerId) {
-        const streak = await recordNpcWin();
+        let streak: number;
+        if (isStoryMode) {
+          const storyResult = await recordStoryWin();
+          streak = storyResult.streak;
+          if (storyResult.unlockedPathway) {
+            setUnlockedPathway(storyResult.unlockedPathway);
+          }
+        } else {
+          streak = await recordNpcWin();
+        }
         const packType = getPackTypeForReward(npcTier, streak);
         setRewardPack(openPack(packType, Date.now()));
         if (userId) {
@@ -156,7 +167,7 @@ export function BattleScreen({ onNavigate }: Props) {
     };
 
     void finishMatch();
-  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, npcTier, recordNpcWin, recordNpcLoss]);
+  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
 
   // Sync NPC combat animation phases from store
   useEffect(() => {
@@ -614,6 +625,12 @@ export function BattleScreen({ onNavigate }: Props) {
       {/* Turn banner — auto-gerenciado, aparece e some sozinho */}
       <TurnBanner turnNumber={gameState.turn} isYourTurn={isMyTurn} />
 
+      {isStoryMode && storyOpponentPathway && (
+        <div className="absolute top-11 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full bg-purple-900/85 border border-purple-500/40 text-[10px] font-medium text-purple-200 pointer-events-none">
+          Modo História — {getStoryChapterLabel(storyOpponentPathway)}
+        </div>
+      )}
+
       <NpcPlayReveal cardName={npcPlayReveal?.cardName ?? null} />
 
       {/* Slash impact on the target card or hero */}
@@ -704,13 +721,25 @@ export function BattleScreen({ onNavigate }: Props) {
                 transition={{ delay: 0.5 }}
               >
                 {gameState.winner === playerId
-                  ? rewardPack
-                    ? 'Você ganhou um pacote de cartas!'
-                    : 'Seu oponente foi derrotado!'
+                  ? unlockedPathway
+                    ? `Pathway ${PATHWAYS[unlockedPathway].name} desbloqueado!`
+                    : rewardPack
+                      ? 'Você ganhou um pacote de cartas!'
+                      : 'Seu oponente foi derrotado!'
                   : gameState.winner === null
                   ? 'Ambos caíram ao mesmo tempo.'
                   : 'Sua vida chegou a zero.'}
               </motion.p>
+              {gameState.winner === playerId && unlockedPathway && (
+                <motion.p
+                  className="text-xs text-purple-300 mb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  🔓 {PATHWAYS[unlockedPathway].name} agora pode ser escolhido no menu.
+                </motion.p>
+              )}
               {gameState.winner === playerId && rewardPack && (
                 <motion.p
                   className="text-xs text-gold-400 mb-4"

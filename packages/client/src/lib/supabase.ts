@@ -41,6 +41,7 @@ export type DbPlayerProgress = {
   win_streak: number;
   wins: number;
   losses: number;
+  story_progress: number;
   updated_at: string;
 };
 

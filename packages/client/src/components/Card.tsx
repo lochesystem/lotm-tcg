@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Card as CardType, Keyword, BeyonderCard, SealedArtifactCard } from 'game-engine';
-import { KeywordTooltip, KeywordBadge } from './KeywordTooltip';
+import { KeywordTooltipContent, KeywordBadge } from './KeywordTooltip';
+import { AnchorTooltip } from './AnchorTooltip';
 
 function useCardArt(cardId: string): string | null {
   const path = `/cards/${cardId}.png`;
@@ -27,8 +28,22 @@ function CardArt({ cardId, className }: { cardId: string; className?: string }) 
 
 interface Props {
   card: CardType;
+  /** Green glow — enough mana and legal to select */
+  playable?: boolean;
+  /** @deprecated use playable */
   canPlay?: boolean;
+  selected?: boolean;
+  showDetail?: boolean;
+  onCloseDetail?: () => void;
   onClick?: () => void;
+  onHoverChange?: (hovering: boolean) => void;
+  /** When true, hover lift/scale is reduced so other UI isn't covered */
+  suppressHoverLift?: boolean;
+  /** Floating preview above the card on hover (e.g. while another card is selected) */
+  showHoverPreview?: boolean;
+  /** Hand row: no vertical lift, portal tooltips */
+  compactHand?: boolean;
+  onKeywordHover?: (keyword: Keyword | null) => void;
   small?: boolean;
 }
 
@@ -56,9 +71,30 @@ const TYPE_LABELS = {
   'mystical-item': 'Mystical Item',
 };
 
-export function CardComponent({ card, canPlay, onClick, small }: Props) {
-  const [showDetail, setShowDetail] = useState(false);
+export function CardComponent({
+  card,
+  playable,
+  canPlay,
+  selected,
+  showDetail: showDetailProp,
+  onCloseDetail,
+  onClick,
+  onHoverChange,
+  suppressHoverLift,
+  showHoverPreview,
+  compactHand,
+  onKeywordHover,
+  small,
+}: Props) {
+  const isPlayable = playable ?? canPlay;
+  const [showDetailLocal, setShowDetailLocal] = useState(false);
   const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [descHovered, setDescHovered] = useState(false);
+  const descAnchorRef = useRef<HTMLSpanElement>(null);
+  const cardAnchorRef = useRef<HTMLDivElement>(null);
+  const keywordRefs = useRef<Partial<Record<Keyword, HTMLSpanElement>>>({});
+  const showDetail = showDetailProp ?? showDetailLocal;
 
   const rarity = RARITY_STYLES[card.rarity];
   const gradient = PATHWAY_GRADIENT[card.pathway];
@@ -66,23 +102,52 @@ export function CardComponent({ card, canPlay, onClick, small }: Props) {
   const isWeapon = card.type === 'sealed-artifact';
 
   const handleClick = () => {
-    if (onClick && canPlay) {
+    if (onClick) {
       onClick();
-    } else {
-      setShowDetail(!showDetail);
+      return;
     }
+    setShowDetailLocal((open) => !open);
   };
+
+  const closeDetail = () => {
+    if (onCloseDetail) onCloseDetail();
+    else setShowDetailLocal(false);
+  };
+
+  const handlePointerEnter = () => {
+    setIsHovered(true);
+    onHoverChange?.(true);
+  };
+
+  const handlePointerLeave = () => {
+    setIsHovered(false);
+    onHoverChange?.(false);
+    setHoveredKeyword(null);
+  };
+
+  const hoverMotion = compactHand
+    ? { scale: selected ? 1.04 : isPlayable ? 1.03 : 1.01 }
+    : suppressHoverLift && !selected
+      ? { scale: 1.03 }
+      : isPlayable
+        ? { scale: 1.08, y: -8, zIndex: 10 }
+        : { scale: 1.02 };
+
+  const selectMotion = compactHand
+    ? { scale: selected ? 1.05 : 1, zIndex: selected ? 30 : 0 }
+    : { y: selected ? -10 : 0, scale: selected ? 1.08 : 1, zIndex: selected ? 30 : 0 };
 
   if (small) {
     return (
       <motion.button
         onClick={handleClick}
-        whileHover={canPlay ? { scale: 1.08, y: -4 } : undefined}
-        whileTap={canPlay ? { scale: 0.95 } : undefined}
+        whileHover={isPlayable ? { scale: 1.08, y: -4 } : undefined}
+        whileTap={isPlayable ? { scale: 0.95 } : undefined}
         className={`
           relative flex-shrink-0 rounded-lg border-2 overflow-hidden transition-colors
           ${rarity.border} ${rarity.glow}
-          ${canPlay ? 'cursor-pointer' : 'opacity-70'}
+          ${selected ? 'ring-2 ring-gold-400/80 -translate-y-2 z-20' : ''}
+          ${isPlayable || onClick ? 'cursor-pointer' : 'opacity-70'}
           w-16 h-24
           bg-gradient-to-b ${gradient}
         `}
@@ -110,22 +175,53 @@ export function CardComponent({ card, canPlay, onClick, small }: Props) {
   }
 
   return (
-    <>
+    <div
+      ref={cardAnchorRef}
+      className="relative flex-shrink-0 overflow-visible"
+      onMouseEnter={handlePointerEnter}
+      onMouseLeave={handlePointerLeave}
+    >
+      {showHoverPreview && isHovered && !compactHand && (
+        <CardHoverPreview card={card} />
+      )}
+
+      <AnchorTooltip anchorEl={cardAnchorRef.current} show={!!(showHoverPreview && isHovered && compactHand)}>
+        <CardHoverPreviewContent card={card} />
+      </AnchorTooltip>
+
+      <AnchorTooltip anchorEl={descAnchorRef.current} show={descHovered && !!card.description}>
+        <p className="text-[8px] font-semibold text-blue-200 mb-0.5">Efeito</p>
+        <p className="text-[9px] text-void-100 leading-snug">{card.description}</p>
+      </AnchorTooltip>
+
+      {card.keywords?.map((kw) => (
+        <AnchorTooltip
+          key={kw}
+          anchorEl={hoveredKeyword === kw ? (keywordRefs.current[kw] ?? null) : null}
+          show={hoveredKeyword === kw}
+        >
+          <KeywordTooltipContent keyword={kw} />
+        </AnchorTooltip>
+      ))}
+
       <motion.button
         onClick={handleClick}
-        layout
-        whileHover={canPlay ? { scale: 1.08, y: -8, zIndex: 10 } : { scale: 1.02 }}
-        whileTap={canPlay ? { scale: 0.92 } : undefined}
+        layout={!compactHand}
+        whileHover={hoverMotion}
+        whileTap={isPlayable ? { scale: 0.96 } : undefined}
+        animate={selectMotion}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
         className={`
-          relative flex-shrink-0 rounded-xl border-2 overflow-hidden
+          relative flex-shrink-0 rounded-xl border-2
           ${rarity.border} ${rarity.glow}
-          ${canPlay ? 'cursor-pointer ring-1 ring-green-400/30' : 'opacity-75'}
+          ${selected ? 'ring-2 ring-gold-400/90 shadow-lg shadow-gold-400/20' : ''}
+          ${isPlayable ? 'cursor-pointer ring-1 ring-green-400/30' : onClick ? 'cursor-pointer' : 'opacity-75'}
           w-20 h-32
-          bg-gradient-to-b ${gradient}
         `}
       >
-        <CardArt cardId={card.id} />
+        <div className={`absolute inset-0 rounded-[10px] overflow-hidden bg-gradient-to-b ${gradient}`}>
+          <CardArt cardId={card.id} />
+        </div>
 
         {/* Cost crystal — prominent */}
         <div className="absolute -top-1 -left-1 w-8 h-8 rounded-br-2xl rounded-tl-xl bg-gradient-to-br from-blue-300 via-blue-500 to-indigo-800 flex items-center justify-center text-sm font-black text-white shadow-xl shadow-blue-500/50 border-r-2 border-b-2 border-blue-200/40 z-10">
@@ -133,29 +229,47 @@ export function CardComponent({ card, canPlay, onClick, small }: Props) {
         </div>
 
         {/* Card type indicator */}
-        <div className="absolute top-1 right-1">
+        <div className="absolute top-1 right-1 z-10">
           <span className="text-[8px] bg-black/40 px-1 rounded text-void-300">
             {card.type === 'beyonder' ? '⚔' : card.type === 'ritual' ? '✦' : card.type === 'sealed-artifact' ? '🗡' : '?'}
           </span>
         </div>
 
         {/* Card name */}
-        <div className="mt-7 px-1 text-center text-[9px] font-semibold leading-tight line-clamp-2 text-white/90">
+        <div className="relative z-10 mt-7 px-1 text-center text-[9px] font-semibold leading-tight line-clamp-2 text-white/90">
           {card.name}
         </div>
 
         {/* Description preview */}
         {card.description && (
-          <div className="mt-0.5 px-1 text-center text-[7px] leading-tight text-void-300 line-clamp-2">
+          <span
+            ref={descAnchorRef}
+            className="relative z-10 block mt-0.5 px-1 text-center text-[7px] leading-tight text-void-300 line-clamp-2 cursor-help"
+            onMouseEnter={(e) => { e.stopPropagation(); setDescHovered(true); }}
+            onMouseLeave={() => setDescHovered(false)}
+          >
             {card.description}
-          </div>
+          </span>
         )}
 
         {/* Keywords */}
         {card.keywords && card.keywords.length > 0 && (
-          <div className="absolute bottom-7 inset-x-0 flex flex-wrap justify-center gap-0.5 px-0.5">
+          <div className="absolute bottom-7 inset-x-0 z-10 flex flex-wrap justify-center gap-0.5 px-0.5">
             {card.keywords.map((kw) => (
-              <KeywordBadge key={kw} keyword={kw} />
+              <span
+                key={kw}
+                ref={(el) => {
+                  if (el) keywordRefs.current[kw] = el;
+                }}
+              >
+                <KeywordBadge
+                  keyword={kw}
+                  onHover={(show) => {
+                    setHoveredKeyword(show ? kw : null);
+                    onKeywordHover?.(show ? kw : null);
+                  }}
+                />
+              </span>
             ))}
           </div>
         )}
@@ -184,7 +298,7 @@ export function CardComponent({ card, canPlay, onClick, small }: Props) {
         )}
 
         {/* Playable glow pulse */}
-        {canPlay && (
+        {isPlayable && !selected && (
           <motion.div
             className="absolute inset-0 rounded-xl border-2 border-green-400/40"
             animate={{ opacity: [0.3, 0.7, 0.3] }}
@@ -193,9 +307,41 @@ export function CardComponent({ card, canPlay, onClick, small }: Props) {
         )}
       </motion.button>
 
-      {/* Detail overlay on tap (mobile) */}
       {showDetail && (
-        <CardDetailOverlay card={card} onClose={() => setShowDetail(false)} />
+        <CardDetailOverlay card={card} onClose={closeDetail} />
+      )}
+    </div>
+  );
+}
+
+function CardHoverPreview({ card }: { card: CardType }) {
+  return (
+    <motion.div
+      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 z-[120] pointer-events-none"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+    >
+      <div className="bg-void-900/98 border border-void-500 rounded-xl p-2.5 shadow-2xl backdrop-blur-md">
+        <CardHoverPreviewContent card={card} />
+      </div>
+    </motion.div>
+  );
+}
+
+function CardHoverPreviewContent({ card }: { card: CardType }) {
+  return (
+    <>
+      <p className="text-[11px] font-semibold text-white">{card.name}</p>
+      {card.description && (
+        <p className="text-[10px] text-void-200 mt-1 leading-snug">{card.description}</p>
+      )}
+      {card.keywords && card.keywords.length > 0 && (
+        <div className="mt-1.5 space-y-1 border-t border-void-700 pt-1.5">
+          {card.keywords.map((kw) => (
+            <KeywordExplanation key={kw} keyword={kw} />
+          ))}
+        </div>
       )}
     </>
   );

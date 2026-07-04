@@ -50,8 +50,6 @@ const KEYWORD_INFO: Record<Keyword, { name: string; description: string; icon: s
 };
 
 export function KeywordTooltip({ keyword, show }: Props) {
-  const info = KEYWORD_INFO[keyword];
-
   return (
     <AnimatePresence>
       {show && (
@@ -62,17 +60,28 @@ export function KeywordTooltip({ keyword, show }: Props) {
           exit={{ opacity: 0, y: 5, scale: 0.95 }}
           transition={{ duration: 0.15 }}
         >
-          <div className="bg-void-900/95 border border-void-500 rounded-xl p-3 shadow-xl backdrop-blur-md">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-base">{info.icon}</span>
-              <span className="font-bold text-sm text-white">{info.name}</span>
-            </div>
-            <p className="text-xs text-void-200 leading-relaxed">{info.description}</p>
-          </div>
+          <KeywordTooltipContent keyword={keyword} />
         </motion.div>
       )}
     </AnimatePresence>
   );
+}
+
+export function KeywordTooltipContent({ keyword }: { keyword: Keyword }) {
+  const info = KEYWORD_INFO[keyword];
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-base">{info.icon}</span>
+        <span className="font-bold text-sm text-white">{info.name}</span>
+      </div>
+      <p className="text-xs text-void-200 leading-relaxed">{info.description}</p>
+    </>
+  );
+}
+
+export function getKeywordInfo(keyword: Keyword) {
+  return KEYWORD_INFO[keyword];
 }
 
 export function KeywordBadge({ keyword, onHover }: { keyword: Keyword; onHover?: (show: boolean) => void }) {

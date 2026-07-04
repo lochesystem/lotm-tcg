@@ -427,16 +427,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   npcPlayReveal: null,
 
   setPathway: (pathway) => {
-    set({ selectedPathway: pathway });
+    const { deck } = get();
+    const nextDeck =
+      deck && deck.pathway === pathway && deck.cards.length === 30
+        ? deck
+        : createStarterDeck(pathway);
+
+    set({ selectedPathway: pathway, deck: nextDeck });
 
     const userId = getCurrentUserId();
     if (userId && isSupabaseConfigured) {
       void updatePreferredPathway(userId, pathway);
-      return;
     }
-
-    const deck = createStarterDeck(pathway);
-    set({ deck });
   },
 
   setActiveDeckFromCloud: (cardIds, pathway, deckId) => {
@@ -447,7 +449,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   startLocalGame: () => {
     const { playerId, opponentId, selectedPathway, deck } = get();
     const playerDeck =
-      deck && deck.cards.length === 30
+      deck && deck.cards.length === 30 && deck.pathway === selectedPathway
         ? deck
         : createStarterDeck(selectedPathway);
     const npcDeck = createStarterDeck('red-priest');

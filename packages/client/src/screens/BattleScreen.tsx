@@ -16,6 +16,9 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
+import { cardNeedsTarget, getCardPlayTargets, isValidCardTarget } from '../utils/cardTargeting';
+import { getKeywordInfo } from '../components/KeywordTooltip';
+import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
@@ -34,6 +37,10 @@ interface BattleLogEntry {
 export function BattleScreen({ onNavigate }: Props) {
   const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
+  const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
+  const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
+  const [hoveredHandIndex, setHoveredHandIndex] = useState<number | null>(null);
+  const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
   const [showAttackAnim, setShowAttackAnim] = useState(false);
   const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
   const [showRitualAnim, setShowRitualAnim] = useState(false);
@@ -93,6 +100,10 @@ export function BattleScreen({ onNavigate }: Props) {
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
     setRewardPack(null);
+    setSelectedHandIndex(null);
+    setTargetingHandIndex(null);
+    setHoveredHandIndex(null);
+    setHoveredKeyword(null);
   }, [gameState?.id]);
 
   // Grant booster pack reward after local NPC victory
@@ -330,6 +341,20 @@ export function BattleScreen({ onNavigate }: Props) {
   const pathwayInfo = PATHWAYS[player.pathway];
   const opponentPathwayInfo = PATHWAYS[opponent.pathway];
   const attackTargets = selectedAttacker ? getAttackTargets(opponent) : null;
+  const targetingCard = targetingHandIndex !== null ? player.hand[targetingHandIndex] : null;
+  const playTargets = targetingCard ? getCardPlayTargets(targetingCard, player, opponent) : null;
+  const opponentBoardTargets = targetingHandIndex !== null
+    ? playTargets?.enemyMinionIds ?? null
+    : attackTargets?.validMinionIds ?? null;
+  const playerBoardTargets = targetingHandIndex !== null
+    ? playTargets?.friendlyMinionIds ?? null
+    : null;
+
+  const previewHandIndex =
+    targetingHandIndex ?? selectedHandIndex ?? hoveredHandIndex;
+
+  const previewCard =
+    previewHandIndex !== null ? player.hand[previewHandIndex] : null;
 
   const clearArrowPreview = () => {
     setArrowTargetId(null);
@@ -343,6 +368,84 @@ export function BattleScreen({ onNavigate }: Props) {
   const handlePlayCard = (handIndex: number) => {
     if (!isMyTurn || isGameOver) return;
     performAction({ type: 'play-card', handIndex });
+  };
+
+  const clearCardSelection = () => {
+    setSelectedHandIndex(null);
+    setTargetingHandIndex(null);
+    setHoveredHandIndex(null);
+    setHoveredKeyword(null);
+  };
+
+  const executePlayCard = (handIndex: number, target?: string) => {
+    const action: GameAction = { type: 'play-card', handIndex, target };
+    const err = validateAction(gameState, playerId, action);
+    if (err) {
+      addLog(err, 'system');
+      return;
+    }
+    const cardName = player.hand[handIndex]?.name ?? 'carta';
+    performAction(action);
+    addLog(`Jogou ${cardName}`, 'action');
+    clearCardSelection();
+    setSelectedAttacker(null);
+    clearArrowPreview();
+  };
+
+  const handleHandCardClick = (index: number) => {
+    const card = player.hand[index];
+    if (!card) return;
+
+    if (!isMyTurn || isGameOver) {
+      setSelectedHandIndex((current) => (current === index ? null : index));
+      setTargetingHandIndex(null);
+      return;
+    }
+
+    const playable = card.cost <= player.spirituality;
+
+    if (targetingHandIndex !== null && targetingHandIndex !== index) {
+      setTargetingHandIndex(null);
+    }
+
+    if (targetingHandIndex === index) {
+      setTargetingHandIndex(null);
+      addLog('Seleção de alvo cancelada', 'system');
+      return;
+    }
+
+    if (selectedHandIndex !== index) {
+      setSelectedHandIndex(index);
+      setSelectedAttacker(null);
+      clearArrowPreview();
+      return;
+    }
+
+    if (!playable) return;
+
+    if (card.type === 'beyonder' && player.board.length >= 7) {
+      addLog('Tabuleiro cheio', 'system');
+      return;
+    }
+    if (card.type === 'mystical-item' && player.secrets.length >= 3) {
+      addLog('Máximo de segredos atingido', 'system');
+      return;
+    }
+
+    if (cardNeedsTarget(card)) {
+      const targets = getCardPlayTargets(card, player, opponent);
+      if (!targets.hasAny) {
+        addLog('Sem alvos válidos para esta carta', 'system');
+        return;
+      }
+      setTargetingHandIndex(index);
+      setSelectedAttacker(null);
+      clearArrowPreview();
+      addLog(`Escolha o alvo para ${card.name}`, 'system');
+      return;
+    }
+
+    executePlayCard(index);
   };
 
   const playAttackAnimation = (
@@ -390,6 +493,18 @@ export function BattleScreen({ onNavigate }: Props) {
   const handleMinionClick = (instanceId: string, isEnemy: boolean) => {
     if (!isMyTurn || isGameOver) return;
 
+    if (targetingHandIndex !== null) {
+      const card = player.hand[targetingHandIndex];
+      if (!card) return;
+      const targets = getCardPlayTargets(card, player, opponent);
+      if (isValidCardTarget(targets, instanceId, isEnemy)) {
+        executePlayCard(targetingHandIndex, instanceId);
+      } else {
+        addLog('Alvo inválido', 'system');
+      }
+      return;
+    }
+
     if (selectedAttacker) {
       if (isEnemy) {
         const atkId = selectedAttacker;
@@ -425,6 +540,20 @@ export function BattleScreen({ onNavigate }: Props) {
   const handleHeroClick = (isEnemy: boolean) => {
     if (!isMyTurn || isGameOver) return;
 
+    if (targetingHandIndex !== null) {
+      const card = player.hand[targetingHandIndex];
+      if (!card) return;
+      const targets = getCardPlayTargets(card, player, opponent);
+      if (isEnemy && targets.allowEnemyHero) {
+        executePlayCard(targetingHandIndex, opponent.id);
+      } else if (!isEnemy && targets.allowFriendlyHero) {
+        executePlayCard(targetingHandIndex, player.id);
+      } else {
+        addLog('Alvo inválido', 'system');
+      }
+      return;
+    }
+
     if (selectedAttacker && isEnemy) {
       const atkId = selectedAttacker;
       const action: GameAction = { type: 'attack-hero', attackerInstanceId: atkId };
@@ -450,6 +579,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const handleEndTurn = () => {
     if (!isMyTurn || isGameOver) return;
     setSelectedAttacker(null);
+    clearCardSelection();
     clearArrowPreview();
     addLog('Fim de turno', 'system');
     performAction({ type: 'end-turn' });
@@ -615,20 +745,20 @@ export function BattleScreen({ onNavigate }: Props) {
           <div className="flex items-center gap-3">
             <div
               data-hero-enemy
-              className={`relative ${attackTargets?.heroValid ? 'cursor-crosshair' : ''}`}
+              className={`relative ${attackTargets?.heroValid || playTargets?.allowEnemyHero ? 'cursor-crosshair' : ''}`}
               onClick={() => handleHeroClick(true)}
               onMouseEnter={() => {
                 if (selectedAttacker && attackTargets?.heroValid) setArrowTargetHero(true);
               }}
               onMouseLeave={() => setArrowTargetHero(false)}
             >
-              {selectedAttacker && attackTargets?.heroValid && (
+              {(selectedAttacker && attackTargets?.heroValid) || playTargets?.allowEnemyHero ? (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-red-400/70 shadow-red-500/40 shadow-lg z-10 pointer-events-none"
                   animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 />
-              )}
+              ) : null}
               {damagedHero === 'opponent' && (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-red-400 z-10 pointer-events-none"
@@ -707,7 +837,7 @@ export function BattleScreen({ onNavigate }: Props) {
           minions={opponent.board}
           isEnemy
           selectedAttacker={selectedAttacker}
-          validTargetIds={attackTargets?.validMinionIds ?? null}
+          validTargetIds={opponentBoardTargets}
           attackingMinion={attackingMinion}
           damagedMinion={damagedMinion}
           ritualTargetIds={ritualTargetIds}
@@ -768,6 +898,7 @@ export function BattleScreen({ onNavigate }: Props) {
           minions={player.board}
           isEnemy={false}
           selectedAttacker={selectedAttacker}
+          validTargetIds={playerBoardTargets}
           attackingMinion={attackingMinion}
           damagedMinion={damagedMinion}
           ritualTargetIds={ritualTargetIds}
@@ -780,8 +911,16 @@ export function BattleScreen({ onNavigate }: Props) {
           <div className="flex items-center gap-3">
             <div
               data-hero-player
-              className={`relative ${damagedHero === 'player' ? 'z-20' : ''}`}
+              className={`relative ${damagedHero === 'player' ? 'z-20' : ''} ${playTargets?.allowFriendlyHero ? 'cursor-crosshair' : ''}`}
+              onClick={() => handleHeroClick(false)}
             >
+              {playTargets?.allowFriendlyHero && (
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-green-400/70 shadow-green-500/40 shadow-lg z-10 pointer-events-none"
+                  animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+              )}
               {damagedHero === 'player' && (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-red-400 z-10 pointer-events-none"
@@ -794,7 +933,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 maxHealth={player.maxHealth}
                 pathway={player.pathway}
                 isEnemy={false}
-                onClick={() => {}}
+                onClick={() => handleHeroClick(false)}
                 hasWeapon={!!player.weapon}
                 weaponAttack={player.weapon?.currentAttack}
                 isBeingAttacked={damagedHero === 'player'}
@@ -886,27 +1025,82 @@ export function BattleScreen({ onNavigate }: Props) {
         </div>
 
         {/* ─── Hand ──────────────────────────────────────────────────────── */}
-        <div className="flex-none h-36 relative">
-          <div className="absolute bottom-0 inset-x-0 flex items-end justify-center pb-2 px-1">
-            <div className="flex gap-1 max-w-full px-2">
+        <div className="flex-none flex flex-col gap-4 pt-1 pb-1">
+          <div className="min-h-[5.25rem] shrink-0 flex items-end justify-center px-3 relative z-50">
+            {previewCard && (
+              <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
+                {targetingHandIndex !== null ? (
+                  <p className="text-[10px] text-gold-200">
+                    Escolha o alvo para <span className="font-semibold">{previewCard.name}</span>
+                  </p>
+                ) : hoveredKeyword ? (
+                  <>
+                    <p className="text-[11px] font-semibold text-purple-200">
+                      {getKeywordInfo(hoveredKeyword).icon} {getKeywordInfo(hoveredKeyword).name}
+                    </p>
+                    <p className="text-[10px] text-void-200 mt-1 leading-snug">
+                      {getKeywordInfo(hoveredKeyword).description}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
+                    <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
+                      {previewCard.description || 'Sem efeito especial.'}
+                    </p>
+                    {previewCard.keywords && previewCard.keywords.length > 0 && (
+                      <p className="text-[9px] text-purple-300 mt-1">
+                        Passe o mouse na palavra-chave na carta para ver o significado
+                      </p>
+                    )}
+                    {selectedHandIndex !== null && targetingHandIndex === null && (
+                      <p className="text-[9px] text-gold-300 mt-1">Clique na carta de novo para jogar</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="h-[8.5rem] relative flex items-end justify-center overflow-visible">
+            <div className="flex gap-1.5 max-w-full px-2 pb-1">
               <AnimatePresence mode="popLayout">
-                {player.hand.map((card, index) => (
-                  <motion.div
-                    key={`${card.id}-${index}`}
-                    layout
-                    initial={{ scale: 0.5, y: 60, opacity: 0, rotate: -5 }}
-                    animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
-                    exit={{ scale: 0.5, y: -60, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                    className="relative hover:z-50"
-                  >
-                    <CardComponent
-                      card={card}
-                      canPlay={isMyTurn && card.cost <= player.spirituality && !isGameOver}
-                      onClick={() => handlePlayCard(index)}
-                    />
-                  </motion.div>
-                ))}
+                {player.hand.map((card, index) => {
+                  const isSelected = selectedHandIndex === index || targetingHandIndex === index;
+                  const anotherSelected =
+                    (selectedHandIndex !== null || targetingHandIndex !== null) && !isSelected;
+
+                  return (
+                    <motion.div
+                      key={`${card.id}-${index}`}
+                      layout
+                      initial={{ scale: 0.5, y: 60, opacity: 0, rotate: -5 }}
+                      animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
+                      exit={{ scale: 0.5, y: -60, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className={`relative ${isSelected ? 'z-30' : anotherSelected ? 'z-10' : 'z-20'}`}
+                    >
+                      <CardComponent
+                        card={card}
+                        playable={isMyTurn && card.cost <= player.spirituality && !isGameOver}
+                        selected={isSelected}
+                        compactHand
+                        suppressHoverLift={anotherSelected}
+                        showHoverPreview={anotherSelected}
+                        onKeywordHover={setHoveredKeyword}
+                        onHoverChange={(hovering) => {
+                          if (hovering && !isSelected) {
+                            setHoveredHandIndex(index);
+                          } else if (hoveredHandIndex === index) {
+                            setHoveredHandIndex(null);
+                          }
+                          if (!hovering) setHoveredKeyword(null);
+                        }}
+                        onClick={() => handleHandCardClick(index)}
+                      />
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           </div>

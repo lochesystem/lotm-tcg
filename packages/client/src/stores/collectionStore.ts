@@ -4,10 +4,13 @@ import { Card, getAllCards, createStarterDeck, getCardById, Pathway } from 'game
 
 interface CollectionStore {
   ownedCardIds: Record<string, number>; // cardId → quantity
+  winStreak: number;
   totalOwned: () => number;
   ownsCard: (cardId: string) => boolean;
   getQuantity: (cardId: string) => number;
   addCards: (cardIds: string[]) => void;
+  recordNpcWin: () => number;
+  recordNpcLoss: () => void;
   initStarterCollection: (pathway: Pathway) => void;
 }
 
@@ -15,6 +18,7 @@ export const useCollectionStore = create<CollectionStore>()(
   persist(
     (set, get) => ({
       ownedCardIds: {},
+      winStreak: 0,
 
       totalOwned: () => Object.values(get().ownedCardIds).reduce((sum, qty) => sum + qty, 0),
 
@@ -29,6 +33,14 @@ export const useCollectionStore = create<CollectionStore>()(
         }
         set({ ownedCardIds: current });
       },
+
+      recordNpcWin: () => {
+        const winStreak = get().winStreak + 1;
+        set({ winStreak });
+        return winStreak;
+      },
+
+      recordNpcLoss: () => set({ winStreak: 0 }),
 
       initStarterCollection: (pathway: Pathway) => {
         const { ownedCardIds } = get();

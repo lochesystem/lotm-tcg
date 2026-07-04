@@ -153,6 +153,7 @@ interface GameStore {
   deck: Deck | null;
   isOnline: boolean;
   roomCode: string | null;
+  npcTier: number;
   npcThinking: boolean;
   pendingAttack: PendingAttack | null;
   pendingHeroPower: PendingHeroPower | null;
@@ -412,6 +413,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   deck: null,
   isOnline: false,
   roomCode: null,
+  npcTier: 1,
   npcThinking: false,
   pendingAttack: null,
   pendingHeroPower: null,

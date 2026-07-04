@@ -10,9 +10,9 @@ interface Props {
 }
 
 const PACK_LABELS = {
-  ordinary: 'Ordinary Pack',
-  beyonder: 'Beyonder Pack',
-  sealed: 'Sealed Pack',
+  ordinary: 'Pacote Comum',
+  beyonder: 'Pacote Beyonder',
+  sealed: 'Pacote Selado',
 };
 
 const PACK_COLORS = {
@@ -32,7 +32,7 @@ export function PackOpening({ pack, onClose }: Props) {
   }, [revealed]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -50,7 +50,7 @@ export function PackOpening({ pack, onClose }: Props) {
               <div className="font-display font-bold text-sm">
                 {PACK_LABELS[pack.packType]}
               </div>
-              <div className="text-xs text-white/60 mt-2">Tap to open</div>
+              <div className="text-xs text-white/60 mt-2">Toque para abrir</div>
             </div>
           </motion.button>
         ) : (
@@ -76,7 +76,7 @@ export function PackOpening({ pack, onClose }: Props) {
               onClick={onClose}
               className="px-6 py-2 bg-void-700 hover:bg-void-600 rounded-lg text-sm font-medium transition-all"
             >
-              Continue
+              Continuar
             </button>
           </>
         )}

@@ -10,12 +10,14 @@ import { HeroPowerBeam } from '../components/HeroPowerBeam';
 import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
-import { GameAction, validateAction } from 'game-engine';
+import { PackOpening } from '../components/PackOpening';
+import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
 import { formatGameEvent } from '../utils/battleLog';
+import { useCollectionStore } from '../stores/collectionStore';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -28,7 +30,7 @@ interface BattleLogEntry {
 }
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [showAttackAnim, setShowAttackAnim] = useState(false);
   const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
@@ -55,6 +57,10 @@ export function BattleScreen({ onNavigate }: Props) {
   } | null>(null);
   const logIdRef = useRef(0);
   const processedLogRef = useRef(0);
+  const rewardGrantedRef = useRef(false);
+  const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
+  const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
+  const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
 
   // Sync battle log from game engine events (player + NPC)
   useEffect(() => {
@@ -83,7 +89,27 @@ export function BattleScreen({ onNavigate }: Props) {
     processedLogRef.current = 0;
     setBattleLog([]);
     logIdRef.current = 0;
+    rewardGrantedRef.current = false;
+    setRewardPack(null);
   }, [gameState?.id]);
+
+  // Grant booster pack reward after local NPC victory
+  useEffect(() => {
+    if (!gameState || gameState.phase !== 'ended' || rewardGrantedRef.current || isOnline) return;
+
+    const isNpcMatch = opponentId === 'npc-1' || gameState.players.some((p) => p.id === 'npc-1');
+    if (!isNpcMatch) return;
+
+    rewardGrantedRef.current = true;
+
+    if (gameState.winner === playerId) {
+      const streak = recordNpcWin();
+      const packType = getPackTypeForReward(npcTier, streak);
+      setRewardPack(openPack(packType, Date.now()));
+    } else if (gameState.winner && gameState.winner !== playerId) {
+      recordNpcLoss();
+    }
+  }, [gameState, gameState?.phase, gameState?.winner, playerId, opponentId, isOnline, npcTier, recordNpcWin, recordNpcLoss]);
 
   // Sync NPC combat animation phases from store
   useEffect(() => {
@@ -512,11 +538,23 @@ export function BattleScreen({ onNavigate }: Props) {
                 transition={{ delay: 0.5 }}
               >
                 {gameState.winner === playerId
-                  ? 'Seu oponente foi derrotado!'
+                  ? rewardPack
+                    ? 'Você ganhou um pacote de cartas!'
+                    : 'Seu oponente foi derrotado!'
                   : gameState.winner === null
                   ? 'Ambos caíram ao mesmo tempo.'
                   : 'Sua vida chegou a zero.'}
               </motion.p>
+              {gameState.winner === playerId && rewardPack && (
+                <motion.p
+                  className="text-xs text-gold-400 mb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.65 }}
+                >
+                  Abra o pacote para desbloquear novas cartas na coleção.
+                </motion.p>
+              )}
               <motion.button
                 onClick={() => { reset(); onNavigate('home'); }}
                 className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold transition-all shadow-lg"
@@ -530,6 +568,13 @@ export function BattleScreen({ onNavigate }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {rewardPack && (
+        <PackOpening
+          pack={rewardPack}
+          onClose={() => setRewardPack(null)}
+        />
+      )}
 
       <div className="relative z-10 flex flex-col h-full">
         {/* ─── Opponent area ─────────────────────────────────────────────── */}

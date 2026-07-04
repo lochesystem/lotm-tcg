@@ -9,6 +9,8 @@ interface Props {
   validTargetIds?: Set<string> | null;
   attackingMinion?: string | null;
   damagedMinion?: string | null;
+  ritualTargetIds?: Set<string> | null;
+  damagedMinionIds?: Set<string> | null;
   onMinionClick: (instanceId: string, isEnemy: boolean) => void;
   onValidTargetHover?: (instanceId: string, hovering: boolean) => void;
 }
@@ -20,6 +22,8 @@ export function AnimatedBoard({
   validTargetIds,
   attackingMinion,
   damagedMinion,
+  ritualTargetIds,
+  damagedMinionIds,
   onMinionClick,
   onValidTargetHover,
 }: Props) {
@@ -28,7 +32,8 @@ export function AnimatedBoard({
       <AnimatePresence initial={false}>
         {minions.map((minion) => {
           const isAttacking = attackingMinion === minion.instanceId;
-          const isBeingHit = damagedMinion === minion.instanceId;
+          const isBeingHit = damagedMinion === minion.instanceId || !!damagedMinionIds?.has(minion.instanceId);
+          const isRitualTarget = !!ritualTargetIds?.has(minion.instanceId);
 
           const isValidTarget = !!validTargetIds?.has(minion.instanceId);
 
@@ -63,6 +68,7 @@ export function AnimatedBoard({
                 isEnemy={isEnemy}
                 isSelected={selectedAttacker === minion.instanceId}
                 isTarget={isValidTarget}
+                isRitualTarget={isRitualTarget}
                 isBeingAttacked={isBeingHit}
                 onClick={() => onMinionClick(minion.instanceId, isEnemy)}
                 onHover={isValidTarget && onValidTargetHover

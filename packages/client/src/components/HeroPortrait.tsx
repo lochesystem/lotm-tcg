@@ -10,6 +10,7 @@ interface Props {
   hasWeapon?: boolean;
   weaponAttack?: number;
   isBeingAttacked?: boolean;
+  isCastingPower?: boolean;
 }
 
 const PATHWAY_THEME: Record<Pathway, { icon: string; color: string; ring: string }> = {
@@ -21,7 +22,7 @@ const PATHWAY_THEME: Record<Pathway, { icon: string; color: string; ring: string
   demoness: { icon: '🌙', color: 'from-fuchsia-700 to-pink-900', ring: 'ring-fuchsia-400/40' },
 };
 
-export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, hasWeapon, weaponAttack, isBeingAttacked }: Props) {
+export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, hasWeapon, weaponAttack, isBeingAttacked, isCastingPower }: Props) {
   const healthPercent = Math.max(0, (health / maxHealth) * 100);
   const theme = PATHWAY_THEME[pathway];
   const lowHealth = health <= 10;
@@ -31,8 +32,14 @@ export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, has
       onClick={onClick}
       whileHover={isEnemy ? { scale: 1.08 } : undefined}
       whileTap={isEnemy ? { scale: 0.95 } : undefined}
-      animate={isBeingAttacked ? { x: [0, -5, 5, -4, 4, 0], scale: [1, 0.94, 1] } : {}}
-      transition={isBeingAttacked ? { duration: 0.45 } : {}}
+      animate={
+        isCastingPower
+          ? { scale: [1, 1.14, 1.08], boxShadow: ['0 0 0px rgba(251,146,60,0)', '0 0 24px rgba(251,146,60,0.8)', '0 0 12px rgba(251,146,60,0.5)'] }
+          : isBeingAttacked
+          ? { x: [0, -5, 5, -4, 4, 0], scale: [1, 0.94, 1] }
+          : {}
+      }
+      transition={isCastingPower ? { duration: 0.9, repeat: Infinity, repeatType: 'reverse' } : isBeingAttacked ? { duration: 0.45 } : {}}
       className={`
         relative w-14 h-14 rounded-full border-2 flex items-center justify-center
         ${isEnemy ? 'border-red-600/60 hover:border-red-400' : 'border-purple-500/60'}

@@ -6,6 +6,9 @@ import { HeroPortrait } from '../components/HeroPortrait';
 import { TurnBanner } from '../components/TurnBanner';
 import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
+import { HeroPowerBeam } from '../components/HeroPowerBeam';
+import { HeroPowerImpact } from '../components/HeroPowerImpact';
+import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { GameAction, validateAction } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
@@ -25,9 +28,14 @@ interface BattleLogEntry {
 }
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, npcPlayReveal } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [showAttackAnim, setShowAttackAnim] = useState(false);
+  const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
+  const [showRitualAnim, setShowRitualAnim] = useState(false);
+  const [ritualTargetIds, setRitualTargetIds] = useState<Set<string> | null>(null);
+  const [ritualDamagedIds, setRitualDamagedIds] = useState<Set<string> | null>(null);
+  const [castingHero, setCastingHero] = useState<'player' | 'opponent' | null>(null);
   const [attackingMinion, setAttackingMinion] = useState<string | null>(null);
   const [damagedMinion, setDamagedMinion] = useState<string | null>(null);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
@@ -38,6 +46,10 @@ export function BattleScreen({ onNavigate }: Props) {
   const [arrowTargetHero, setArrowTargetHero] = useState(false);
   const [damagedHero, setDamagedHero] = useState<'player' | 'opponent' | null>(null);
   const [impactTarget, setImpactTarget] = useState<{
+    targetId: string | null;
+    targetHero: 'player' | 'opponent' | null;
+  } | null>(null);
+  const [heroPowerImpactTarget, setHeroPowerImpactTarget] = useState<{
     targetId: string | null;
     targetHero: 'player' | 'opponent' | null;
   } | null>(null);
@@ -112,17 +124,129 @@ export function BattleScreen({ onNavigate }: Props) {
     return () => clearTimeout(timer);
   }, [pendingAttack]);
 
+  // Sync NPC hero power animation phases from store
+  useEffect(() => {
+    if (!pendingHeroPower?.isNpc) return;
+
+    const { phase, targetId, targetHero } = pendingHeroPower;
+    const sourceHero = pendingHeroPower.isNpc ? 'opponent' : 'player';
+
+    if (phase === 'preview') {
+      setCastingHero(sourceHero);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setHeroPowerImpactTarget(null);
+      setShowHeroPowerAnim(false);
+      return;
+    }
+
+    if (phase === 'strike') {
+      setCastingHero(sourceHero);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setHeroPowerImpactTarget(null);
+      setShowHeroPowerAnim(false);
+      return;
+    }
+
+    // impact
+    setCastingHero(sourceHero);
+    if (targetId) {
+      setDamagedMinion(targetId);
+      setDamagedHero(null);
+    } else if (targetHero) {
+      setDamagedMinion(null);
+      setDamagedHero(targetHero);
+    }
+    setHeroPowerImpactTarget({ targetId, targetHero });
+    setShowHeroPowerAnim(true);
+    const timer = setTimeout(() => setShowHeroPowerAnim(false), 550);
+    return () => clearTimeout(timer);
+  }, [pendingHeroPower]);
+
+  // Sync NPC ritual animation phases from store
+  useEffect(() => {
+    if (!pendingRitual?.isNpc) return;
+
+    const { phase, targetIds, targetHero } = pendingRitual;
+
+    if (phase === 'preview') {
+      setRitualTargetIds(new Set(targetIds));
+      setRitualDamagedIds(null);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setShowRitualAnim(false);
+      return;
+    }
+
+    if (phase === 'strike') {
+      setRitualTargetIds(new Set(targetIds));
+      setRitualDamagedIds(null);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setShowRitualAnim(false);
+      return;
+    }
+
+    // impact
+    setRitualTargetIds(new Set(targetIds));
+    setRitualDamagedIds(new Set(targetIds));
+    if (targetIds.length === 1) {
+      setDamagedMinion(targetIds[0]);
+      setDamagedHero(null);
+    } else if (targetHero) {
+      setDamagedMinion(null);
+      setDamagedHero(targetHero);
+    } else {
+      setDamagedMinion(null);
+      setDamagedHero(null);
+    }
+    setShowRitualAnim(true);
+    const timer = setTimeout(() => setShowRitualAnim(false), 600);
+    return () => clearTimeout(timer);
+  }, [pendingRitual]);
+
+  useEffect(() => {
+    if (!pendingHeroPower) {
+      const timer = setTimeout(() => {
+        setCastingHero(null);
+        if (!pendingAttack) {
+          setDamagedMinion(null);
+          setDamagedHero(null);
+        }
+        setHeroPowerImpactTarget(null);
+      }, 1100);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingHeroPower, pendingAttack]);
+
+  useEffect(() => {
+    if (!pendingRitual) {
+      const timer = setTimeout(() => {
+        setRitualTargetIds(null);
+        setRitualDamagedIds(null);
+        if (!pendingAttack && !pendingHeroPower) {
+          setDamagedMinion(null);
+          setDamagedHero(null);
+        }
+      }, 1100);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingRitual, pendingAttack, pendingHeroPower]);
+
   useEffect(() => {
     if (!pendingAttack) {
       const timer = setTimeout(() => {
         setAttackingMinion(null);
-        setDamagedMinion(null);
-        setDamagedHero(null);
+        if (!pendingHeroPower && !pendingRitual) {
+          setDamagedMinion(null);
+          setDamagedHero(null);
+        }
         setImpactTarget(null);
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingAttack]);
+  }, [pendingAttack, pendingHeroPower, pendingRitual]);
 
   if (!gameState) {
     return (
@@ -283,6 +407,12 @@ export function BattleScreen({ onNavigate }: Props) {
       : null
   );
 
+  const activeHeroPowerImpact = heroPowerImpactTarget ?? (
+    pendingHeroPower?.phase === 'impact'
+      ? { targetId: pendingHeroPower.targetId, targetHero: pendingHeroPower.targetHero }
+      : null
+  );
+
   return (
     <div className="h-full flex flex-col relative overflow-hidden select-none">
       {/* Background */}
@@ -300,6 +430,37 @@ export function BattleScreen({ onNavigate }: Props) {
         targetId={activeImpact?.targetId ?? null}
         targetHero={activeImpact?.targetHero ?? null}
       />
+
+      {/* Hero power beam + holy impact (Purify etc.) */}
+      {pendingHeroPower && (
+        <HeroPowerBeam
+          sourceHero={pendingHeroPower.isNpc ? 'opponent' : 'player'}
+          targetId={pendingHeroPower.targetId}
+          targetHero={pendingHeroPower.targetHero}
+          pathway={pendingHeroPower.pathway}
+          phase={pendingHeroPower.phase}
+          powerName={pendingHeroPower.isNpc ? `Inimigo: ${pendingHeroPower.powerName}` : pendingHeroPower.powerName}
+        />
+      )}
+      <HeroPowerImpact
+        show={showHeroPowerAnim}
+        targetId={activeHeroPowerImpact?.targetId ?? null}
+        targetHero={activeHeroPowerImpact?.targetHero ?? null}
+        pathway={pendingHeroPower?.pathway ?? opponent.pathway}
+      />
+
+      {pendingRitual && (
+        <RitualEffect
+          cardName={pendingRitual.cardName}
+          pathway={pendingRitual.pathway}
+          targetIds={pendingRitual.targetIds}
+          targetHero={pendingRitual.targetHero}
+          isAoE={pendingRitual.isAoE}
+          isNpc={pendingRitual.isNpc}
+          phase={pendingRitual.phase}
+          showImpact={showRitualAnim}
+        />
+      )}
 
       {/* Attack arrow (NPC intent or player hover preview) */}
       <AttackArrow
@@ -406,6 +567,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 hasWeapon={!!opponent.weapon}
                 weaponAttack={opponent.weapon?.currentAttack}
                 isBeingAttacked={damagedHero === 'opponent'}
+                isCastingPower={castingHero === 'opponent'}
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -470,6 +632,8 @@ export function BattleScreen({ onNavigate }: Props) {
           validTargetIds={attackTargets?.validMinionIds ?? null}
           attackingMinion={attackingMinion}
           damagedMinion={damagedMinion}
+          ritualTargetIds={ritualTargetIds}
+          damagedMinionIds={ritualDamagedIds}
           onMinionClick={handleMinionClick}
           onValidTargetHover={(id, hovering) => {
             if (hovering) setArrowTargetId(id);
@@ -528,6 +692,8 @@ export function BattleScreen({ onNavigate }: Props) {
           selectedAttacker={selectedAttacker}
           attackingMinion={attackingMinion}
           damagedMinion={damagedMinion}
+          ritualTargetIds={ritualTargetIds}
+          damagedMinionIds={ritualDamagedIds}
           onMinionClick={handleMinionClick}
         />
 
@@ -554,6 +720,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 hasWeapon={!!player.weapon}
                 weaponAttack={player.weapon?.currentAttack}
                 isBeingAttacked={damagedHero === 'player'}
+                isCastingPower={castingHero === 'player'}
               />
             </div>
             <div className="flex-1 min-w-0">

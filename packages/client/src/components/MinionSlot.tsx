@@ -8,12 +8,13 @@ interface Props {
   isEnemy: boolean;
   isSelected?: boolean;
   isTarget?: boolean;
+  isRitualTarget?: boolean;
   isBeingAttacked?: boolean;
   onClick: () => void;
   onHover?: (hovering: boolean) => void;
 }
 
-export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isBeingAttacked, onClick, onHover }: Props) {
+export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarget, isBeingAttacked, onClick, onHover }: Props) {
   const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const controls = useAnimationControls();
@@ -71,6 +72,7 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isBeingAttac
           relative w-[4.2rem] h-[5.2rem] rounded-xl border-2 flex flex-col items-center justify-center transition-all duration-200
           ${isSelected ? 'border-green-400 shadow-green-400/40 shadow-lg ring-2 ring-green-400/30' : ''}
           ${isTarget && isEnemy ? 'border-red-400 shadow-red-500/50 shadow-lg cursor-crosshair ring-2 ring-red-400/40' : ''}
+          ${isRitualTarget ? 'border-orange-400 shadow-orange-500/50 shadow-lg ring-2 ring-orange-400/50' : ''}
           ${canAttack && !isSelected ? 'border-green-500/70 hover:border-green-400 hover:shadow-green-400/20 hover:shadow-md' : ''}
           ${!isSelected && !isTarget && !canAttack ? 'border-void-600' : ''}
           ${hasProvoke ? 'ring-2 ring-yellow-500/40 ring-offset-1 ring-offset-void-950' : ''}
@@ -87,8 +89,16 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isBeingAttac
           />
         )}
 
+        {isRitualTarget && (
+          <motion.div
+            className="absolute inset-0 rounded-xl bg-orange-500/25 border-2 border-orange-400/70"
+            animate={{ opacity: [0.35, 0.85, 0.35], scale: [1, 1.03, 1] }}
+            transition={{ duration: 0.85, repeat: Infinity }}
+          />
+        )}
+
         {/* Target pulse overlay */}
-        {isTarget && isEnemy && (
+        {isTarget && isEnemy && !isRitualTarget && (
           <motion.div
             className="absolute inset-0 rounded-xl bg-red-500/20 border-2 border-red-400/60"
             animate={{ opacity: [0.4, 0.8, 0.4], scale: [1, 1.02, 1] }}

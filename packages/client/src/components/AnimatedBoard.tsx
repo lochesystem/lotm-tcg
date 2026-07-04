@@ -25,7 +25,7 @@ export function AnimatedBoard({
 }: Props) {
   return (
     <div className="flex items-center justify-center gap-1.5 px-2 min-h-[5.5rem]">
-      <AnimatePresence mode="wait">
+      <AnimatePresence initial={false}>
         {minions.map((minion) => {
           const isAttacking = attackingMinion === minion.instanceId;
           const isBeingHit = damagedMinion === minion.instanceId;
@@ -35,7 +35,6 @@ export function AnimatedBoard({
           return (
             <motion.div
               key={minion.instanceId}
-              layout
               initial={{ scale: 0, y: isEnemy ? -40 : 40, opacity: 0 }}
               animate={
                 isAttacking
@@ -46,7 +45,7 @@ export function AnimatedBoard({
               }
               exit={{
                 scale: 0.2,
-                rotate: (Math.random() - 0.5) * 30,
+                rotate: 12,
                 opacity: 0,
                 y: isEnemy ? -24 : 24,
                 filter: 'blur(3px) brightness(2) grayscale(0.6)',
@@ -56,7 +55,6 @@ export function AnimatedBoard({
                 type: 'spring',
                 stiffness: isAttacking ? 180 : 400,
                 damping: isAttacking ? 14 : 20,
-                layout: { duration: 0.25 },
                 x: isBeingHit ? { duration: 0.45 } : undefined,
               }}
             >

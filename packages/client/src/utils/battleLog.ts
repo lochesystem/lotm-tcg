@@ -38,6 +38,20 @@ function formatMinionDeath(
   const cardName = String(event.data.cardName ?? 'Minion');
   const namePart = event.playerId === selfId ? `Seu ${cardName}` : `Inimigo ${cardName}`;
 
+  // Hero power / secrets can be logged after minion-death when events were out of order
+  for (let i = eventIndex + 1; i < Math.min(state.log.length, eventIndex + 3); i++) {
+    const next = state.log[i];
+    if (next.type === 'hero-power') {
+      const pathway = String(next.data.pathway ?? '');
+      const powerName = PATHWAYS[pathway as keyof typeof PATHWAYS]?.powerName ?? 'Poder';
+      return `💀 ${namePart} morreu pelo poder ${powerName}`;
+    }
+    if (next.type === 'secret-triggered') {
+      const secretName = String(next.data.secretName ?? 'Segredo');
+      return `💀 ${namePart} morreu pelo segredo ${secretName}`;
+    }
+  }
+
   for (let i = eventIndex - 1; i >= Math.max(0, eventIndex - 8); i--) {
     const prev = state.log[i];
 
@@ -68,12 +82,9 @@ function formatMinionDeath(
       return `💀 ${namePart} morreu pelo segredo ${secretName}`;
     }
 
-    if (prev.type === 'play-card') {
-      const spellName = String(prev.data.cardName ?? 'efeito');
-      if (prev.data.cardType === 'ritual') {
-        return `💀 ${namePart} morreu pelo ritual ${spellName}`;
-      }
-      return `💀 ${namePart} morreu por efeito de ${spellName}`;
+    if (prev.type === 'play-card' && prev.data.cardType === 'ritual') {
+      const spellName = String(prev.data.cardName ?? 'ritual');
+      return `💀 ${namePart} morreu pelo ritual ${spellName}`;
     }
   }
 

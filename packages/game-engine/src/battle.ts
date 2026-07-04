@@ -232,6 +232,8 @@ function playCard(
   player.spirituality -= card.cost;
   player.hand.splice(handIndex, 1);
 
+  addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name, cardType: card.type });
+
   switch (card.type) {
     case 'beyonder':
       playBeyonder(state, playerIndex, card as BeyonderCard, boardPosition);
@@ -246,8 +248,6 @@ function playCard(
       playMysticalItem(state, playerIndex, card);
       break;
   }
-
-  addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name, cardType: card.type });
   checkGameOver(state);
   return state;
 }
@@ -431,6 +431,8 @@ function useHeroPower(state: GameState, playerIndex: number, target?: string): G
   player.spirituality -= pathwayDef.powerCost;
   player.heroPowerUsed = true;
 
+  addEvent(state, player.id, 'hero-power', { pathway: player.pathway, target });
+
   switch (player.pathway) {
     case 'fool': {
       if (player.board.length >= 7) break;
@@ -514,7 +516,6 @@ function useHeroPower(state: GameState, playerIndex: number, target?: string): G
     }
   }
 
-  addEvent(state, player.id, 'hero-power', { pathway: player.pathway, target });
   checkGameOver(state);
   return state;
 }

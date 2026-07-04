@@ -171,6 +171,12 @@ export function formatGameEvent(
         type: 'damage',
       };
 
+    case 'concede':
+      return {
+        text: event.playerId === selfId ? 'Você desistiu da partida' : `${actor} desistiu`,
+        type: 'system',
+      };
+
     default:
       return null;
   }

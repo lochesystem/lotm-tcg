@@ -163,7 +163,8 @@ export type GameAction =
   | { type: 'hero-attack'; targetInstanceId?: string }
   | { type: 'end-turn' }
   | { type: 'mulligan'; indices: number[] }
-  | { type: 'use-fate-coin' };
+  | { type: 'use-fate-coin' }
+  | { type: 'concede' };
 
 // ─── Events ─────────────────────────────────────────────────────────────────
 

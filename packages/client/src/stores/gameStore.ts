@@ -523,7 +523,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     try {
       const newState = applyAction(gameState, playerId, action);
-      set({ gameState: { ...newState } });
+      const ended = newState.phase === 'ended';
+      set({
+        gameState: { ...newState },
+        ...(ended
+          ? {
+              npcThinking: false,
+              pendingAttack: null,
+              pendingHeroPower: null,
+              pendingRitual: null,
+              npcPlayReveal: null,
+            }
+          : {}),
+      });
 
       if (action.type === 'end-turn' && newState.phase !== 'ended') {
         set({ npcThinking: true, npcPlayReveal: null, pendingAttack: null, pendingHeroPower: null, pendingRitual: null });

@@ -153,6 +153,10 @@ export function applyAction(state: GameState, playerId: string, action: GameActi
     return applyMulligan(state, playerIndex, action.indices);
   }
 
+  if (action.type === 'concede') {
+    return applyConcede(state, playerIndex);
+  }
+
   if (state.currentPlayerIndex !== playerIndex) {
     throw new Error('Not your turn');
   }
@@ -204,6 +208,21 @@ function applyMulligan(state: GameState, playerIndex: number, indices: number[])
     state.phase = 'playing';
     startTurn(state);
   }
+
+  return state;
+}
+
+function applyConcede(state: GameState, playerIndex: number): GameState {
+  if (state.phase !== 'playing') {
+    throw new Error('Cannot concede now');
+  }
+
+  const player = state.players[playerIndex];
+  const opponent = state.players[1 - playerIndex];
+
+  state.phase = 'ended';
+  state.winner = opponent.id;
+  addEvent(state, player.id, 'concede', {});
 
   return state;
 }
@@ -776,6 +795,11 @@ export function validateAction(state: GameState, playerId: string, action: GameA
 
     if (action.type === 'mulligan') {
       if (state.phase !== 'mulligan') return 'Not in mulligan phase';
+      return null;
+    }
+
+    if (action.type === 'concede') {
+      if (state.phase !== 'playing') return 'Cannot concede now';
       return null;
     }
 

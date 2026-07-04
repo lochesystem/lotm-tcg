@@ -71,6 +71,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [heroPowerHover, setHeroPowerHover] = useState(false);
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
   const recordStoryWin = useCollectionStore((s) => s.recordStoryWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
@@ -351,6 +352,22 @@ export function BattleScreen({ onNavigate }: Props) {
   const opponent = gameState.players[1 - playerIdx];
   const isMyTurn = gameState.currentPlayerIndex === playerIdx;
   const isGameOver = gameState.phase === 'ended';
+  const playerConceded = gameState.log.some((e) => e.type === 'concede' && e.playerId === playerId);
+
+  const handleConcede = () => {
+    if (isGameOver) return;
+    const err = validateAction(gameState, playerId, { type: 'concede' });
+    if (err) {
+      addLog(err, 'system');
+      return;
+    }
+    setShowConcedeConfirm(false);
+    performAction({ type: 'concede' });
+    addLog('Você desistiu da partida', 'system');
+    clearCardSelection();
+    setSelectedAttacker(null);
+    clearArrowPreview();
+  };
 
   const pathwayInfo = PATHWAYS[player.pathway];
   const opponentPathwayInfo = PATHWAYS[opponent.pathway];
@@ -631,6 +648,57 @@ export function BattleScreen({ onNavigate }: Props) {
         </div>
       )}
 
+      {!isGameOver && (
+        <button
+          type="button"
+          onClick={() => setShowConcedeConfirm(true)}
+          className="absolute top-2 right-2 z-40 px-2.5 py-1 text-[10px] font-semibold text-red-400/90 hover:text-red-300 border border-red-900/50 hover:border-red-700/60 rounded-lg bg-void-950/80 backdrop-blur-sm transition-colors"
+        >
+          Desistir
+        </button>
+      )}
+
+      <AnimatePresence>
+        {showConcedeConfirm && (
+          <motion.div
+            className="absolute inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowConcedeConfirm(false)}
+          >
+            <motion.div
+              className="bg-void-900 border border-void-600 rounded-2xl p-5 max-w-xs w-full shadow-2xl"
+              initial={{ scale: 0.9, y: 12 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-bold text-white mb-1">Desistir da partida?</h3>
+              <p className="text-xs text-void-400 mb-4">
+                Você perderá esta partida{isStoryMode ? ' e não avançará no modo história' : ''}.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConcedeConfirm(false)}
+                  className="flex-1 py-2 rounded-lg bg-void-800 hover:bg-void-700 text-sm transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConcede}
+                  className="flex-1 py-2 rounded-lg bg-red-900/80 hover:bg-red-800 text-sm font-semibold text-red-100 transition-colors"
+                >
+                  Desistir
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <NpcPlayReveal cardName={npcPlayReveal?.cardName ?? null} />
 
       {/* Slash impact on the target card or hero */}
@@ -728,7 +796,9 @@ export function BattleScreen({ onNavigate }: Props) {
                       : 'Seu oponente foi derrotado!'
                   : gameState.winner === null
                   ? 'Ambos caíram ao mesmo tempo.'
-                  : 'Sua vida chegou a zero.'}
+                  : playerConceded
+                    ? 'Você desistiu da partida.'
+                    : 'Sua vida chegou a zero.'}
               </motion.p>
               {gameState.winner === playerId && unlockedPathway && (
                 <motion.p

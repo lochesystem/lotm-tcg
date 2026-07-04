@@ -3,4 +3,6 @@ dist/
 *.db
 .env
 .env.local
+.supabase-db-password.local
+supabase/.temp/
 packages/server/data/

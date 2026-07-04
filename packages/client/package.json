@@ -10,6 +10,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "game-engine": "workspace:*",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

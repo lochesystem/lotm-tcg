@@ -27,9 +27,9 @@ export function PackOpening({ pack, onClose }: Props) {
 
   useEffect(() => {
     if (revealed) {
-      addCards(pack.cards.map((c) => c.id));
+      void addCards(pack.cards.map((c) => c.id));
     }
-  }, [revealed]);
+  }, [revealed, pack, addCards]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">

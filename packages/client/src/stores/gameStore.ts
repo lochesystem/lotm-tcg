@@ -15,6 +15,9 @@ import {
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
+import { getCurrentUserId } from '../lib/sessionContext';
+import { updatePreferredPathway } from '../sync/player-sync';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 export type CombatPhase = 'preview' | 'strike' | 'impact';
 
@@ -151,6 +154,7 @@ interface GameStore {
   opponentId: string;
   selectedPathway: Pathway;
   deck: Deck | null;
+  activeDeckId: string | null;
   isOnline: boolean;
   roomCode: string | null;
   npcTier: number;
@@ -161,6 +165,7 @@ interface GameStore {
   npcPlayReveal: NpcPlayReveal | null;
 
   setPathway: (pathway: Pathway) => void;
+  setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
   performAction: (action: GameAction) => void;
   reset: () => void;
@@ -411,6 +416,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   opponentId: 'npc-1',
   selectedPathway: 'fool',
   deck: null,
+  activeDeckId: null,
   isOnline: false,
   roomCode: null,
   npcTier: 1,
@@ -421,16 +427,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
   npcPlayReveal: null,
 
   setPathway: (pathway) => {
+    set({ selectedPathway: pathway });
+
+    const userId = getCurrentUserId();
+    if (userId && isSupabaseConfigured) {
+      void updatePreferredPathway(userId, pathway);
+      return;
+    }
+
     const deck = createStarterDeck(pathway);
-    set({ selectedPathway: pathway, deck });
+    set({ deck });
+  },
+
+  setActiveDeckFromCloud: (cardIds, pathway, deckId) => {
+    const deck: Deck = { pathway, cards: cardIds };
+    set({ selectedPathway: pathway, deck, activeDeckId: deckId });
   },
 
   startLocalGame: () => {
-    const { playerId, opponentId, selectedPathway } = get();
-    const playerDeck = createStarterDeck(selectedPathway);
+    const { playerId, opponentId, selectedPathway, deck } = get();
+    const playerDeck =
+      deck && deck.cards.length === 30
+        ? deck
+        : createStarterDeck(selectedPathway);
     const npcDeck = createStarterDeck('red-priest');
 
-    useCollectionStore.getState().initStarterCollection(selectedPathway);
+    if (!isSupabaseConfigured || !getCurrentUserId()) {
+      useCollectionStore.getState().initStarterCollection(selectedPathway);
+    }
 
     const state = createGame(
       `game-${Date.now()}`,

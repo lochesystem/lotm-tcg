@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
+import { useAuthStore } from '../stores/authStore';
 import { PATHWAYS, PathwayDefinition } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -20,6 +22,7 @@ const PATHWAY_ICONS: Record<string, string> = {
 
 export function HomeScreen({ onNavigate }: Props) {
   const { selectedPathway, setPathway } = useGameStore();
+  const { profile, signOut } = useAuthStore();
   const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   return (
@@ -43,6 +46,9 @@ export function HomeScreen({ onNavigate }: Props) {
           <p className="text-void-300 text-xs tracking-[0.25em] uppercase font-medium">
             Lord of the Mysteries TCG
           </p>
+          {isSupabaseConfigured && profile && (
+            <p className="text-void-500 text-xs mt-2">@{profile.username}</p>
+          )}
         </motion.div>
 
         {/* Pathway selector */}
@@ -154,6 +160,14 @@ export function HomeScreen({ onNavigate }: Props) {
           >
             Como Jogar — Regras e Tutorial
           </button>
+          {isSupabaseConfigured && (
+            <button
+              onClick={() => void signOut()}
+              className="text-xs text-void-600 hover:text-red-400 transition-all underline underline-offset-2"
+            >
+              Sair da conta
+            </button>
+          )}
         </motion.div>
       </div>
 

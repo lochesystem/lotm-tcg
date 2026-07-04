@@ -1,70 +1,44 @@
-# Beyond the Veil - Lord of the Mysteries TCG
+# Beyond the Veil — LOTM TCG
 
-Trading Card Game multiplayer online ambientado no universo de **Lord of the Mysteries** (诡秘之主), com mecânicas inspiradas em Hearthstone.
+Trading card game (Lord of the Mysteries) — React client + shared game engine.
 
-## Stack
+## Live demo
 
-- **Game Engine**: TypeScript puro, compartilhado client/server
-- **Client**: React 18 + Vite + Tailwind CSS + Framer Motion (PWA)
-- **Server**: Node.js + Express + Socket.io + SQLite
+After enabling GitHub Pages: **https://lochesystem.github.io/lotm-tcg/**
 
-## Estrutura
-
-```
-packages/
-  game-engine/   → Regras, tipos, cartas, validação, packs
-  client/        → React PWA (mobile-first)
-  server/        → Multiplayer, NPC AI, persistência
-```
-
-## Como Rodar
+## Local development
 
 ```bash
-# Instalar dependências
+fnm use 22
 pnpm install
+cp .env.example packages/client/.env
+# Edit packages/client/.env with your Supabase URL and anon key
 
-# Dev (client + server)
-pnpm dev
-
-# Apenas client
-pnpm dev:client
-
-# Apenas server
-pnpm dev:server
+pnpm --filter game-engine build
+pnpm --filter client dev
 ```
 
-## Regras
+Without Supabase env vars, the app runs in offline mode (localStorage only, no login).
 
-### Recursos
-- **Spirituality** (mana): começa em 1, +1 por turno, cap 10
-- **Deck**: 30 cartas (max 2 cópias, 1 para Legendary)
-- **Mão inicial**: 3 cartas (1º jogador) / 4 + Fate Coin (2º jogador)
+## Supabase setup
 
-### Pathways (Classes)
-| Pathway | Estilo | Hero Power |
-|---------|--------|-----------|
-| Fool | Control/Trickery | Summon 1/1 Marionette com Stealth |
-| Red Priest | Aggro/Burn | 1 dano a qualquer alvo |
-| Tyrant | Midrange/Tempo | +1 ATK a um aliado neste turno |
-| Sun | Heal/Board | Restaura 2 HP |
-| Door | Combo/Steal | Discover 1 carta do Pathway inimigo |
-| Demoness | Tempo/Removal | -1 ATK a um inimigo |
+See [supabase/README.md](supabase/README.md). Run `supabase/migrations/001_initial.sql` in your new project, then configure Auth redirect URLs for localhost and GitHub Pages.
 
-### Keywords
-- **Stealth** → Invisível até atacar
-- **Provoke** → Inimigos devem atacar este
-- **Corruption** → Destrói qualquer minion que danificar
-- **Divination** → Ignora primeiro dano
-- **Frenzy** → Ataca minions no turno que entra
-- **Haste** → Ataca qualquer alvo imediatamente
-- **Madness X** → Self-damage ao fim do turno
+## GitHub Pages deploy
 
-### Multiplayer
-- Salas com código de 4 caracteres
-- Validação server-side anti-cheat
-- Reconexão em 60s
+1. Repository **Settings → Pages → Build and deployment → GitHub Actions**
+2. Add secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+3. Push to `master` — workflow `.github/workflows/deploy-pages.yml` publishes `packages/client/dist`
 
-### Progressão
-- Vitórias vs NPC/PvP ganham booster packs
-- 3 tipos de pack: Ordinary, Beyonder, Sealed
-- Coleção compartilhada entre decks
+## Monorepo
+
+| Package | Role |
+|---------|------|
+| `packages/client` | React SPA (deployed to Pages) |
+| `packages/game-engine` | Shared rules, cards, packs |
+| `packages/server` | Socket.IO server (optional; not used on Pages) |
+
+## Player data
+
+- **With Supabase:** account, collection, decks, match history in Postgres (RLS)
+- **Without Supabase:** collection in browser `localStorage` only

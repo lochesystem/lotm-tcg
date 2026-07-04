@@ -18,6 +18,8 @@ import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
 import { formatGameEvent } from '../utils/battleLog';
 import { useCollectionStore } from '../stores/collectionStore';
+import { getCurrentUserId } from '../lib/sessionContext';
+import { recordMatch } from '../sync/player-sync';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -102,14 +104,45 @@ export function BattleScreen({ onNavigate }: Props) {
 
     rewardGrantedRef.current = true;
 
-    if (gameState.winner === playerId) {
-      const streak = recordNpcWin();
-      const packType = getPackTypeForReward(npcTier, streak);
-      setRewardPack(openPack(packType, Date.now()));
-    } else if (gameState.winner && gameState.winner !== playerId) {
-      recordNpcLoss();
-    }
-  }, [gameState, gameState?.phase, gameState?.winner, playerId, opponentId, isOnline, npcTier, recordNpcWin, recordNpcLoss]);
+    const finishMatch = async () => {
+      const userId = getCurrentUserId();
+      const turns = gameState.turn;
+
+      if (gameState.winner === playerId) {
+        const streak = await recordNpcWin();
+        const packType = getPackTypeForReward(npcTier, streak);
+        setRewardPack(openPack(packType, Date.now()));
+        if (userId) {
+          await recordMatch(userId, {
+            opponentType: 'npc',
+            npcTier,
+            won: true,
+            durationTurns: turns,
+          });
+        }
+      } else if (gameState.winner && gameState.winner !== playerId) {
+        await recordNpcLoss();
+        if (userId) {
+          await recordMatch(userId, {
+            opponentType: 'npc',
+            npcTier,
+            won: false,
+            durationTurns: turns,
+          });
+        }
+      } else if (gameState.winner === null && userId) {
+        await recordMatch(userId, {
+          opponentType: 'npc',
+          npcTier,
+          won: false,
+          isDraw: true,
+          durationTurns: turns,
+        });
+      }
+    };
+
+    void finishMatch();
+  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, npcTier, recordNpcWin, recordNpcLoss]);
 
   // Sync NPC combat animation phases from store
   useEffect(() => {

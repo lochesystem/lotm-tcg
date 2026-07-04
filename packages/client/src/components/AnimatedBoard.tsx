@@ -39,10 +39,10 @@ export function AnimatedBoard({
               initial={{ scale: 0, y: isEnemy ? -40 : 40, opacity: 0 }}
               animate={
                 isAttacking
-                  ? { scale: 1.15, y: isEnemy ? 20 : -20, opacity: 1 }
+                  ? { scale: 1.15, y: isEnemy ? 28 : -28, opacity: 1, zIndex: 30 }
                   : isBeingHit
-                  ? { scale: 0.95, opacity: 1, y: 0 }
-                  : { scale: 1, y: 0, opacity: 1 }
+                  ? { scale: 0.92, opacity: 1, y: 0, x: [0, -5, 5, -3, 3, 0] }
+                  : { scale: 1, y: 0, opacity: 1, x: 0 }
               }
               exit={{
                 scale: 0,
@@ -54,9 +54,10 @@ export function AnimatedBoard({
               }}
               transition={{
                 type: 'spring',
-                stiffness: 400,
-                damping: 20,
-                layout: { duration: 0.2 },
+                stiffness: isAttacking ? 180 : 400,
+                damping: isAttacking ? 14 : 20,
+                layout: { duration: 0.25 },
+                x: isBeingHit ? { duration: 0.45 } : undefined,
               }}
             >
               <MinionSlot

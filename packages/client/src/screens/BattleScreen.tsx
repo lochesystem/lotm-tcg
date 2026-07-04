@@ -4,10 +4,10 @@ import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
 import { TurnBanner } from '../components/TurnBanner';
-import { AttackLine } from '../components/AttackLine';
+import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
 import { GameAction, validateAction } from 'game-engine';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
@@ -34,7 +34,63 @@ export function BattleScreen({ onNavigate }: Props) {
   const [graveyardDetail, setGraveyardDetail] = useState<import('game-engine').Card | null>(null);
   const [arrowTargetId, setArrowTargetId] = useState<string | null>(null);
   const [arrowTargetHero, setArrowTargetHero] = useState(false);
+  const [damagedHero, setDamagedHero] = useState<'player' | 'opponent' | null>(null);
+  const [impactTarget, setImpactTarget] = useState<{
+    targetId: string | null;
+    targetHero: 'player' | 'opponent' | null;
+  } | null>(null);
   const logIdRef = useRef(0);
+
+  // Sync NPC combat animation phases from store
+  useEffect(() => {
+    if (!pendingAttack?.isNpc) return;
+
+    const { phase, attackerId, targetId, targetHero } = pendingAttack;
+
+    if (phase === 'preview') {
+      setAttackingMinion(null);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setImpactTarget(null);
+      setShowAttackAnim(false);
+      return;
+    }
+
+    if (phase === 'strike') {
+      setAttackingMinion(attackerId);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+      setImpactTarget(null);
+      setShowAttackAnim(false);
+      return;
+    }
+
+    // impact
+    setAttackingMinion(attackerId);
+    if (targetId) {
+      setDamagedMinion(targetId);
+      setDamagedHero(null);
+    } else if (targetHero) {
+      setDamagedMinion(null);
+      setDamagedHero(targetHero);
+    }
+    setImpactTarget({ targetId, targetHero });
+    setShowAttackAnim(true);
+    const timer = setTimeout(() => setShowAttackAnim(false), 550);
+    return () => clearTimeout(timer);
+  }, [pendingAttack]);
+
+  useEffect(() => {
+    if (!pendingAttack) {
+      const timer = setTimeout(() => {
+        setAttackingMinion(null);
+        setDamagedMinion(null);
+        setDamagedHero(null);
+        setImpactTarget(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingAttack]);
 
   if (!gameState) {
     return (
@@ -76,22 +132,36 @@ export function BattleScreen({ onNavigate }: Props) {
     performAction({ type: 'play-card', handIndex });
   };
 
-  const playAttackAnimation = (attackerId: string, targetId: string | null, cb: () => void) => {
+  const playAttackAnimation = (
+    attackerId: string,
+    targetId: string | null,
+    targetHero: 'player' | 'opponent' | null,
+    cb: () => void
+  ) => {
+    setImpactTarget(null);
     setAttackingMinion(attackerId);
-    setDamagedMinion(targetId);
-    setShowAttackAnim(true);
+    setDamagedMinion(null);
+    setDamagedHero(null);
+    setShowAttackAnim(false);
 
-    // Lunge forward
+    // Wind-up — only the attacker lunges toward the enemy
     setTimeout(() => {
-      // Hit impact
-      setShowAttackAnim(false);
-      cb();
-      // Reset after
+      if (targetId) setDamagedMinion(targetId);
+      else if (targetHero) setDamagedHero(targetHero);
+      setImpactTarget({ targetId, targetHero });
+      setShowAttackAnim(true);
+
       setTimeout(() => {
-        setAttackingMinion(null);
-        setDamagedMinion(null);
-      }, 200);
-    }, 350);
+        setShowAttackAnim(false);
+        cb();
+        setTimeout(() => {
+          setAttackingMinion(null);
+          setDamagedMinion(null);
+          setDamagedHero(null);
+          setImpactTarget(null);
+        }, 450);
+      }, 600);
+    }, 850);
   };
 
   const handleMinionClick = (instanceId: string, isEnemy: boolean) => {
@@ -112,7 +182,7 @@ export function BattleScreen({ onNavigate }: Props) {
           addLog(`${attacker.card.name} ataca ${target.card.name}`, 'damage');
           clearArrowPreview();
           setSelectedAttacker(null);
-          playAttackAnimation(atkId, instanceId, () => {
+          playAttackAnimation(atkId, instanceId, null, () => {
             performAction(action);
           });
           return;
@@ -146,7 +216,7 @@ export function BattleScreen({ onNavigate }: Props) {
         addLog(`${attacker.card.name} ataca o herói inimigo!`, 'damage');
         clearArrowPreview();
         setSelectedAttacker(null);
-        playAttackAnimation(atkId, null, () => {
+        playAttackAnimation(atkId, null, 'opponent', () => {
           performAction(action);
         });
         return;
@@ -170,6 +240,12 @@ export function BattleScreen({ onNavigate }: Props) {
     performAction({ type: 'hero-power' });
   };
 
+  const activeImpact = impactTarget ?? (
+    pendingAttack?.phase === 'impact'
+      ? { targetId: pendingAttack.targetId, targetHero: pendingAttack.targetHero }
+      : null
+  );
+
   return (
     <div className="h-full flex flex-col relative overflow-hidden select-none">
       {/* Background */}
@@ -179,8 +255,12 @@ export function BattleScreen({ onNavigate }: Props) {
       {/* Turn banner — auto-gerenciado, aparece e some sozinho */}
       <TurnBanner turnNumber={gameState.turn} isYourTurn={isMyTurn} />
 
-      {/* Attack animation */}
-      <AttackLine show={showAttackAnim} />
+      {/* Slash impact on the target card or hero */}
+      <AttackImpact
+        show={showAttackAnim}
+        targetId={activeImpact?.targetId ?? null}
+        targetHero={activeImpact?.targetHero ?? null}
+      />
 
       {/* Attack arrow (NPC intent or player hover preview) */}
       <AttackArrow
@@ -189,7 +269,12 @@ export function BattleScreen({ onNavigate }: Props) {
           ?? (selectedAttacker && (arrowTargetId || arrowTargetHero) ? selectedAttacker : null)
         }
         targetId={pendingAttack ? pendingAttack.targetId : arrowTargetHero ? null : arrowTargetId}
-        isPlayerAttacking={!pendingAttack?.isNpc}
+        targetHero={
+          pendingAttack?.targetHero
+          ?? (arrowTargetHero ? 'opponent' : null)
+        }
+        isPlayerAttacking={pendingAttack ? !pendingAttack.isNpc : true}
+        phase={pendingAttack?.phase ?? 'preview'}
       />
 
       {/* Game over overlay */}
@@ -266,6 +351,13 @@ export function BattleScreen({ onNavigate }: Props) {
                   transition={{ duration: 1, repeat: Infinity }}
                 />
               )}
+              {damagedHero === 'opponent' && (
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-red-400 z-10 pointer-events-none"
+                  animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.12, 1] }}
+                  transition={{ duration: 0.45, repeat: 2 }}
+                />
+              )}
               <HeroPortrait
                 health={opponent.health}
                 maxHealth={opponent.maxHealth}
@@ -274,6 +366,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 onClick={() => handleHeroClick(true)}
                 hasWeapon={!!opponent.weapon}
                 weaponAttack={opponent.weapon?.currentAttack}
+                isBeingAttacked={damagedHero === 'opponent'}
               />
             </div>
             <div className="flex-1 min-w-0">
@@ -400,15 +493,28 @@ export function BattleScreen({ onNavigate }: Props) {
         {/* ─── Player area ───────────────────────────────────────────────── */}
         <div className="flex-none p-2 pt-1">
           <div className="flex items-center gap-3">
-            <HeroPortrait
-              health={player.health}
-              maxHealth={player.maxHealth}
-              pathway={player.pathway}
-              isEnemy={false}
-              onClick={() => {}}
-              hasWeapon={!!player.weapon}
-              weaponAttack={player.weapon?.currentAttack}
-            />
+            <div
+              data-hero-player
+              className={`relative ${damagedHero === 'player' ? 'z-20' : ''}`}
+            >
+              {damagedHero === 'player' && (
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-red-400 z-10 pointer-events-none"
+                  animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.12, 1] }}
+                  transition={{ duration: 0.45, repeat: 2 }}
+                />
+              )}
+              <HeroPortrait
+                health={player.health}
+                maxHealth={player.maxHealth}
+                pathway={player.pathway}
+                isEnemy={false}
+                onClick={() => {}}
+                hasWeapon={!!player.weapon}
+                weaponAttack={player.weapon?.currentAttack}
+                isBeingAttacked={damagedHero === 'player'}
+              />
+            </div>
             <div className="flex-1 min-w-0">
               {/* Spirituality bar */}
               <div className="flex gap-0.5">

@@ -11,11 +11,27 @@ import {
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 
+export type CombatPhase = 'preview' | 'strike' | 'impact';
+
 export interface PendingAttack {
   attackerId: string;
-  targetId: string | null; // null = hero
+  targetId: string | null;
+  /** When targetId is null, which hero is being targeted */
+  targetHero: 'player' | 'opponent' | null;
   isNpc: boolean;
+  phase: CombatPhase;
 }
+
+const NPC_TIMING = {
+  turnStart: 1200,
+  playCard: 1400,
+  attackPreview: 2000,
+  attackStrike: 1000,
+  attackImpact: 600,
+  attackPost: 800,
+  heroPower: 1100,
+  default: 700,
+} as const;
 
 interface GameStore {
   gameState: GameState | null;
@@ -166,23 +182,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         const executeNpcActions = async () => {
           const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-          await wait(800);
+          await wait(NPC_TIMING.turnStart);
 
           for (const a of npcActions) {
             const { gameState: latest } = get();
             if (!latest || latest.phase === 'ended') break;
 
-            // Show attack intent (seta pulsante) before executing
-            if (a.type === 'attack') {
-              set({ pendingAttack: { attackerId: a.attackerInstanceId, targetId: a.targetInstanceId, isNpc: true } });
-              await wait(1000); // seta pulsa por 1s
+            if (a.type === 'attack' || a.type === 'attack-hero') {
+              const attackState = {
+                attackerId: a.attackerInstanceId,
+                targetId: a.type === 'attack' ? a.targetInstanceId : null,
+                targetHero: a.type === 'attack-hero' ? ('player' as const) : null,
+                isNpc: true,
+                phase: 'preview' as const,
+              };
+
+              // Phase 1: arrow preview — who is attacking whom
+              set({ pendingAttack: attackState });
+              await wait(NPC_TIMING.attackPreview);
+
+              // Phase 2: lunge toward target (arrow stays visible)
+              set({ pendingAttack: { ...attackState, phase: 'strike' } });
+              await wait(NPC_TIMING.attackStrike);
+
+              // Phase 3: apply damage + impact flash
+              try {
+                const { gameState: strikeState } = get();
+                if (strikeState && strikeState.phase !== 'ended') {
+                  const next = applyAction(strikeState, opponentId, a);
+                  set({
+                    gameState: { ...next },
+                    pendingAttack: { ...attackState, phase: 'impact' },
+                  });
+                }
+              } catch {
+                set({ pendingAttack: null });
+              }
+              await wait(NPC_TIMING.attackImpact);
               set({ pendingAttack: null });
-              await wait(150);
-            } else if (a.type === 'attack-hero') {
-              set({ pendingAttack: { attackerId: a.attackerInstanceId, targetId: null, isNpc: true } });
-              await wait(1000);
-              set({ pendingAttack: null });
-              await wait(150);
+              await wait(NPC_TIMING.attackPost);
+              continue;
             }
 
             try {
@@ -201,7 +240,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             }
 
             if (a.type === 'end-turn') break;
-            await wait(a.type === 'play-card' ? 900 : a.type === 'attack' || a.type === 'attack-hero' ? 600 : 500);
+            await wait(
+              a.type === 'play-card' ? NPC_TIMING.playCard
+              : a.type === 'hero-power' ? NPC_TIMING.heroPower
+              : NPC_TIMING.default
+            );
           }
 
           // Garantir que o turno termina
@@ -222,5 +265,5 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  reset: () => set({ gameState: null, npcThinking: false }),
+  reset: () => set({ gameState: null, npcThinking: false, pendingAttack: null }),
 }));

@@ -3,6 +3,7 @@ import { getAllCards, Card, Pathway, BeyonderCard } from 'game-engine';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCollectionStore } from '../stores/collectionStore';
+import { MiniCard, LockedMiniCard } from '../components/MiniCard';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -89,7 +90,7 @@ export function CollectionScreen({ onNavigate }: Props) {
                       onClick={() => setSelectedCard(card)}
                       className="cursor-pointer"
                     >
-                      <LockedCard card={card} />
+                      <LockedMiniCard card={card} />
                     </motion.div>
                   )}
                 </div>
@@ -170,73 +171,6 @@ export function CollectionScreen({ onNavigate }: Props) {
           )}
         </AnimatePresence>
       </div>
-    </div>
-  );
-}
-
-function MiniCard({ card }: { card: Card }) {
-  const PATHWAY_GRADIENT: Record<string, string> = {
-    fool: 'from-slate-700 via-gray-800 to-slate-900',
-    'red-priest': 'from-red-800 via-red-900 to-red-950',
-    tyrant: 'from-sky-800 via-blue-900 to-blue-950',
-    sun: 'from-amber-700 via-yellow-900 to-amber-950',
-    door: 'from-emerald-700 via-emerald-900 to-emerald-950',
-    demoness: 'from-fuchsia-800 via-pink-900 to-pink-950',
-    neutral: 'from-zinc-700 via-zinc-800 to-zinc-900',
-  };
-
-  const RARITY_BORDER: Record<string, string> = {
-    common: 'border-void-500',
-    rare: 'border-blue-400',
-    epic: 'border-purple-400',
-    legendary: 'border-yellow-400',
-  };
-
-  return (
-    <div className={`relative w-full aspect-[2/3] rounded-lg border-2 overflow-hidden bg-gradient-to-b ${PATHWAY_GRADIENT[card.pathway]} ${RARITY_BORDER[card.rarity]}`}>
-      {/* Cost */}
-      <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-[9px] font-black text-white shadow-sm z-10">
-        {card.cost}
-      </div>
-      {/* Name */}
-      <div className="absolute inset-0 flex items-center justify-center px-1">
-        <span className="text-[8px] font-semibold text-center leading-tight text-white/90 line-clamp-2">{card.name}</span>
-      </div>
-      {/* Stats */}
-      {card.type === 'beyonder' && (
-        <div className="absolute bottom-0.5 inset-x-0 flex justify-between px-0.5">
-          <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center text-[7px] font-bold text-white">
-            {(card as BeyonderCard).attack}
-          </div>
-          <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center text-[7px] font-bold text-white">
-            {(card as BeyonderCard).health}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LockedCard({ card }: { card: Card }) {
-  return (
-    <div className="relative w-full aspect-[2/3] rounded-lg border-2 border-void-700 overflow-hidden bg-void-900">
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/60 z-10" />
-      {/* Lock icon */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-        <span className="text-lg opacity-60">🔒</span>
-        <span className="text-[7px] text-void-500 mt-0.5 text-center px-1 line-clamp-1">{card.name}</span>
-      </div>
-      {/* Faint silhouette of the card color */}
-      <div className={`absolute inset-0 opacity-20 bg-gradient-to-b ${
-        card.pathway === 'fool' ? 'from-slate-700 to-slate-900' :
-        card.pathway === 'red-priest' ? 'from-red-900 to-red-950' :
-        card.pathway === 'tyrant' ? 'from-sky-900 to-blue-950' :
-        card.pathway === 'sun' ? 'from-amber-800 to-amber-950' :
-        card.pathway === 'door' ? 'from-emerald-800 to-emerald-950' :
-        card.pathway === 'demoness' ? 'from-fuchsia-900 to-pink-950' :
-        'from-zinc-800 to-zinc-900'
-      }`} />
     </div>
   );
 }

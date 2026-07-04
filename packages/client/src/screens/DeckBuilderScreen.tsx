@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCardById, Card, Pathway, getCardsForPathway, validateDeck } from 'game-engine';
-import { CardComponent } from '../components/Card';
+import { MiniCard } from '../components/MiniCard';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { fetchActiveDeck, saveDeck } from '../sync/player-sync';
 import { isSupabaseConfigured } from '../lib/supabase';
@@ -138,17 +139,34 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         </div>
 
         <div className="flex-1 flex min-h-0">
-          <div className="flex-1 overflow-y-auto px-3 pb-4">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-              {available.map((card) => (
-                <CardComponent
-                  key={card.id}
-                  card={card}
-                  small
-                  canPlay
-                  onClick={() => addCard(card)}
-                />
-              ))}
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
+              {available.map((card) => {
+                const inDeckCount = deckCards.filter((c) => c.id === card.id).length;
+                const ownedQty = getQuantity(card.id);
+                const maxCopies = card.rarity === 'legendary' ? 1 : 2;
+                const atMax = inDeckCount >= maxCopies || (isSupabaseConfigured && getCurrentUserId() && inDeckCount >= ownedQty);
+                const canAdd = deckCards.length < 30 && !atMax;
+
+                return (
+                  <div key={card.id} className="relative">
+                    {inDeckCount > 0 && (
+                      <div className="absolute -top-1 -left-1 z-20 w-5 h-5 rounded-full bg-purple-600 border border-purple-400 flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white">x{inDeckCount}</span>
+                      </div>
+                    )}
+
+                    <motion.div
+                      whileHover={canAdd ? { scale: 1.05 } : undefined}
+                      whileTap={canAdd ? { scale: 0.95 } : undefined}
+                      onClick={() => canAdd && addCard(card)}
+                      className={canAdd ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}
+                    >
+                      <MiniCard card={card} />
+                    </motion.div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

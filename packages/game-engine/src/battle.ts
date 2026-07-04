@@ -279,6 +279,11 @@ function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard,
 
   const pos = position ?? player.board.length;
   player.board.splice(pos, 0, instance);
+
+  if (card.battlecry) {
+    resolveBattlecry(state, playerIndex, card.battlecry);
+    addEvent(state, player.id, 'battlecry', { cardId: card.id, cardName: card.name });
+  }
 }
 
 function playSealedArtifact(state: GameState, playerIndex: number, card: Card): void {
@@ -533,6 +538,10 @@ function useFateCoin(state: GameState, playerIndex: number): GameState {
 
 // ─── Effect Resolution ───────────────────────────────────────────────────────
 
+function resolveBattlecry(state: GameState, playerIndex: number, effect: import('./types.js').SpellEffect): void {
+  applyEffect(state, playerIndex, effect);
+}
+
 function applyEffect(state: GameState, playerIndex: number, effect: import('./types.js').SpellEffect, target?: string): void {
   const player = state.players[playerIndex];
   const opponent = state.players[1 - playerIndex];
@@ -546,6 +555,13 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
           dealDamageToMinion(m, value, state);
         }
         removeDead(state, 1 - playerIndex);
+      } else if (effect.target === 'all-enemy-minions') {
+        for (const m of [...opponent.board]) {
+          dealDamageToMinion(m, value, state);
+        }
+        removeDead(state, 1 - playerIndex);
+      } else if (effect.target === 'enemy-hero') {
+        opponent.health -= value;
       } else if (effect.target === 'all') {
         for (const m of [...player.board, ...opponent.board]) {
           dealDamageToMinion(m, value, state);
@@ -602,7 +618,12 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
       break;
     }
     case 'destroy': {
-      if (target) {
+      if (effect.target === 'random-enemy') {
+        if (opponent.board.length > 0) {
+          const idx = Math.floor(Math.random() * opponent.board.length);
+          opponent.board.splice(idx, 1);
+        }
+      } else if (target) {
         const idx = opponent.board.findIndex((m) => m.instanceId === target);
         if (idx !== -1) opponent.board.splice(idx, 1);
       }

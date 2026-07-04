@@ -281,6 +281,7 @@ export const TYRANT_CARDS: Card[] = [
     attack: 8,
     health: 7,
     keywords: ['haste'],
+    battlecry: { type: 'damage', value: 3, target: 'all-enemy-minions' },
     flavorText: 'The sea bows, the sky trembles.',
   },
   {

@@ -93,6 +93,7 @@ export function CardComponent({
   const [descHovered, setDescHovered] = useState(false);
   const descAnchorRef = useRef<HTMLSpanElement>(null);
   const cardAnchorRef = useRef<HTMLDivElement>(null);
+  const smallAnchorRef = useRef<HTMLDivElement>(null);
   const keywordRefs = useRef<Partial<Record<Keyword, HTMLSpanElement>>>({});
   const showDetail = showDetailProp ?? showDetailLocal;
 
@@ -139,38 +140,51 @@ export function CardComponent({
 
   if (small) {
     return (
-      <motion.button
-        onClick={handleClick}
-        whileHover={isPlayable ? { scale: 1.08, y: -4 } : undefined}
-        whileTap={isPlayable ? { scale: 0.95 } : undefined}
-        className={`
-          relative flex-shrink-0 rounded-lg border-2 overflow-hidden transition-colors
-          ${rarity.border} ${rarity.glow}
-          ${selected ? 'ring-2 ring-gold-400/80 -translate-y-2 z-20' : ''}
-          ${isPlayable || onClick ? 'cursor-pointer' : 'opacity-70'}
-          w-16 h-24
-          bg-gradient-to-b ${gradient}
-        `}
+      <div
+        ref={smallAnchorRef}
+        className="relative flex-shrink-0"
+        onMouseEnter={handlePointerEnter}
+        onMouseLeave={handlePointerLeave}
       >
-        <CardArt cardId={card.id} />
-        {/* Cost — big crystal */}
-        <div className="absolute -top-0.5 -left-0.5 w-6 h-6 rounded-br-xl rounded-tl-lg bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-800 flex items-center justify-center text-[11px] font-black text-white shadow-lg shadow-blue-500/40 border-r border-b border-blue-300/30 z-10">
-          {card.cost}
-        </div>
-        <div className="relative mt-6 px-0.5 text-center text-[7px] font-medium leading-tight line-clamp-2">
-          {card.name}
-        </div>
-        {isBeyonder && (
-          <div className="absolute bottom-0 inset-x-0 flex justify-between px-0.5 pb-0.5">
-            <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center text-[8px] font-bold">
-              {(card as BeyonderCard).attack}
-            </div>
-            <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center text-[8px] font-bold">
-              {(card as BeyonderCard).health}
-            </div>
+        <motion.button
+          onClick={handleClick}
+          whileHover={isPlayable ? { scale: 1.08, y: -4 } : undefined}
+          whileTap={isPlayable ? { scale: 0.95 } : undefined}
+          className={`
+            relative flex-shrink-0 rounded-lg border-2 overflow-hidden transition-colors
+            ${rarity.border} ${rarity.glow}
+            ${selected ? 'ring-2 ring-gold-400/80 -translate-y-2 z-20' : ''}
+            ${isPlayable || onClick ? 'cursor-pointer' : 'opacity-70'}
+            w-16 h-24
+            bg-gradient-to-b ${gradient}
+          `}
+        >
+          <CardArt cardId={card.id} />
+          {/* Cost — big crystal */}
+          <div className="absolute -top-0.5 -left-0.5 w-6 h-6 rounded-br-xl rounded-tl-lg bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-800 flex items-center justify-center text-[11px] font-black text-white shadow-lg shadow-blue-500/40 border-r border-b border-blue-300/30 z-10">
+            {card.cost}
           </div>
-        )}
-      </motion.button>
+          <div className="relative mt-6 px-0.5 text-center text-[7px] font-medium leading-tight line-clamp-2">
+            {card.name}
+          </div>
+          {isBeyonder && (
+            <div className="absolute bottom-0 inset-x-0 flex justify-between px-0.5 pb-0.5">
+              <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center text-[8px] font-bold">
+                {(card as BeyonderCard).attack}
+              </div>
+              <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center text-[8px] font-bold">
+                {(card as BeyonderCard).health}
+              </div>
+            </div>
+          )}
+        </motion.button>
+
+        <AnchorTooltip anchorEl={smallAnchorRef.current} show={isHovered}>
+          <div className="bg-void-900/98 border border-void-500 rounded-xl p-2.5 shadow-2xl backdrop-blur-md">
+            <CardHoverPreviewContent card={card} />
+          </div>
+        </AnchorTooltip>
+      </div>
     );
   }
 
@@ -330,11 +344,22 @@ function CardHoverPreview({ card }: { card: CardType }) {
 }
 
 function CardHoverPreviewContent({ card }: { card: CardType }) {
+  const isWeapon = card.type === 'sealed-artifact';
   return (
     <>
       <p className="text-[11px] font-semibold text-white">{card.name}</p>
       {card.description && (
         <p className="text-[10px] text-void-200 mt-1 leading-snug">{card.description}</p>
+      )}
+      {isWeapon && (
+        <p className="text-[10px] text-void-300 mt-1">
+          {(card as SealedArtifactCard).attack} Ataque / {(card as SealedArtifactCard).durability} Durabilidade
+        </p>
+      )}
+      {card.type === 'beyonder' && (
+        <p className="text-[10px] text-void-300 mt-1">
+          {(card as BeyonderCard).attack}/{(card as BeyonderCard).health} ATK/Vida
+        </p>
       )}
       {card.keywords && card.keywords.length > 0 && (
         <div className="mt-1.5 space-y-1 border-t border-void-700 pt-1.5">

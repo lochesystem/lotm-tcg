@@ -4,6 +4,7 @@ import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
 import { TurnBanner } from '../components/TurnBanner';
+import { AnchorTooltip } from '../components/AnchorTooltip';
 import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
 import { HeroPowerBeam } from '../components/HeroPowerBeam';
@@ -67,6 +68,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const logIdRef = useRef(0);
   const processedLogRef = useRef(0);
   const rewardGrantedRef = useRef(false);
+  const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
+  const [heroPowerHover, setHeroPowerHover] = useState(false);
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
@@ -990,24 +993,30 @@ export function BattleScreen({ onNavigate }: Props) {
 
             {/* Hero power */}
             <motion.button
+              ref={heroPowerBtnRef}
               onClick={handleHeroPower}
+              onMouseEnter={() => setHeroPowerHover(true)}
+              onMouseLeave={() => setHeroPowerHover(false)}
               disabled={!isMyTurn || player.heroPowerUsed || player.spirituality < 2}
               whileHover={isMyTurn && !player.heroPowerUsed ? { scale: 1.05 } : undefined}
               whileTap={isMyTurn && !player.heroPowerUsed ? { scale: 0.95 } : undefined}
-              className={`relative px-3 py-2 rounded-xl text-[10px] font-medium border transition-all group ${
+              className={`relative px-3 py-2 rounded-xl text-[10px] font-medium border transition-all ${
                 isMyTurn && !player.heroPowerUsed && player.spirituality >= 2
                   ? 'border-purple-400/60 bg-purple-900/50 text-purple-200 hover:bg-purple-800/60'
                   : 'border-void-700 bg-void-900/50 text-void-500 cursor-not-allowed'
               }`}
-              title={`${pathwayInfo.powerName}: ${pathwayInfo.powerDescription}`}
             >
               <div className="font-bold text-[11px]">{pathwayInfo.powerName}</div>
               <div className="text-[8px] text-void-400">Custo: 2</div>
-              {/* Tooltip on hover */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-void-900/95 border border-void-500 rounded-lg p-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <p className="text-[9px] text-void-200">{pathwayInfo.powerDescription}</p>
-              </div>
             </motion.button>
+            <AnchorTooltip
+              anchorEl={heroPowerBtnRef.current}
+              show={heroPowerHover}
+              placement="top"
+            >
+              <p className="text-[10px] font-semibold text-purple-200 mb-1">{pathwayInfo.powerName}</p>
+              <p className="text-[10px] text-void-200 leading-relaxed">{pathwayInfo.powerDescription}</p>
+            </AnchorTooltip>
 
             {/* Fate coin */}
             {player.hasFateCoin && (

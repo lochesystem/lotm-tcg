@@ -44,6 +44,8 @@ export interface BeyonderCard extends BaseCard {
   madnessValue?: number;
   ascendInto?: string;
   ascendCondition?: string;
+  /** Resolved when the minion is played from hand */
+  battlecry?: SpellEffect;
 }
 
 export interface SealedArtifactCard extends BaseCard {
@@ -67,7 +69,7 @@ export type Card = BeyonderCard | SealedArtifactCard | RitualCard | MysticalItem
 
 // ─── Effects ────────────────────────────────────────────────────────────────
 
-export type TargetType = 'any' | 'enemy' | 'friendly' | 'hero' | 'enemy-hero' | 'friendly-hero' | 'all-enemies' | 'all-friendlies' | 'all' | 'random-enemy' | 'self' | 'none';
+export type TargetType = 'any' | 'enemy' | 'friendly' | 'hero' | 'enemy-hero' | 'friendly-hero' | 'all-enemies' | 'all-enemy-minions' | 'all-friendlies' | 'all' | 'random-enemy' | 'self' | 'none';
 
 export interface SpellEffect {
   type: 'damage' | 'heal' | 'draw' | 'buff' | 'debuff' | 'summon' | 'destroy' | 'transform' | 'discover' | 'return' | 'silence' | 'copy';

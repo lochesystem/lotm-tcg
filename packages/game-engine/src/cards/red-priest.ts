@@ -268,6 +268,7 @@ export const RED_PRIEST_CARDS: Card[] = [
     attack: 6,
     health: 5,
     keywords: ['haste'],
+    battlecry: { type: 'damage', value: 3, target: 'all-enemies' },
   },
 
   // ─── 8-Cost ────────────────────────────────────────────────────────────
@@ -295,6 +296,7 @@ export const RED_PRIEST_CARDS: Card[] = [
     attack: 7,
     health: 6,
     keywords: ['haste'],
+    battlecry: { type: 'damage', value: 5, target: 'enemy-hero' },
     flavorText: 'The flames of purity consume all.',
   },
 

@@ -88,7 +88,7 @@ export const SUN_CARDS: Card[] = [
     type: 'sealed-artifact',
     rarity: 'common',
     pathway: 'sun',
-    description: '',
+    description: 'Weapon — 1 Attack, 4 Durability.',
     attack: 1,
     durability: 4,
   },
@@ -104,6 +104,7 @@ export const SUN_CARDS: Card[] = [
     description: 'Restore 3 Health to your hero when played.',
     attack: 2,
     health: 4,
+    battlecry: { type: 'heal', value: 3, target: 'friendly-hero' },
   },
   {
     id: 's-sunlight-guardian',
@@ -268,6 +269,7 @@ export const SUN_CARDS: Card[] = [
     attack: 8,
     health: 10,
     keywords: ['provoke', 'divination'],
+    battlecry: { type: 'heal', value: 10, target: 'friendly-hero' },
     flavorText: 'Light that never fades, warmth that never ends.',
   },
   {

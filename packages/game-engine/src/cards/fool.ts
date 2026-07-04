@@ -246,6 +246,7 @@ export const FOOL_CARDS: Card[] = [
     attack: 7,
     health: 7,
     keywords: ['haste', 'stealth'],
+    battlecry: { type: 'destroy', value: 0, target: 'random-enemy' },
     flavorText: 'Gehrman Sparrow. Crazy adventurer. The World.',
   },
 

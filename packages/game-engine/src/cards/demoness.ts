@@ -273,6 +273,7 @@ export const DEMONESS_CARDS: Card[] = [
     attack: 6,
     health: 6,
     keywords: ['haste', 'corruption'],
+    battlecry: { type: 'destroy', value: 0, target: 'random-enemy' },
     flavorText: 'Desire consumes all who gaze upon her.',
   },
   {

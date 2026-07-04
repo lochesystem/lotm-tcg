@@ -19,19 +19,26 @@ export function AnchorTooltip({ anchorEl, show, children, placement = 'top' }: P
     const update = () => {
       const rect = anchorEl.getBoundingClientRect();
       const margin = 10;
+      const pad = 12;
+      const maxW = Math.min(288, window.innerWidth - pad * 2);
+      const halfW = maxW / 2;
+
+      let centerX = rect.left + rect.width / 2;
+      centerX = Math.max(pad + halfW, Math.min(window.innerWidth - pad - halfW, centerX));
+
       const preferTop = placement === 'top';
       const fitsAbove = rect.top > 96;
       const above = preferTop && fitsAbove;
 
       setStyle({
         position: 'fixed',
-        left: rect.left + rect.width / 2,
+        left: centerX,
         top: above ? rect.top - margin : rect.bottom + margin,
         transform: above ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
         zIndex: 9999,
         visibility: 'visible',
         pointerEvents: 'none',
-        maxWidth: 'min(16rem, calc(100vw - 1.5rem))',
+        width: maxW,
       });
     };
 

@@ -77,6 +77,16 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isBeingAttac
           bg-gradient-to-b from-void-800 to-void-900
         `}
       >
+        {/* Target hit flash */}
+        {isBeingAttacked && (
+          <motion.div
+            className="absolute inset-0 rounded-xl bg-red-500/50 border-2 border-red-300/80 z-20 pointer-events-none"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: [0, 1, 0.6, 0], scale: [1.1, 1, 0.95, 1] }}
+            transition={{ duration: 0.55 }}
+          />
+        )}
+
         {/* Target pulse overlay */}
         {isTarget && isEnemy && (
           <motion.div

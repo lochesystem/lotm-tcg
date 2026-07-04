@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { completeTurnBannerWait, TURN_BANNER_EXIT_MS, TURN_BANNER_VISIBLE_MS } from '../constants/turnBanner';
 
 interface Props {
   turnNumber: number;
@@ -10,17 +11,31 @@ export function TurnBanner({ turnNumber, isYourTurn }: Props) {
   const [visible, setVisible] = useState(false);
   const [displayTurn, setDisplayTurn] = useState(turnNumber);
   const [displayIsYours, setDisplayIsYours] = useState(isYourTurn);
+  const wasVisibleRef = useRef(false);
 
   useEffect(() => {
     if (turnNumber < 1) return;
 
     setDisplayTurn(turnNumber);
     setDisplayIsYours(isYourTurn);
+    wasVisibleRef.current = true;
     setVisible(true);
 
-    const timer = setTimeout(() => setVisible(false), 1400);
+    const timer = setTimeout(() => setVisible(false), TURN_BANNER_VISIBLE_MS);
     return () => clearTimeout(timer);
   }, [turnNumber, isYourTurn]);
+
+  useEffect(() => {
+    if (visible) return;
+    if (!wasVisibleRef.current) return;
+    wasVisibleRef.current = false;
+
+    const timer = setTimeout(() => {
+      completeTurnBannerWait();
+    }, TURN_BANNER_EXIT_MS);
+
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   return (
     <AnimatePresence>

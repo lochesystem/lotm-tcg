@@ -247,7 +247,7 @@ function playCard(
       break;
   }
 
-  addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name });
+  addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name, cardType: card.type });
   checkGameOver(state);
   return state;
 }

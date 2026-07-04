@@ -41,8 +41,8 @@ export function AttackImpact({ show, targetId, targetHero }: Props) {
       setPos({
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
-        w: rect.width,
-        h: rect.height,
+        w: Math.max(rect.width, 48),
+        h: Math.max(rect.height, 60),
       });
     };
 
@@ -56,43 +56,48 @@ export function AttackImpact({ show, targetId, targetHero }: Props) {
       {show && pos && (
         <motion.div
           className="fixed pointer-events-none z-50"
-          style={{ left: pos.x, top: pos.y, width: pos.w, height: pos.h }}
+          style={{
+            left: pos.x - pos.w / 2,
+            top: pos.y - pos.h / 2,
+            width: pos.w,
+            height: pos.h,
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          {/* Local flash on target */}
           <motion.div
-            className="absolute inset-0 rounded-xl bg-red-400/25"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.9, 0] }}
-            transition={{ duration: 0.35 }}
+            className="absolute inset-0 rounded-xl bg-red-500/30 border-2 border-red-400/60"
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: [0, 1, 0.4, 0], scale: [0.85, 1.08, 1, 0.95] }}
+            transition={{ duration: 0.5 }}
           />
 
-          {/* Slash 1 */}
           <motion.div
-            className="absolute left-1/2 top-1/2 h-1 w-[130%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-200 to-transparent"
-            style={{ rotate: '-35deg' }}
+            className="absolute left-1/2 top-1/2 h-1.5 w-[140%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-200 to-transparent"
+            style={{ rotate: '-38deg' }}
             initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: [0, 1.2, 0.8], opacity: [0, 1, 0] }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
+            animate={{ scaleX: [0, 1.3, 0.6], opacity: [0, 1, 0] }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
           />
 
-          {/* Slash 2 */}
           <motion.div
-            className="absolute left-1/2 top-1/2 h-1.5 w-[110%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-red-400 to-transparent"
-            style={{ rotate: '28deg' }}
+            className="absolute left-1/2 top-1/2 h-2 w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-transparent via-red-400 to-transparent"
+            style={{ rotate: '32deg' }}
             initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: [0, 1.1, 0.7], opacity: [0, 1, 0] }}
-            transition={{ duration: 0.38, delay: 0.06, ease: 'easeOut' }}
+            animate={{ scaleX: [0, 1.2, 0.5], opacity: [0, 1, 0] }}
+            transition={{ duration: 0.42, delay: 0.07, ease: 'easeOut' }}
           />
 
-          {/* Impact burst */}
           <motion.div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-200/80 blur-sm"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-yellow-200/90 blur-[2px]"
             initial={{ width: 0, height: 0, opacity: 0 }}
-            animate={{ width: [0, pos.w * 0.9, 0], height: [0, pos.h * 0.9, 0], opacity: [0, 1, 0] }}
-            transition={{ duration: 0.42, delay: 0.04 }}
+            animate={{
+              width: [0, pos.w * 1.1, 0],
+              height: [0, pos.h * 1.1, 0],
+              opacity: [0, 1, 0],
+            }}
+            transition={{ duration: 0.48, delay: 0.05 }}
           />
         </motion.div>
       )}

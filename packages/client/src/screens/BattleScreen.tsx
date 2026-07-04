@@ -6,11 +6,13 @@ import { HeroPortrait } from '../components/HeroPortrait';
 import { TurnBanner } from '../components/TurnBanner';
 import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
+import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { GameAction, validateAction } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PATHWAYS } from 'game-engine';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
+import { formatGameEvent } from '../utils/battleLog';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -19,11 +21,11 @@ interface Props {
 interface BattleLogEntry {
   id: number;
   text: string;
-  type: 'action' | 'damage' | 'system' | 'reward';
+  type: 'action' | 'damage' | 'system' | 'reward' | 'enemy';
 }
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, npcPlayReveal } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [showAttackAnim, setShowAttackAnim] = useState(false);
   const [attackingMinion, setAttackingMinion] = useState<string | null>(null);
@@ -40,6 +42,36 @@ export function BattleScreen({ onNavigate }: Props) {
     targetHero: 'player' | 'opponent' | null;
   } | null>(null);
   const logIdRef = useRef(0);
+  const processedLogRef = useRef(0);
+
+  // Sync battle log from game engine events (player + NPC)
+  useEffect(() => {
+    if (!gameState) {
+      processedLogRef.current = 0;
+      return;
+    }
+    const newEvents = gameState.log.slice(processedLogRef.current);
+    processedLogRef.current = gameState.log.length;
+    if (newEvents.length === 0) return;
+
+    const entries: BattleLogEntry[] = [];
+    const baseIndex = processedLogRef.current - newEvents.length;
+    for (let i = 0; i < newEvents.length; i++) {
+      const formatted = formatGameEvent(newEvents[i], gameState, playerId, opponentId, baseIndex + i);
+      if (formatted) {
+        entries.push({ id: ++logIdRef.current, ...formatted });
+      }
+    }
+    if (entries.length > 0) {
+      setBattleLog((prev) => [...prev.slice(-40), ...entries]);
+    }
+  }, [gameState, gameState?.log.length, playerId, opponentId]);
+
+  useEffect(() => {
+    processedLogRef.current = 0;
+    setBattleLog([]);
+    logIdRef.current = 0;
+  }, [gameState?.id]);
 
   // Sync NPC combat animation phases from store
   useEffect(() => {
@@ -87,7 +119,7 @@ export function BattleScreen({ onNavigate }: Props) {
         setDamagedMinion(null);
         setDamagedHero(null);
         setImpactTarget(null);
-      }, 300);
+      }, 1100);
       return () => clearTimeout(timer);
     }
   }, [pendingAttack]);
@@ -127,8 +159,6 @@ export function BattleScreen({ onNavigate }: Props) {
 
   const handlePlayCard = (handIndex: number) => {
     if (!isMyTurn || isGameOver) return;
-    const card = player.hand[handIndex];
-    addLog(`Jogou ${card.name} (custo ${card.cost})`, 'action');
     performAction({ type: 'play-card', handIndex });
   };
 
@@ -144,7 +174,8 @@ export function BattleScreen({ onNavigate }: Props) {
     setDamagedHero(null);
     setShowAttackAnim(false);
 
-    // Wind-up — only the attacker lunges toward the enemy
+    const logBefore = gameState.log.length;
+
     setTimeout(() => {
       if (targetId) setDamagedMinion(targetId);
       else if (targetHero) setDamagedHero(targetHero);
@@ -154,13 +185,22 @@ export function BattleScreen({ onNavigate }: Props) {
       setTimeout(() => {
         setShowAttackAnim(false);
         cb();
+
         setTimeout(() => {
-          setAttackingMinion(null);
-          setDamagedMinion(null);
-          setDamagedHero(null);
-          setImpactTarget(null);
-        }, 450);
-      }, 600);
+          const latest = useGameStore.getState().gameState;
+          const hadDeath = latest?.log
+            .slice(logBefore)
+            .some((e) => e.type === 'minion-death') ?? false;
+          const clearDelay = hadDeath ? 900 : 450;
+
+          setTimeout(() => {
+            setAttackingMinion(null);
+            setDamagedMinion(null);
+            setDamagedHero(null);
+            setImpactTarget(null);
+          }, clearDelay);
+        }, 80);
+      }, 700);
     }, 850);
   };
 
@@ -179,7 +219,6 @@ export function BattleScreen({ onNavigate }: Props) {
         const attacker = player.board.find((m) => m.instanceId === atkId);
         const target = opponent.board.find((m) => m.instanceId === instanceId);
         if (attacker && target) {
-          addLog(`${attacker.card.name} ataca ${target.card.name}`, 'damage');
           clearArrowPreview();
           setSelectedAttacker(null);
           playAttackAnimation(atkId, instanceId, null, () => {
@@ -213,7 +252,6 @@ export function BattleScreen({ onNavigate }: Props) {
       }
       const attacker = player.board.find((m) => m.instanceId === atkId);
       if (attacker) {
-        addLog(`${attacker.card.name} ataca o herói inimigo!`, 'damage');
         clearArrowPreview();
         setSelectedAttacker(null);
         playAttackAnimation(atkId, null, 'opponent', () => {
@@ -236,7 +274,6 @@ export function BattleScreen({ onNavigate }: Props) {
 
   const handleHeroPower = () => {
     if (!isMyTurn || isGameOver || player.heroPowerUsed || player.spirituality < 2) return;
-    addLog(`Usou poder: ${pathwayInfo.powerName}`, 'action');
     performAction({ type: 'hero-power' });
   };
 
@@ -254,6 +291,8 @@ export function BattleScreen({ onNavigate }: Props) {
 
       {/* Turn banner — auto-gerenciado, aparece e some sozinho */}
       <TurnBanner turnNumber={gameState.turn} isYourTurn={isMyTurn} />
+
+      <NpcPlayReveal cardName={npcPlayReveal?.cardName ?? null} />
 
       {/* Slash impact on the target card or hero */}
       <AttackImpact
@@ -458,11 +497,13 @@ export function BattleScreen({ onNavigate }: Props) {
               )}
               {!isMyTurn && !isGameOver && (
                 <motion.div
-                  className="px-4 py-2 bg-void-800/80 rounded-xl border border-void-600"
+                  className="px-4 py-2 bg-void-800/80 rounded-xl border border-red-700/50"
                   animate={{ opacity: [0.7, 1, 0.7] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
-                  <span className="text-xs text-void-400">Turno inimigo...</span>
+                  <span className="text-xs text-red-300">
+                    {npcThinking ? 'Inimigo agindo...' : 'Turno inimigo...'}
+                  </span>
                 </motion.div>
               )}
 
@@ -651,6 +692,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   className={`text-[10px] py-1 px-2 rounded ${
+                    entry.type === 'enemy' ? 'bg-red-950/60 text-red-200 border border-red-800/40' :
                     entry.type === 'damage' ? 'bg-red-900/30 text-red-300' :
                     entry.type === 'system' ? 'text-void-500' :
                     entry.type === 'reward' ? 'bg-gold-400/10 text-gold-400' :

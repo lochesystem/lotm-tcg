@@ -25,7 +25,7 @@ export function AnimatedBoard({
 }: Props) {
   return (
     <div className="flex items-center justify-center gap-1.5 px-2 min-h-[5.5rem]">
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {minions.map((minion) => {
           const isAttacking = attackingMinion === minion.instanceId;
           const isBeingHit = damagedMinion === minion.instanceId;
@@ -45,12 +45,12 @@ export function AnimatedBoard({
                   : { scale: 1, y: 0, opacity: 1, x: 0 }
               }
               exit={{
-                scale: 0,
-                rotate: (Math.random() - 0.5) * 40,
+                scale: 0.2,
+                rotate: (Math.random() - 0.5) * 30,
                 opacity: 0,
-                y: 30,
-                filter: 'blur(4px) brightness(2)',
-                transition: { duration: 0.5, ease: 'easeIn' },
+                y: isEnemy ? -24 : 24,
+                filter: 'blur(3px) brightness(2) grayscale(0.6)',
+                transition: { duration: 0.85, ease: [0.4, 0, 0.2, 1] },
               }}
               transition={{
                 type: 'spring',

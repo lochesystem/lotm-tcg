@@ -104,11 +104,15 @@ interface GameStore {
   pendingHeroPower: PendingHeroPower | null;
   pendingRitual: PendingRitual | null;
   npcPlayReveal: NpcPlayReveal | null;
+  onlineSendAction: ((action: GameAction) => Promise<boolean>) | null;
 
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
   startStoryBattle: () => void;
+  enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null) => void;
+  syncOnlineState: (state: GameState) => void;
+  setOnlineSendAction: (send: (action: GameAction) => Promise<boolean>) => void;
   performAction: (action: GameAction) => void;
   reset: () => void;
 }
@@ -370,6 +374,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingHeroPower: null,
   pendingRitual: null,
   npcPlayReveal: null,
+  onlineSendAction: null,
 
   setPathway: (pathway) => {
     const storyProgress = useCollectionStore.getState().storyProgress;
@@ -454,9 +459,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  enterOnlineBattle: (state, role, roomCode) => {
+    set({
+      gameState: state,
+      playerId: role,
+      opponentId: role === 'host' ? 'guest' : 'host',
+      isOnline: true,
+      roomCode,
+      isStoryMode: false,
+      storyOpponentPathway: null,
+      npcThinking: false,
+      pendingAttack: null,
+      pendingHeroPower: null,
+      pendingRitual: null,
+      npcPlayReveal: null,
+    });
+  },
+
+  syncOnlineState: (state) => {
+    set({
+      gameState: state,
+      ...(state.phase === 'ended'
+        ? {
+            npcThinking: false,
+            pendingAttack: null,
+            pendingHeroPower: null,
+            pendingRitual: null,
+            npcPlayReveal: null,
+          }
+        : {}),
+    });
+  },
+
+  setOnlineSendAction: (send) => set({ onlineSendAction: send }),
+
   performAction: (action) => {
-    const { gameState, playerId, opponentId } = get();
+    const { gameState, playerId, opponentId, isOnline, onlineSendAction } = get();
     if (!gameState) return;
+
+    if (isOnline && onlineSendAction) {
+      void onlineSendAction(action);
+      return;
+    }
 
     try {
       const newState = applyAction(gameState, playerId, action);
@@ -551,14 +595,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  reset: () => set({
-    gameState: null,
-    isStoryMode: false,
-    storyOpponentPathway: null,
-    npcThinking: false,
-    pendingAttack: null,
-    pendingHeroPower: null,
-    pendingRitual: null,
-    npcPlayReveal: null,
-  }),
+  reset: () => {
+    set({
+      gameState: null,
+      playerId: 'player-1',
+      opponentId: 'npc-1',
+      isOnline: false,
+      roomCode: null,
+      isStoryMode: false,
+      storyOpponentPathway: null,
+      npcThinking: false,
+      pendingAttack: null,
+      pendingHeroPower: null,
+      pendingRitual: null,
+      npcPlayReveal: null,
+    });
+  },
 }));

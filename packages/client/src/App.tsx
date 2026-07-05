@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HomeScreen } from './screens/HomeScreen';
 import { BattleScreen } from './screens/BattleScreen';
 import { CollectionScreen } from './screens/CollectionScreen';
@@ -7,16 +7,23 @@ import { LobbyScreen } from './screens/LobbyScreen';
 import { AuthScreen } from './screens/AuthScreen';
 import { useAuthStore } from './stores/authStore';
 import { isSupabaseConfigured } from './lib/supabase';
+import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const { status, bootstrap } = useAuthStore();
+  const navigateRef = useRef(setScreen);
+  navigateRef.current = setScreen;
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
+
+  useEffect(() => {
+    return initMultiplayerBridge(() => navigateRef.current('battle'));
+  }, []);
 
   if (isSupabaseConfigured && status === 'loading') {
     return (

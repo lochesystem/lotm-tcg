@@ -152,12 +152,15 @@ function startGame(io: Server, roomCode: string, roomManager: RoomManager): void
   const room = roomManager.getRoom(roomCode);
   if (!room || !room.hostDeck || !room.guestDeck) return;
 
-  const gameState = createGame(
+  let gameState = createGame(
     `pvp-${Date.now()}`,
     { id: 'host', deck: room.hostDeck },
     { id: 'guest', deck: room.guestDeck },
     Date.now()
   );
+
+  gameState = applyAction(gameState, 'host', { type: 'mulligan', indices: [] });
+  gameState = applyAction(gameState, 'guest', { type: 'mulligan', indices: [] });
 
   roomManager.setGameState(roomCode, gameState);
   io.to(roomCode).emit('game-start', serializeState(gameState));

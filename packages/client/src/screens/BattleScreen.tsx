@@ -1,5 +1,5 @@
 import { Screen } from '../App';
-import { useGameStore, type PendingRitual } from '../stores/gameStore';
+import { useGameStore, type PendingAttack, type PendingRitual } from '../stores/gameStore';
 import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
@@ -8,6 +8,7 @@ import { StoryIntroBanner } from '../components/StoryIntroBanner';
 import { AnchorTooltip } from '../components/AnchorTooltip';
 import { AttackImpact } from '../components/AttackImpact';
 import { AttackArrow } from '../components/AttackArrow';
+import { AttackTargetArrows } from '../components/AttackTargetArrows';
 import { HeroPowerBeam } from '../components/HeroPowerBeam';
 import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
@@ -58,6 +59,13 @@ const PLAYER_RITUAL_TIMING = {
   post: 450,
 } as const;
 
+const REMOTE_ATTACK_TIMING = {
+  preview: 2000,
+  strike: 1000,
+  impact: 800,
+  post: 600,
+} as const;
+
 export function BattleScreen({ onNavigate }: Props) {
   const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
@@ -81,6 +89,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [graveyardDetail, setGraveyardDetail] = useState<import('game-engine').Card | null>(null);
   const [arrowTargetId, setArrowTargetId] = useState<string | null>(null);
   const [arrowTargetHero, setArrowTargetHero] = useState(false);
+  const [remoteOpponentAttack, setRemoteOpponentAttack] = useState<PendingAttack | null>(null);
   const [damagedHero, setDamagedHero] = useState<'player' | 'opponent' | null>(null);
   const [impactTarget, setImpactTarget] = useState<{
     targetId: string | null;
@@ -92,6 +101,9 @@ export function BattleScreen({ onNavigate }: Props) {
   } | null>(null);
   const logIdRef = useRef(0);
   const processedLogRef = useRef(0);
+  const processedAttackAnimRef = useRef(0);
+  const remoteAttackQueueRef = useRef<Omit<PendingAttack, 'phase' | 'isNpc'>[]>([]);
+  const remoteAttackPlayingRef = useRef(false);
   const rewardGrantedRef = useRef(false);
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
   const [heroPowerHover, setHeroPowerHover] = useState(false);
@@ -127,8 +139,65 @@ export function BattleScreen({ onNavigate }: Props) {
     }
   }, [gameState, gameState?.log.length, playerId, opponentId]);
 
+  // Online PvP: replay opponent attack animations from the authoritative log
+  useEffect(() => {
+    if (!isOnline || !gameState) return;
+
+    const newEvents = gameState.log.slice(processedAttackAnimRef.current);
+    processedAttackAnimRef.current = gameState.log.length;
+    if (newEvents.length === 0) return;
+
+    for (const event of newEvents) {
+      if (event.playerId !== opponentId) continue;
+      if (event.type === 'attack') {
+        remoteAttackQueueRef.current.push({
+          attackerId: event.data.attacker as string,
+          targetId: event.data.target as string,
+          targetHero: null,
+        });
+      } else if (event.type === 'attack-hero') {
+        remoteAttackQueueRef.current.push({
+          attackerId: event.data.attacker as string,
+          targetId: null,
+          targetHero: 'player',
+        });
+      }
+    }
+
+    if (!remoteAttackPlayingRef.current && remoteAttackQueueRef.current.length > 0) {
+      remoteAttackPlayingRef.current = true;
+
+      const runQueue = async () => {
+        const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+        while (remoteAttackQueueRef.current.length > 0) {
+          const next = remoteAttackQueueRef.current.shift();
+          if (!next) break;
+
+          const base: PendingAttack = { ...next, isNpc: true, phase: 'preview' };
+          setRemoteOpponentAttack({ ...base, phase: 'preview' });
+          await wait(REMOTE_ATTACK_TIMING.preview);
+          setRemoteOpponentAttack({ ...base, phase: 'strike' });
+          await wait(REMOTE_ATTACK_TIMING.strike);
+          setRemoteOpponentAttack({ ...base, phase: 'impact' });
+          await wait(REMOTE_ATTACK_TIMING.impact);
+          setRemoteOpponentAttack(null);
+          await wait(REMOTE_ATTACK_TIMING.post);
+        }
+
+        remoteAttackPlayingRef.current = false;
+      };
+
+      void runQueue();
+    }
+  }, [gameState, gameState?.log.length, isOnline, opponentId]);
+
   useEffect(() => {
     processedLogRef.current = 0;
+    processedAttackAnimRef.current = 0;
+    remoteAttackQueueRef.current = [];
+    remoteAttackPlayingRef.current = false;
+    setRemoteOpponentAttack(null);
     setBattleLog([]);
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
@@ -200,11 +269,13 @@ export function BattleScreen({ onNavigate }: Props) {
     void finishMatch();
   }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
 
-  // Sync NPC combat animation phases from store
-  useEffect(() => {
-    if (!pendingAttack?.isNpc) return;
+  // Sync enemy attack animation phases (NPC or online opponent)
+  const activeEnemyAttack = pendingAttack?.isNpc ? pendingAttack : remoteOpponentAttack;
 
-    const { phase, attackerId, targetId, targetHero } = pendingAttack;
+  useEffect(() => {
+    if (!activeEnemyAttack) return;
+
+    const { phase, attackerId, targetId, targetHero } = activeEnemyAttack;
 
     if (phase === 'preview') {
       setAttackingMinion(null);
@@ -237,7 +308,7 @@ export function BattleScreen({ onNavigate }: Props) {
     setShowAttackAnim(true);
     const timer = setTimeout(() => setShowAttackAnim(false), 550);
     return () => clearTimeout(timer);
-  }, [pendingAttack]);
+  }, [activeEnemyAttack]);
 
   // Sync NPC hero power animation phases from store
   useEffect(() => {
@@ -325,7 +396,7 @@ export function BattleScreen({ onNavigate }: Props) {
     if (!pendingHeroPower) {
       const timer = setTimeout(() => {
         setCastingHero(null);
-        if (!pendingAttack) {
+        if (!activeEnemyAttack) {
           setDamagedMinion(null);
           setDamagedHero(null);
         }
@@ -333,21 +404,21 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingHeroPower, pendingAttack]);
+  }, [pendingHeroPower, activeEnemyAttack]);
 
   useEffect(() => {
     if (!pendingRitual && !playerRitual) {
       const timer = setTimeout(() => {
         setRitualTargetIds(null);
         setRitualDamagedIds(null);
-        if (!pendingAttack && !pendingHeroPower) {
+        if (!activeEnemyAttack && !pendingHeroPower) {
           setDamagedMinion(null);
           setDamagedHero(null);
         }
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingRitual, playerRitual, pendingAttack, pendingHeroPower]);
+  }, [pendingRitual, playerRitual, activeEnemyAttack, pendingHeroPower]);
 
   useEffect(() => () => {
     for (const timer of ritualTimersRef.current) clearTimeout(timer);
@@ -355,7 +426,7 @@ export function BattleScreen({ onNavigate }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!pendingAttack) {
+    if (!activeEnemyAttack) {
       const timer = setTimeout(() => {
         setAttackingMinion(null);
         if (!pendingHeroPower && !pendingRitual) {
@@ -366,7 +437,7 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingAttack, pendingHeroPower, pendingRitual, playerRitual]);
+  }, [activeEnemyAttack, pendingHeroPower, pendingRitual, playerRitual]);
 
   if (!gameState) {
     return (
@@ -886,8 +957,8 @@ export function BattleScreen({ onNavigate }: Props) {
   };
 
   const activeImpact = impactTarget ?? (
-    pendingAttack?.phase === 'impact'
-      ? { targetId: pendingAttack.targetId, targetHero: pendingAttack.targetHero }
+    activeEnemyAttack?.phase === 'impact'
+      ? { targetId: activeEnemyAttack.targetId, targetHero: activeEnemyAttack.targetHero }
       : null
   );
 
@@ -1002,20 +1073,36 @@ export function BattleScreen({ onNavigate }: Props) {
         />
       )}
 
-      {/* Attack arrow (NPC intent or player hover preview) */}
-      <AttackArrow
-        attackerId={
-          pendingAttack?.attackerId
-          ?? (selectedAttacker && (arrowTargetId || arrowTargetHero) ? selectedAttacker : null)
-        }
-        targetId={pendingAttack ? pendingAttack.targetId : arrowTargetHero ? null : arrowTargetId}
-        targetHero={
-          pendingAttack?.targetHero
-          ?? (arrowTargetHero ? 'opponent' : null)
-        }
-        isPlayerAttacking={pendingAttack ? !pendingAttack.isNpc : true}
-        phase={pendingAttack?.phase ?? 'preview'}
-      />
+      {/* Attack preview arrows — all valid targets when selecting (mobile-friendly) */}
+      {selectedAttacker && attackTargets && (
+        <AttackTargetArrows
+          attackerId={selectedAttacker}
+          targetMinionIds={attackTargets.validMinionIds}
+          showHero={attackTargets.heroValid}
+          targetHero="opponent"
+          isPlayerAttacking
+        />
+      )}
+      {weaponAttackMode && weaponTargets && (
+        <AttackTargetArrows
+          attackerHero="player"
+          targetMinionIds={weaponTargets.validMinionIds}
+          showHero={weaponTargets.heroValid}
+          targetHero="opponent"
+          isPlayerAttacking
+        />
+      )}
+
+      {/* Active attack animation arrow (NPC or online opponent) */}
+      {activeEnemyAttack && (
+        <AttackArrow
+          attackerId={activeEnemyAttack.attackerId}
+          targetId={activeEnemyAttack.targetId}
+          targetHero={activeEnemyAttack.targetHero}
+          isPlayerAttacking={false}
+          phase={activeEnemyAttack.phase}
+        />
+      )}
 
       {/* Game over overlay */}
       <AnimatePresence>
@@ -1124,6 +1211,11 @@ export function BattleScreen({ onNavigate }: Props) {
                 if (weaponAttackMode && weaponTargets?.heroValid) setArrowTargetHero(true);
               }}
               onMouseLeave={() => setArrowTargetHero(false)}
+              onPointerEnter={() => {
+                if (selectedAttacker && attackTargets?.heroValid) setArrowTargetHero(true);
+                if (weaponAttackMode && weaponTargets?.heroValid) setArrowTargetHero(true);
+              }}
+              onPointerLeave={() => setArrowTargetHero(false)}
             >
               {(selectedAttacker && attackTargets?.heroValid) ||
               playTargets?.allowEnemyHero ||

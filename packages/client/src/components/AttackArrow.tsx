@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { CombatPhase } from '../stores/gameStore';
 
 interface Props {
-  attackerId: string | null;
-  targetId: string | null;
+  attackerId?: string | null;
+  attackerHero?: 'player' | 'opponent' | null;
+  targetId?: string | null;
   targetHero?: 'player' | 'opponent' | null;
   isPlayerAttacking?: boolean;
   phase?: CombatPhase;
@@ -19,14 +20,34 @@ function resolveHeroSelector(
   return isPlayerAttacking ? '[data-hero-enemy]' : '[data-hero-player]';
 }
 
-export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttacking, phase = 'preview' }: Props) {
+function resolveAttackerSelector(
+  attackerId: string | null | undefined,
+  attackerHero: 'player' | 'opponent' | null | undefined
+): string | null {
+  if (attackerId) return `[data-minion-id="${attackerId}"]`;
+  if (attackerHero === 'player') return '[data-hero-player]';
+  if (attackerHero === 'opponent') return '[data-hero-enemy]';
+  return null;
+}
+
+export function AttackArrow({
+  attackerId,
+  attackerHero,
+  targetId,
+  targetHero,
+  isPlayerAttacking,
+  phase = 'preview',
+}: Props) {
+  const uid = useId().replace(/:/g, '');
   const [coords, setCoords] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const isStriking = phase === 'strike' || phase === 'impact';
   const color = isPlayerAttacking ? '#4ade80' : '#f87171';
   const glowColor = isPlayerAttacking ? '#86efac' : '#fca5a5';
+  const hasAttacker = !!(attackerId || attackerHero);
+  const hasTarget = !!(targetId || targetHero);
 
   useEffect(() => {
-    if (!attackerId) {
+    if (!hasAttacker || !hasTarget) {
       setCoords(null);
       return;
     }
@@ -37,7 +58,10 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
         return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       };
 
-      const attackerEl = document.querySelector(`[data-minion-id="${attackerId}"]`) as HTMLElement;
+      const attackerSelector = resolveAttackerSelector(attackerId, attackerHero);
+      const attackerEl = attackerSelector
+        ? (document.querySelector(attackerSelector) as HTMLElement)
+        : null;
       const targetEl = targetId
         ? (document.querySelector(`[data-minion-id="${targetId}"]`) as HTMLElement)
         : (document.querySelector(resolveHeroSelector(targetHero, isPlayerAttacking)) as HTMLElement);
@@ -58,9 +82,11 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
       window.removeEventListener('resize', updateCoords);
       clearInterval(interval);
     };
-  }, [attackerId, targetId, targetHero, isPlayerAttacking, phase]);
+  }, [attackerId, attackerHero, targetId, targetHero, isPlayerAttacking, phase, hasAttacker, hasTarget]);
 
-  const show = !!attackerId && !!coords;
+  const show = hasAttacker && hasTarget && !!coords;
+  const markerId = `arrowhead-${uid}`;
+  const glowId = `arrow-glow-${uid}`;
 
   return (
     <AnimatePresence>
@@ -74,7 +100,7 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
         >
           <defs>
             <marker
-              id="arrowhead"
+              id={markerId}
               markerWidth="12"
               markerHeight="8"
               refX="10"
@@ -83,7 +109,7 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             >
               <polygon points="0 0, 12 4, 0 8" fill={color} />
             </marker>
-            <filter id="arrow-glow">
+            <filter id={glowId}>
               <feGaussianBlur stdDeviation="4" result="coloredBlur" />
               <feMerge>
                 <feMergeNode in="coloredBlur" />
@@ -92,7 +118,6 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             </filter>
           </defs>
 
-          {/* Outer glow */}
           <motion.line
             x1={coords.x1}
             y1={coords.y1}
@@ -101,13 +126,12 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             stroke={color}
             strokeWidth={isStriking ? 10 : 6}
             strokeLinecap="round"
-            filter="url(#arrow-glow)"
+            filter={`url(#${glowId})`}
             opacity={isStriking ? 0.55 : 0.35}
             animate={{ opacity: isStriking ? [0.4, 0.7, 0.4] : [0.2, 0.5, 0.2] }}
             transition={{ duration: isStriking ? 0.5 : 0.9, repeat: Infinity }}
           />
 
-          {/* Main arrow */}
           <motion.line
             x1={coords.x1}
             y1={coords.y1}
@@ -116,7 +140,7 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             stroke={color}
             strokeWidth={isStriking ? 4 : 2.5}
             strokeLinecap="round"
-            markerEnd="url(#arrowhead)"
+            markerEnd={`url(#${markerId})`}
             strokeDasharray={isStriking ? undefined : '10 6'}
             animate={isStriking
               ? { strokeDashoffset: 0, opacity: 1 }
@@ -126,7 +150,6 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
               : { strokeDashoffset: { duration: 0.7, repeat: Infinity, ease: 'linear' }, opacity: { duration: 1.2, repeat: Infinity } }}
           />
 
-          {/* Source pulse */}
           <motion.circle
             cx={coords.x1}
             cy={coords.y1}
@@ -138,7 +161,6 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             transition={{ duration: isStriking ? 0.6 : 1.1, repeat: Infinity }}
           />
 
-          {/* Target pulse */}
           <motion.circle
             cx={coords.x2}
             cy={coords.y2}
@@ -150,7 +172,6 @@ export function AttackArrow({ attackerId, targetId, targetHero, isPlayerAttackin
             transition={{ duration: isStriking ? 0.5 : 0.85, repeat: Infinity }}
           />
 
-          {/* Target crosshair during strike */}
           {isStriking && (
             <>
               <motion.line

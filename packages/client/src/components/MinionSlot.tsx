@@ -62,6 +62,8 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
         onContextMenu={(e) => { e.preventDefault(); setShowInfo(!showInfo); }}
         onMouseEnter={() => onHover?.(true)}
         onMouseLeave={() => onHover?.(false)}
+        onPointerEnter={() => onHover?.(true)}
+        onPointerLeave={() => onHover?.(false)}
         animate={controls}
         initial={false}
         whileHover={isTarget ? { scale: 1.08 } : canAttack ? { scale: 1.04, y: -2 } : undefined}

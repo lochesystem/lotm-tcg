@@ -23,10 +23,10 @@ export function LobbyScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 relative">
+    <div className="h-full flex flex-col items-center justify-center p-4 sm:p-6 relative safe-bottom">
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950" />
 
-      <div className="relative z-10 flex flex-col items-center gap-8 max-w-sm w-full">
+      <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-sm min-w-0 px-1">
         <h2 className="text-2xl font-bold">Multiplayer</h2>
 
         {!creating ? (
@@ -40,19 +40,22 @@ export function LobbyScreen({ onNavigate }: Props) {
 
             <div className="text-void-500 text-sm">or</div>
 
-            <div className="w-full flex gap-2">
+            <div className="w-full min-w-0 flex flex-col gap-2">
               <input
                 type="text"
                 maxLength={4}
                 value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && roomCode.length === 4) handleJoin();
+                }}
                 placeholder="CODE"
-                className="flex-1 px-4 py-3 bg-void-800 border border-void-600 rounded-xl text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-purple-500"
+                className="w-full min-w-0 box-border px-4 py-3 bg-void-800 border border-void-600 rounded-xl text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-purple-500"
               />
               <button
                 onClick={handleJoin}
                 disabled={roomCode.length !== 4}
-                className="px-6 py-3 bg-green-700 hover:bg-green-600 disabled:bg-void-700 disabled:text-void-500 rounded-xl font-bold transition-all"
+                className="w-full py-3 bg-green-700 hover:bg-green-600 disabled:bg-void-700 disabled:text-void-500 rounded-xl font-bold transition-all"
               >
                 Join
               </button>

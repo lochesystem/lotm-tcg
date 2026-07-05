@@ -2,10 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "noEmit": true,
-    "paths": {
-      "game-engine": ["../game-engine/src/index.ts"]
-    }
+    "rootDir": "./src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
-  "include": ["src/**/*", "../game-engine/src/**/*"]
+  "include": ["src/**/*"]
 }

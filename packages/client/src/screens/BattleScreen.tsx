@@ -69,7 +69,7 @@ const PLAYER_ATTACK_TIMING = {
 } as const;
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -171,10 +171,14 @@ export function BattleScreen({ onNavigate }: Props) {
       if (gameState.winner === playerId) {
         let streak: number;
         if (isStoryMode) {
-          const storyResult = await recordStoryWin();
-          streak = storyResult.streak;
-          if (storyResult.unlockedPathway) {
-            setUnlockedPathway(storyResult.unlockedPathway);
+          if (storyAdvancesOnWin) {
+            const storyResult = await recordStoryWin();
+            streak = storyResult.streak;
+            if (storyResult.unlockedPathway) {
+              setUnlockedPathway(storyResult.unlockedPathway);
+            }
+          } else {
+            streak = await recordNpcWin();
           }
         } else {
           streak = await recordNpcWin();
@@ -211,7 +215,7 @@ export function BattleScreen({ onNavigate }: Props) {
     };
 
     void finishMatch();
-  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
+  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, storyAdvancesOnWin, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
 
   // Sync enemy attack animation phases (NPC or online opponent — both use pendingAttack)
   const activeEnemyAttack = pendingAttack?.isNpc ? pendingAttack : null;

@@ -9,7 +9,9 @@ import {
   PathwayDefinition,
   getCurrentStoryBoss,
   getStoryChapterLabel,
+  getSelectableStoryBosses,
   isStoryComplete,
+  isStoryProgressionBoss,
   type Pathway,
 } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
@@ -37,6 +39,19 @@ export function HomeScreen({ onNavigate }: Props) {
 
   const nextBoss = getCurrentStoryBoss(storyProgress);
   const storyDone = isStoryComplete(storyProgress);
+  const selectableBosses = getSelectableStoryBosses(storyProgress);
+  const [selectedStoryBoss, setSelectedStoryBoss] = useState<Pathway>(
+    () => nextBoss ?? selectableBosses[selectableBosses.length - 1] ?? 'red-priest'
+  );
+
+  useEffect(() => {
+    if (nextBoss) {
+      setSelectedStoryBoss(nextBoss);
+    } else if (!selectableBosses.includes(selectedStoryBoss)) {
+      setSelectedStoryBoss(selectableBosses[0] ?? 'red-priest');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset boss when story progress advances
+  }, [storyProgress, nextBoss, selectableBosses]);
 
   useEffect(() => {
     if (!isPathwayUnlocked(selectedPathway)) {
@@ -45,9 +60,12 @@ export function HomeScreen({ onNavigate }: Props) {
   }, [selectedPathway, isPathwayUnlocked, setPathway]);
 
   const handleStoryBattle = () => {
-    startStoryBattle();
+    startStoryBattle(selectedStoryBoss);
     onNavigate('battle');
   };
+
+  const canPickBoss = selectableBosses.length > 1;
+  const isReplay = canPickBoss && !isStoryProgressionBoss(storyProgress, selectedStoryBoss);
 
   return (
     <div className="flex-1 min-h-0 screen-scroll safe-bottom">
@@ -156,7 +174,7 @@ export function HomeScreen({ onNavigate }: Props) {
             Modo História
           </p>
           {storyDone ? (
-            <p className="text-xs text-green-400">História completa! Todos os pathways desbloqueados.</p>
+            <p className="text-xs text-green-400">História completa! Escolha um capítulo para reviver.</p>
           ) : nextBoss ? (
             <>
               <p className="text-xs text-void-200">{getStoryChapterLabel(nextBoss)}</p>
@@ -169,6 +187,37 @@ export function HomeScreen({ onNavigate }: Props) {
               </p>
             </>
           ) : null}
+          {canPickBoss && (
+            <div className="mt-3">
+              <p className="text-[10px] text-void-400 uppercase tracking-wider mb-2">
+                {storyDone ? 'Escolha o oponente' : 'Capítulo'}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {selectableBosses.map((boss) => {
+                  const selected = selectedStoryBoss === boss;
+                  const isCurrent = isStoryProgressionBoss(storyProgress, boss);
+                  return (
+                    <button
+                      key={boss}
+                      type="button"
+                      onClick={() => setSelectedStoryBoss(boss)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium border transition-all ${
+                        selected
+                          ? 'border-purple-400 bg-purple-900/50 text-purple-100'
+                          : 'border-void-700 bg-void-900/60 text-void-400 hover:border-void-500'
+                      }`}
+                    >
+                      <span className="mr-1">{PATHWAY_ICONS[boss]}</span>
+                      {PATHWAYS[boss].name}
+                      {isCurrent && !storyDone && (
+                        <span className="ml-1 text-[8px] text-gold-400">• atual</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex gap-1 mt-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
@@ -192,9 +241,10 @@ export function HomeScreen({ onNavigate }: Props) {
             className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold text-lg tracking-wide transition-all shadow-lg shadow-purple-900/40 border border-purple-500/20"
           >
             <span>Modo História</span>
-            {!storyDone && nextBoss && (
+            {(canPickBoss || (!storyDone && nextBoss)) && (
               <span className="block text-[10px] font-normal text-purple-200/80 mt-0.5">
-                vs {PATHWAYS[nextBoss].name}
+                vs {PATHWAYS[selectedStoryBoss].name}
+                {isReplay && ' (replay)'}
               </span>
             )}
           </motion.button>

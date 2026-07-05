@@ -12,6 +12,24 @@ export function getCurrentStoryBoss(storyProgress: number): Pathway | null {
   return STORY_BOSS_ORDER[storyProgress] ?? null;
 }
 
+/** Bosses the player may fight — current chapter plus any already reached (all five after story complete). */
+export function getSelectableStoryBosses(storyProgress: number): Pathway[] {
+  if (isStoryComplete(storyProgress)) {
+    return [...STORY_BOSS_ORDER];
+  }
+  const count = Math.min(storyProgress + 1, STORY_BOSS_ORDER.length);
+  return STORY_BOSS_ORDER.slice(0, count);
+}
+
+export function isStoryProgressionBoss(storyProgress: number, boss: Pathway): boolean {
+  return getCurrentStoryBoss(storyProgress) === boss;
+}
+
+export function getStoryBossTier(boss: Pathway): number {
+  const index = STORY_BOSS_ORDER.indexOf(boss);
+  return index === -1 ? 1 : index + 1;
+}
+
 export function isStoryComplete(storyProgress: number): boolean {
   return storyProgress >= STORY_BOSS_ORDER.length;
 }

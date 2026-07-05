@@ -113,7 +113,8 @@ interface GameStore {
   onlineSendAction: ((action: GameAction) => Promise<boolean>) | null;
   deferredOnlineStates: GameState[];
   remoteAttackAnimQueue: RemoteAttackAnim[];
-  remoteAttackAnimTick: number;
+  remoteAttackProcessing: boolean;
+  pendingOnlineSyncQueue: GameState[];
 
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
@@ -186,6 +187,67 @@ function getNextNpcAction(state: GameState, npcId: string): GameAction {
   return { type: 'end-turn' };
 }
 
+async function runOpponentAttackAnimation(
+  attackState: PendingAttack,
+  set: (partial: Partial<GameStore>) => void,
+  wait: (ms: number) => Promise<void>
+): Promise<void> {
+  set({ pendingAttack: { ...attackState, phase: 'preview' } });
+  await wait(NPC_TIMING.attackPreview);
+
+  set({ pendingAttack: { ...attackState, phase: 'strike' } });
+  await wait(NPC_TIMING.attackStrike);
+
+  set({ pendingAttack: { ...attackState, phase: 'impact' } });
+  await wait(NPC_TIMING.attackImpact);
+}
+
+function flushPendingOnlineSync(
+  get: () => GameStore,
+  set: (partial: Partial<GameStore>) => void
+): void {
+  const queue = get().pendingOnlineSyncQueue;
+  if (queue.length === 0) return;
+  const latest = queue[queue.length - 1]!;
+  set({ gameState: latest, pendingOnlineSyncQueue: [] });
+}
+
+async function runRemoteAttackQueue(
+  get: () => GameStore,
+  set: (partial: Partial<GameStore>) => void
+): Promise<void> {
+  if (get().remoteAttackProcessing) return;
+  set({ remoteAttackProcessing: true });
+
+  const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+  try {
+    while (get().remoteAttackAnimQueue.length > 0) {
+      const next = get().remoteAttackAnimQueue[0];
+      if (!next) break;
+
+      const attackState: PendingAttack = {
+        attackerId: next.attackerId,
+        targetId: next.targetId,
+        targetHero: next.targetHero,
+        isNpc: true,
+        phase: 'preview',
+      };
+
+      await runOpponentAttackAnimation(attackState, set, wait);
+
+      const hadDeaths = get().applyDeferredOnlineState();
+      get().shiftRemoteAttackAnim();
+      set({ pendingAttack: null });
+      if (hadDeaths) await wait(NPC_TIMING.deathAnim);
+      await wait(NPC_TIMING.attackPost);
+    }
+  } finally {
+    set({ remoteAttackProcessing: false });
+    flushPendingOnlineSync(get, set);
+  }
+}
+
 async function runNpcAttackSequence(
   action: GameAction & ({ type: 'attack' } | { type: 'attack-hero' }),
   opponentId: string,
@@ -201,14 +263,7 @@ async function runNpcAttackSequence(
     phase: 'preview',
   };
 
-  set({ pendingAttack: attackState });
-  await wait(NPC_TIMING.attackPreview);
-
-  set({ pendingAttack: { ...attackState, phase: 'strike' } });
-  await wait(NPC_TIMING.attackStrike);
-
-  set({ pendingAttack: { ...attackState, phase: 'impact' } });
-  await wait(NPC_TIMING.attackImpact);
+  await runOpponentAttackAnimation(attackState, set, wait);
 
   try {
     const { gameState: strikeState } = get();
@@ -388,7 +443,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   onlineSendAction: null,
   deferredOnlineStates: [],
   remoteAttackAnimQueue: [],
-  remoteAttackAnimTick: 0,
+  remoteAttackProcessing: false,
+  pendingOnlineSyncQueue: [],
 
   setPathway: (pathway) => {
     const storyProgress = useCollectionStore.getState().storyProgress;
@@ -489,7 +545,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       npcPlayReveal: null,
       deferredOnlineStates: [],
       remoteAttackAnimQueue: [],
-      remoteAttackAnimTick: 0,
+      remoteAttackProcessing: false,
+      pendingOnlineSyncQueue: [],
     });
   },
 
@@ -501,6 +558,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         gameState: state,
         deferredOnlineStates: [],
         remoteAttackAnimQueue: [],
+        remoteAttackProcessing: false,
+        pendingOnlineSyncQueue: [],
         npcThinking: false,
         pendingAttack: null,
         pendingHeroPower: null,
@@ -532,8 +591,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         deferredOnlineStates: [...get().deferredOnlineStates, state],
         remoteAttackAnimQueue: [...get().remoteAttackAnimQueue, ...attacks],
-        remoteAttackAnimTick: get().remoteAttackAnimTick + 1,
       });
+      void runRemoteAttackQueue(get, set);
+      return;
+    }
+
+    const animPending =
+      get().remoteAttackProcessing ||
+      get().remoteAttackAnimQueue.length > 0 ||
+      get().deferredOnlineStates.length > 0;
+
+    if (animPending) {
+      set({ pendingOnlineSyncQueue: [...get().pendingOnlineSyncQueue, state] });
       return;
     }
 
@@ -677,7 +746,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       npcPlayReveal: null,
       deferredOnlineStates: [],
       remoteAttackAnimQueue: [],
-      remoteAttackAnimTick: 0,
+      remoteAttackProcessing: false,
+      pendingOnlineSyncQueue: [],
     });
   },
 }));

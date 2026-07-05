@@ -59,14 +59,6 @@ const PLAYER_RITUAL_TIMING = {
   post: 450,
 } as const;
 
-const REMOTE_ATTACK_TIMING = {
-  preview: 2000,
-  strike: 1000,
-  impact: 800,
-  death: 1000,
-  post: 600,
-} as const;
-
 const PLAYER_ATTACK_TIMING = {
   preview: 400,
   strike: 450,
@@ -75,7 +67,7 @@ const PLAYER_ATTACK_TIMING = {
 } as const;
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, remoteAttackAnimTick } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -97,7 +89,6 @@ export function BattleScreen({ onNavigate }: Props) {
   const [graveyardDetail, setGraveyardDetail] = useState<import('game-engine').Card | null>(null);
   const [arrowTargetId, setArrowTargetId] = useState<string | null>(null);
   const [arrowTargetHero, setArrowTargetHero] = useState(false);
-  const [remoteOpponentAttack, setRemoteOpponentAttack] = useState<PendingAttack | null>(null);
   const [playerAttackArrow, setPlayerAttackArrow] = useState<PendingAttack | null>(null);
   const [damagedHero, setDamagedHero] = useState<'player' | 'opponent' | null>(null);
   const [impactTarget, setImpactTarget] = useState<{
@@ -110,7 +101,6 @@ export function BattleScreen({ onNavigate }: Props) {
   } | null>(null);
   const logIdRef = useRef(0);
   const processedLogRef = useRef(0);
-  const remoteAttackPlayingRef = useRef(false);
   const rewardGrantedRef = useRef(false);
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
   const [heroPowerHover, setHeroPowerHover] = useState(false);
@@ -146,47 +136,8 @@ export function BattleScreen({ onNavigate }: Props) {
     }
   }, [gameState, gameState?.log.length, playerId, opponentId]);
 
-  // Online PvP: replay opponent attacks before applying authoritative board state
-  useEffect(() => {
-    if (!isOnline || !gameState) return;
-    if (remoteAttackPlayingRef.current) return;
-    if (useGameStore.getState().remoteAttackAnimQueue.length === 0) return;
-
-    remoteAttackPlayingRef.current = true;
-
-    const runQueue = async () => {
-      const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-      while (useGameStore.getState().remoteAttackAnimQueue.length > 0) {
-        const next = useGameStore.getState().remoteAttackAnimQueue[0];
-        if (!next) break;
-
-        const base: PendingAttack = { ...next, isNpc: true, phase: 'preview' };
-        setRemoteOpponentAttack({ ...base, phase: 'preview' });
-        await wait(REMOTE_ATTACK_TIMING.preview);
-        setRemoteOpponentAttack({ ...base, phase: 'strike' });
-        await wait(REMOTE_ATTACK_TIMING.strike);
-        setRemoteOpponentAttack({ ...base, phase: 'impact' });
-        await wait(REMOTE_ATTACK_TIMING.impact);
-
-        const hadDeath = useGameStore.getState().applyDeferredOnlineState();
-        useGameStore.getState().shiftRemoteAttackAnim();
-        setRemoteOpponentAttack(null);
-
-        if (hadDeath) await wait(REMOTE_ATTACK_TIMING.death);
-        await wait(REMOTE_ATTACK_TIMING.post);
-      }
-
-      remoteAttackPlayingRef.current = false;
-    };
-
-    void runQueue();
-  }, [gameState, gameState?.id, isOnline, remoteAttackAnimTick]);
-
   useEffect(() => {
     processedLogRef.current = 0;
-    remoteAttackPlayingRef.current = false;
-    setRemoteOpponentAttack(null);
     setPlayerAttackArrow(null);
     setBattleLog([]);
     logIdRef.current = 0;
@@ -259,8 +210,8 @@ export function BattleScreen({ onNavigate }: Props) {
     void finishMatch();
   }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
 
-  // Sync enemy attack animation phases (NPC or online opponent)
-  const activeEnemyAttack = pendingAttack?.isNpc ? pendingAttack : remoteOpponentAttack;
+  // Sync enemy attack animation phases (NPC or online opponent — both use pendingAttack)
+  const activeEnemyAttack = pendingAttack?.isNpc ? pendingAttack : null;
 
   useEffect(() => {
     if (!activeEnemyAttack) return;

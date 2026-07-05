@@ -100,8 +100,8 @@ export const RED_PRIEST_CARDS: Card[] = [
     type: 'ritual',
     rarity: 'rare',
     pathway: 'red-priest',
-    description: 'Deal 2 damage to all enemy minions.',
-    effect: { type: 'damage', value: 2, target: 'all-enemies' },
+    description: 'Deal 2 damage to ALL characters (both heroes and all minions).',
+    effect: { type: 'damage', value: 2, target: 'all-characters' },
   },
   {
     id: 'rp-inferno-priest',

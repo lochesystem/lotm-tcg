@@ -587,6 +587,14 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
         }
         removeDead(state, 0);
         removeDead(state, 1);
+      } else if (effect.target === 'all-characters') {
+        player.health -= value;
+        opponent.health -= value;
+        for (const m of [...player.board, ...opponent.board]) {
+          dealDamageToMinion(m, value, state);
+        }
+        removeDead(state, 0);
+        removeDead(state, 1);
       } else if (target) {
         const resolved = resolveTarget(state, playerIndex, target);
         if (resolved.type === 'minion') {

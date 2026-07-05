@@ -13,6 +13,7 @@ const AUTO_TARGET_TYPES: TargetType[] = [
   'all-enemies',
   'all-friendlies',
   'all',
+  'all-characters',
   'random-enemy',
   'friendly-hero',
 ];

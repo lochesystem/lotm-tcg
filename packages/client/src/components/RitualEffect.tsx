@@ -12,6 +12,7 @@ interface Props {
   targetIds: string[];
   targetHero: 'player' | 'opponent' | null;
   isAoE: boolean;
+  fullBoard?: boolean;
   isNpc: boolean;
   phase: CombatPhase;
   showImpact: boolean;
@@ -41,6 +42,7 @@ export function RitualEffect({
   targetIds,
   targetHero,
   isAoE,
+  fullBoard,
   isNpc,
   phase,
   showImpact,
@@ -175,10 +177,12 @@ export function RitualEffect({
           <AnimatePresence>
             {phase === 'impact' && (
               <motion.div
-                className={`fixed inset-x-0 bottom-0 h-[48%] z-[38] pointer-events-none bg-gradient-to-t ${theme.flash} to-transparent`}
-                initial={{ opacity: 0, scaleY: 0.6 }}
-                animate={{ opacity: [0, 0.95, 0], scaleY: [0.6, 1.05, 1] }}
-                transition={{ duration: 0.65 }}
+                className={`fixed z-[38] pointer-events-none bg-gradient-to-t ${theme.flash} to-transparent ${
+                  fullBoard ? 'inset-0' : 'inset-x-0 bottom-0 h-[48%]'
+                }`}
+                initial={{ opacity: 0, scale: fullBoard ? 1.1 : 1, scaleY: fullBoard ? 1 : 0.6 }}
+                animate={{ opacity: [0, fullBoard ? 1 : 0.95, 0], scale: fullBoard ? [1.05, 1, 1] : 1, scaleY: fullBoard ? 1 : [0.6, 1.05, 1] }}
+                transition={{ duration: fullBoard ? 0.75 : 0.65 }}
               />
             )}
           </AnimatePresence>
@@ -186,6 +190,12 @@ export function RitualEffect({
       )}
 
       {/* Impact on each target */}
+      {showImpact && fullBoard && (
+        <>
+          <HeroPowerImpact show targetId={null} targetHero="player" pathway={pathway} />
+          <HeroPowerImpact show targetId={null} targetHero="opponent" pathway={pathway} />
+        </>
+      )}
       {showImpact && !useLightning && targetIds.map((id) => (
         <HeroPowerImpact
           key={id}

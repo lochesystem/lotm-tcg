@@ -69,7 +69,7 @@ export type Card = BeyonderCard | SealedArtifactCard | RitualCard | MysticalItem
 
 // ─── Effects ────────────────────────────────────────────────────────────────
 
-export type TargetType = 'any' | 'enemy' | 'friendly' | 'hero' | 'enemy-hero' | 'friendly-hero' | 'all-enemies' | 'all-enemy-minions' | 'all-friendlies' | 'all' | 'random-enemy' | 'self' | 'none';
+export type TargetType = 'any' | 'enemy' | 'friendly' | 'hero' | 'enemy-hero' | 'friendly-hero' | 'all-enemies' | 'all-enemy-minions' | 'all-friendlies' | 'all' | 'all-characters' | 'random-enemy' | 'self' | 'none';
 
 export interface SpellEffect {
   type: 'damage' | 'heal' | 'draw' | 'buff' | 'debuff' | 'summon' | 'destroy' | 'transform' | 'discover' | 'return' | 'silence' | 'copy';

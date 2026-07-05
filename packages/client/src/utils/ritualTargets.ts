@@ -9,7 +9,11 @@ export function isDamagingRitual(card: Card): card is RitualCard {
 }
 
 export function isAoERitual(effect: SpellEffect): boolean {
-  return effect.target === 'all-enemies' || effect.target === 'all';
+  return effect.target === 'all-enemies' || effect.target === 'all' || effect.target === 'all-characters';
+}
+
+export function isFullBoardRitual(effect: SpellEffect): boolean {
+  return effect.target === 'all-characters';
 }
 
 export function resolveRitualTargets(
@@ -44,6 +48,13 @@ export function resolveRitualTargets(
   }
 
   if (effect.target === 'all') {
+    return {
+      targetIds: [...caster.board, ...opponent.board].map((m) => m.instanceId),
+      targetHero: null,
+    };
+  }
+
+  if (effect.target === 'all-characters') {
     return {
       targetIds: [...caster.board, ...opponent.board].map((m) => m.instanceId),
       targetHero: null,

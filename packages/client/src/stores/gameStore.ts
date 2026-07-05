@@ -24,6 +24,7 @@ import {
   isDamagingRitual,
   isAoERitual,
   ritualPathway,
+  isFullBoardRitual,
   resolveRitualTargets,
 } from '../utils/ritualTargets';
 
@@ -52,6 +53,7 @@ export interface PendingRitual {
   targetIds: string[];
   targetHero: 'player' | 'opponent' | null;
   isAoE: boolean;
+  fullBoard?: boolean;
   isNpc: boolean;
   phase: CombatPhase;
 }
@@ -316,6 +318,7 @@ async function runNpcRitualSequence(
     targetIds,
     targetHero,
     isAoE: isAoERitual(card.effect),
+    fullBoard: isFullBoardRitual(card.effect),
     isNpc: true,
     phase: 'preview',
   };

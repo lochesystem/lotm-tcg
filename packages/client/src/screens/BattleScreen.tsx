@@ -30,6 +30,7 @@ import { cardNeedsTarget, getCardPlayTargets, isValidCardTarget } from '../utils
 import {
   isDamagingRitual,
   isAoERitual,
+  isFullBoardRitual,
   ritualPathway,
   resolveRitualTargets,
 } from '../utils/ritualTargets';
@@ -506,6 +507,7 @@ export function BattleScreen({ onNavigate }: Props) {
       targetIds,
       targetHero,
       isAoE: isAoERitual(card.effect),
+      fullBoard: isFullBoardRitual(card.effect),
       isNpc: false,
       phase: 'preview',
     };
@@ -993,6 +995,7 @@ export function BattleScreen({ onNavigate }: Props) {
           targetIds={(pendingRitual ?? playerRitual)!.targetIds}
           targetHero={(pendingRitual ?? playerRitual)!.targetHero}
           isAoE={(pendingRitual ?? playerRitual)!.isAoE}
+          fullBoard={(pendingRitual ?? playerRitual)!.fullBoard}
           isNpc={(pendingRitual ?? playerRitual)!.isNpc}
           phase={(pendingRitual ?? playerRitual)!.phase}
           showImpact={showRitualAnim}

@@ -88,3 +88,39 @@ export function resolveRitualTargets(
 
   return { targetIds: [], targetHero: null };
 }
+
+/** Infer ritual VFX targets by diffing board/HP before and after a remote play resolves. */
+export function inferRitualTargetsFromDiff(
+  before: GameState,
+  after: GameState,
+  casterId: string
+): { targetIds: string[]; targetHero: 'player' | 'opponent' | null } {
+  const casterIdx = before.players.findIndex((p) => p.id === casterId);
+  const myIdx = 1 - casterIdx;
+  const targetIds = new Set<string>();
+
+  for (let idx = 0; idx < 2; idx++) {
+    const boardBefore = before.players[idx].board;
+    const boardAfter = after.players[idx].board;
+    for (const mBefore of boardBefore) {
+      const mAfter = boardAfter.find((m) => m.instanceId === mBefore.instanceId);
+      if (!mAfter || mAfter.currentHealth < mBefore.currentHealth) {
+        targetIds.add(mBefore.instanceId);
+      }
+    }
+  }
+
+  const meBefore = before.players[myIdx];
+  const meAfter = after.players[myIdx];
+  const oppBefore = before.players[casterIdx];
+  const oppAfter = after.players[casterIdx];
+
+  if (meBefore.health > meAfter.health) {
+    return { targetIds: [...targetIds], targetHero: 'player' };
+  }
+  if (oppBefore.health > oppAfter.health) {
+    return { targetIds: [...targetIds], targetHero: 'opponent' };
+  }
+
+  return { targetIds: [...targetIds], targetHero: null };
+}

@@ -14,6 +14,7 @@ import {
   getCurrentStoryBoss,
   isPathwayUnlocked,
   isStoryComplete,
+  getCardById,
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
@@ -26,6 +27,7 @@ import {
   ritualPathway,
   isFullBoardRitual,
   resolveRitualTargets,
+  inferRitualTargetsFromDiff,
 } from '../utils/ritualTargets';
 
 export type CombatPhase = 'preview' | 'strike' | 'impact';
@@ -62,11 +64,19 @@ export interface NpcPlayReveal {
   cardName: string;
 }
 
-export interface RemoteAttackAnim {
-  attackerId: string;
-  targetId: string | null;
-  targetHero: 'player' | null;
-}
+export type RemoteOpponentAnim =
+  | {
+      kind: 'attack';
+      attackerId: string;
+      targetId: string | null;
+      targetHero: 'player' | null;
+    }
+  | {
+      kind: 'play-card';
+      cardId: string;
+      cardName: string;
+      cardType: string;
+    };
 
 const NPC_TIMING = {
   playCardIntent: 900,
@@ -112,8 +122,8 @@ interface GameStore {
   npcPlayReveal: NpcPlayReveal | null;
   onlineSendAction: ((action: GameAction) => Promise<boolean>) | null;
   deferredOnlineStates: GameState[];
-  remoteAttackAnimQueue: RemoteAttackAnim[];
-  remoteAttackProcessing: boolean;
+  remoteOpponentAnimQueue: RemoteOpponentAnim[];
+  remoteOpponentAnimProcessing: boolean;
   pendingOnlineSyncQueue: GameState[];
 
   setPathway: (pathway: Pathway) => void;
@@ -123,7 +133,7 @@ interface GameStore {
   enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null) => void;
   syncOnlineState: (state: GameState) => void;
   applyDeferredOnlineState: () => boolean;
-  shiftRemoteAttackAnim: () => void;
+  shiftRemoteOpponentAnim: () => void;
   setOnlineSendAction: (send: (action: GameAction) => Promise<boolean>) => void;
   performAction: (action: GameAction) => void;
   reset: () => void;
@@ -212,19 +222,126 @@ function flushPendingOnlineSync(
   set({ gameState: latest, pendingOnlineSyncQueue: [] });
 }
 
-async function runRemoteAttackQueue(
+function parseRemoteOpponentAnims(
+  newEvents: GameState['log'],
+  opponentId: string
+): RemoteOpponentAnim[] {
+  const anims: RemoteOpponentAnim[] = [];
+
+  for (const event of newEvents) {
+    if (event.playerId !== opponentId) continue;
+
+    if (event.type === 'play-card') {
+      anims.push({
+        kind: 'play-card',
+        cardId: event.data.cardId as string,
+        cardName: event.data.cardName as string,
+        cardType: event.data.cardType as string,
+      });
+    } else if (event.type === 'attack') {
+      anims.push({
+        kind: 'attack',
+        attackerId: event.data.attacker as string,
+        targetId: event.data.target as string,
+        targetHero: null,
+      });
+    } else if (event.type === 'attack-hero') {
+      anims.push({
+        kind: 'attack',
+        attackerId: event.data.attacker as string,
+        targetId: null,
+        targetHero: 'player',
+      });
+    }
+  }
+
+  return anims;
+}
+
+async function runOpponentRitualAnimation(
+  ritualState: PendingRitual,
+  cardName: string,
+  set: (partial: Partial<GameStore>) => void,
+  wait: (ms: number) => Promise<void>
+): Promise<void> {
+  set({ npcPlayReveal: { cardName } });
+  await wait(NPC_TIMING.playCardIntent);
+
+  set({ pendingRitual: { ...ritualState, phase: 'preview' }, npcPlayReveal: null });
+  await wait(NPC_TIMING.ritualPreview);
+
+  set({ pendingRitual: { ...ritualState, phase: 'strike' } });
+  await wait(NPC_TIMING.ritualCharge);
+
+  set({ pendingRitual: { ...ritualState, phase: 'impact' } });
+  await wait(NPC_TIMING.ritualImpact);
+}
+
+async function runRemotePlayAnim(
+  anim: Extract<RemoteOpponentAnim, { kind: 'play-card' }>,
+  get: () => GameStore,
+  set: (partial: Partial<GameStore>) => void,
+  wait: (ms: number) => Promise<void>
+): Promise<void> {
+  const card = getCardById(anim.cardId);
+
+  if (card && isDamagingRitual(card)) {
+    const before = get().gameState;
+    const after = get().deferredOnlineStates[0];
+    if (before && after) {
+      const { targetIds, targetHero } = inferRitualTargetsFromDiff(before, after, get().opponentId);
+      const ritualState: PendingRitual = {
+        cardName: card.name,
+        pathway: ritualPathway(card),
+        targetIds,
+        targetHero,
+        isAoE: isAoERitual(card.effect),
+        fullBoard: isFullBoardRitual(card.effect),
+        isNpc: true,
+        phase: 'preview',
+      };
+
+      await runOpponentRitualAnimation(ritualState, card.name, set, wait);
+
+      const hadDeaths = get().applyDeferredOnlineState();
+      get().shiftRemoteOpponentAnim();
+      set({ pendingRitual: null });
+      if (hadDeaths) await wait(NPC_TIMING.deathAnim);
+      await wait(NPC_TIMING.ritualPost);
+      return;
+    }
+  }
+
+  set({ npcPlayReveal: { cardName: anim.cardName } });
+  await wait(NPC_TIMING.playCardIntent);
+
+  const hadDeaths = get().applyDeferredOnlineState();
+  get().shiftRemoteOpponentAnim();
+  await wait(NPC_TIMING.playCard);
+  set({ npcPlayReveal: null });
+
+  if (hadDeaths) await wait(NPC_TIMING.deathAnim);
+  await wait(NPC_TIMING.betweenActions);
+}
+
+async function runRemoteOpponentAnimQueue(
   get: () => GameStore,
   set: (partial: Partial<GameStore>) => void
 ): Promise<void> {
-  if (get().remoteAttackProcessing) return;
-  set({ remoteAttackProcessing: true });
+  if (get().remoteOpponentAnimProcessing) return;
+  set({ remoteOpponentAnimProcessing: true });
 
   const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
   try {
-    while (get().remoteAttackAnimQueue.length > 0) {
-      const next = get().remoteAttackAnimQueue[0];
+    while (get().remoteOpponentAnimQueue.length > 0) {
+      const next = get().remoteOpponentAnimQueue[0];
       if (!next) break;
+
+      if (next.kind === 'play-card') {
+        await runRemotePlayAnim(next, get, set, wait);
+        continue;
+      }
 
       const attackState: PendingAttack = {
         attackerId: next.attackerId,
@@ -237,13 +354,13 @@ async function runRemoteAttackQueue(
       await runOpponentAttackAnimation(attackState, set, wait);
 
       const hadDeaths = get().applyDeferredOnlineState();
-      get().shiftRemoteAttackAnim();
+      get().shiftRemoteOpponentAnim();
       set({ pendingAttack: null });
       if (hadDeaths) await wait(NPC_TIMING.deathAnim);
       await wait(NPC_TIMING.attackPost);
     }
   } finally {
-    set({ remoteAttackProcessing: false });
+    set({ remoteOpponentAnimProcessing: false });
     flushPendingOnlineSync(get, set);
   }
 }
@@ -393,17 +510,7 @@ async function runNpcRitualSequence(
     phase: 'preview',
   };
 
-  set({ npcPlayReveal: { cardName: card.name } });
-  await wait(NPC_TIMING.playCardIntent);
-
-  set({ pendingRitual: ritualState, npcPlayReveal: null });
-  await wait(NPC_TIMING.ritualPreview);
-
-  set({ pendingRitual: { ...ritualState, phase: 'strike' } });
-  await wait(NPC_TIMING.ritualCharge);
-
-  set({ pendingRitual: { ...ritualState, phase: 'impact' } });
-  await wait(NPC_TIMING.ritualImpact);
+  await runOpponentRitualAnimation(ritualState, card.name, set, wait);
 
   try {
     const { gameState: chargeState } = get();
@@ -442,8 +549,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   npcPlayReveal: null,
   onlineSendAction: null,
   deferredOnlineStates: [],
-  remoteAttackAnimQueue: [],
-  remoteAttackProcessing: false,
+  remoteOpponentAnimQueue: [],
+  remoteOpponentAnimProcessing: false,
   pendingOnlineSyncQueue: [],
 
   setPathway: (pathway) => {
@@ -544,8 +651,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingRitual: null,
       npcPlayReveal: null,
       deferredOnlineStates: [],
-      remoteAttackAnimQueue: [],
-      remoteAttackProcessing: false,
+      remoteOpponentAnimQueue: [],
+      remoteOpponentAnimProcessing: false,
       pendingOnlineSyncQueue: [],
     });
   },
@@ -557,8 +664,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         gameState: state,
         deferredOnlineStates: [],
-        remoteAttackAnimQueue: [],
-        remoteAttackProcessing: false,
+        remoteOpponentAnimQueue: [],
+        remoteOpponentAnimProcessing: false,
         pendingOnlineSyncQueue: [],
         npcThinking: false,
         pendingAttack: null,
@@ -575,30 +682,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const newEvents = state.log.slice(gameState.log.length);
-    const remoteAttacks = newEvents.filter(
-      (e) =>
-        e.playerId === opponentId &&
-        (e.type === 'attack' || e.type === 'attack-hero')
-    );
+    const opponentAnims = parseRemoteOpponentAnims(newEvents, opponentId);
 
-    if (remoteAttacks.length > 0) {
-      const attacks: RemoteAttackAnim[] = remoteAttacks.map((e) => ({
-        attackerId: e.data.attacker as string,
-        targetId: e.type === 'attack' ? (e.data.target as string) : null,
-        targetHero: e.type === 'attack-hero' ? 'player' : null,
-      }));
-
+    if (opponentAnims.length > 0) {
       set({
         deferredOnlineStates: [...get().deferredOnlineStates, state],
-        remoteAttackAnimQueue: [...get().remoteAttackAnimQueue, ...attacks],
+        remoteOpponentAnimQueue: [...get().remoteOpponentAnimQueue, ...opponentAnims],
       });
-      void runRemoteAttackQueue(get, set);
+      void runRemoteOpponentAnimQueue(get, set);
       return;
     }
 
     const animPending =
-      get().remoteAttackProcessing ||
-      get().remoteAttackAnimQueue.length > 0 ||
+      get().remoteOpponentAnimProcessing ||
+      get().remoteOpponentAnimQueue.length > 0 ||
       get().deferredOnlineStates.length > 0;
 
     if (animPending) {
@@ -621,9 +718,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return hadDeath;
   },
 
-  shiftRemoteAttackAnim: () => {
-    const [, ...rest] = get().remoteAttackAnimQueue;
-    set({ remoteAttackAnimQueue: rest });
+  shiftRemoteOpponentAnim: () => {
+    const [, ...rest] = get().remoteOpponentAnimQueue;
+    set({ remoteOpponentAnimQueue: rest });
   },
 
   setOnlineSendAction: (send) => set({ onlineSendAction: send }),
@@ -745,8 +842,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingRitual: null,
       npcPlayReveal: null,
       deferredOnlineStates: [],
-      remoteAttackAnimQueue: [],
-      remoteAttackProcessing: false,
+      remoteOpponentAnimQueue: [],
+      remoteOpponentAnimProcessing: false,
       pendingOnlineSyncQueue: [],
     });
   },

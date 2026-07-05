@@ -6,6 +6,7 @@ import { TYRANT_CARDS } from './tyrant.js';
 import { SUN_CARDS } from './sun.js';
 import { DOOR_CARDS } from './door.js';
 import { DEMONESS_CARDS } from './demoness.js';
+import { TOKEN_CARDS } from './tokens.js';
 
 const ALL_CARDS: Card[] = [
   ...NEUTRAL_CARDS,
@@ -18,7 +19,7 @@ const ALL_CARDS: Card[] = [
 ];
 
 const CARD_MAP = new Map<string, Card>();
-for (const card of ALL_CARDS) {
+for (const card of [...ALL_CARDS, ...TOKEN_CARDS]) {
   CARD_MAP.set(card.id, card);
 }
 

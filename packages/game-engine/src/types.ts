@@ -45,7 +45,7 @@ export interface BeyonderCard extends BaseCard {
   ascendInto?: string;
   ascendCondition?: string;
   /** Resolved when the minion is played from hand */
-  battlecry?: SpellEffect;
+  battlecry?: SpellEffect | SpellEffect[];
 }
 
 export interface SealedArtifactCard extends BaseCard {

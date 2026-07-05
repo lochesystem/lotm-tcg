@@ -300,7 +300,10 @@ function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard,
   player.board.splice(pos, 0, instance);
 
   if (card.battlecry) {
-    resolveBattlecry(state, playerIndex, card.battlecry);
+    const effects = Array.isArray(card.battlecry) ? card.battlecry : [card.battlecry];
+    for (const effect of effects) {
+      resolveBattlecry(state, playerIndex, effect);
+    }
     addEvent(state, player.id, 'battlecry', { cardId: card.id, cardName: card.name });
   }
 }
@@ -459,31 +462,12 @@ function useHeroPower(state: GameState, playerIndex: number, target?: string): G
 
   switch (player.pathway) {
     case 'fool': {
-      if (player.board.length >= 7) break;
-      const marionette: MinionInstance = {
-        instanceId: nextInstanceId(),
-        card: {
-          id: 'token-marionette',
-          name: 'Marionette',
-          cost: 0,
-          type: 'beyonder',
-          rarity: 'common',
-          pathway: 'fool',
-          description: 'A puppet controlled by the Faceless.',
-          attack: 1,
-          health: 1,
-          keywords: ['stealth'],
-        },
-        currentAttack: 1,
-        currentHealth: 1,
-        maxHealth: 1,
-        canAttack: false,
-        attacksThisTurn: 0,
-        keywords: new Set(['stealth']),
-        buffs: [],
-        exhausted: true,
-      };
-      player.board.push(marionette);
+      applyEffect(state, playerIndex, {
+        type: 'summon',
+        target: 'none',
+        summonId: 'token-marionette',
+        summonCount: 1,
+      });
       break;
     }
     case 'red-priest': {
@@ -650,6 +634,8 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
           const idx = Math.floor(Math.random() * opponent.board.length);
           opponent.board.splice(idx, 1);
         }
+      } else if (effect.target === 'all-enemy-minions') {
+        opponent.board = [];
       } else if (target) {
         const idx = opponent.board.findIndex((m) => m.instanceId === target);
         if (idx !== -1) opponent.board.splice(idx, 1);

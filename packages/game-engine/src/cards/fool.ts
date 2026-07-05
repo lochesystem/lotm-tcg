@@ -106,6 +106,7 @@ export const FOOL_CARDS: Card[] = [
     description: 'Summon a 1/1 Marionette with Stealth.',
     attack: 2,
     health: 3,
+    battlecry: { type: 'summon', target: 'none', summonId: 'token-marionette', summonCount: 1 },
     flavorText: 'Puppets dance at the whim of their master.',
   },
   {
@@ -167,6 +168,7 @@ export const FOOL_CARDS: Card[] = [
     attack: 4,
     health: 4,
     keywords: ['stealth'],
+    battlecry: { type: 'summon', target: 'none', summonId: 'token-marionette', summonCount: 2 },
   },
   {
     id: 'f-mental-plague',
@@ -231,6 +233,7 @@ export const FOOL_CARDS: Card[] = [
     attack: 6,
     health: 6,
     keywords: ['haste'],
+    battlecry: { type: 'summon', target: 'none', summonId: 'token-marionette-elite', summonCount: 2 },
     flavorText: 'The world is but a grand performance.',
   },
 
@@ -262,6 +265,10 @@ export const FOOL_CARDS: Card[] = [
     attack: 8,
     health: 8,
     keywords: ['haste'],
+    battlecry: [
+      { type: 'destroy', value: 0, target: 'all-enemy-minions' },
+      { type: 'summon', target: 'none', summonId: 'token-marionette-elite', summonCount: 3 },
+    ],
     flavorText: 'The Fool that does not belong to this era.',
   },
 

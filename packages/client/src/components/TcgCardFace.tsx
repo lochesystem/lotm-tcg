@@ -36,9 +36,10 @@ const TYPE_ICONS: Record<Card['type'], string> = {
 interface Props {
   card: Card;
   className?: string;
+  showLockedBanner?: boolean;
 }
 
-export function TcgCardFace({ card, className = '' }: Props) {
+export function TcgCardFace({ card, className = '', showLockedBanner = false }: Props) {
   const rarity = RARITY_STYLES[card.rarity];
   const gradient = PATHWAY_GRADIENT[card.pathway];
   const isBeyonder = card.type === 'beyonder';
@@ -46,17 +47,18 @@ export function TcgCardFace({ card, className = '' }: Props) {
 
   return (
     <div
-      className={`relative w-60 aspect-[2/3] rounded-2xl border-[3px] bg-void-950 ${rarity.border} ${rarity.glow} ${className}`}
+      className={`relative w-60 rounded-2xl border-[3px] bg-void-950 ${rarity.border} ${rarity.glow} ${className}`}
     >
       <div className={`absolute inset-0 rounded-[13px] bg-gradient-to-b ${rarity.frame}`} />
 
-      <div className="absolute inset-1.5 rounded-xl overflow-hidden flex flex-col bg-gradient-to-b border border-white/10 shadow-inner">
-        <div className={`relative flex-none h-[58%] bg-gradient-to-b ${gradient} overflow-hidden`}>
-          <CardArt cardId={card.id} opacityClass="opacity-90" fit="contain" />
+      <div className="relative m-1.5 rounded-xl overflow-hidden flex flex-col border border-white/10 shadow-inner">
+        {/* Art frame matches PNG assets (2:3) so the image fills width without side bars */}
+        <div className={`relative w-full aspect-[2/3] flex-none bg-gradient-to-b ${gradient} overflow-hidden`}>
+          <CardArt cardId={card.id} opacityClass="opacity-95" fit="cover" />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
 
-          <div className="absolute -top-0.5 -left-0.5 z-20 w-10 h-10 rounded-br-2xl rounded-tl-xl bg-gradient-to-br from-blue-300 via-blue-500 to-indigo-900 flex items-center justify-center text-base font-black text-white shadow-xl shadow-blue-600/50 border-r-2 border-b-2 border-blue-200/30">
+          <div className="absolute top-0 left-0 z-20 w-10 h-10 rounded-br-2xl rounded-tl-lg bg-gradient-to-br from-blue-300 via-blue-500 to-indigo-900 flex items-center justify-center text-base font-black text-white shadow-xl shadow-blue-600/50 border-r-2 border-b-2 border-blue-200/30">
             {card.cost}
           </div>
 
@@ -65,9 +67,19 @@ export function TcgCardFace({ card, className = '' }: Props) {
               {TYPE_ICONS[card.type]} {TYPE_LABELS[card.type]}
             </span>
           </div>
+
+          {showLockedBanner && (
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-30 pointer-events-none">
+              <div className="w-[108%] -ml-[4%] -rotate-6 bg-void-950/92 border-y border-void-500/50 py-1.5 shadow-2xl">
+                <span className="block text-center text-[11px] font-black tracking-[0.35em] text-void-200">
+                  &lt;LOCKED&gt;
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="relative flex-1 flex flex-col min-h-0 bg-gradient-to-b from-void-900 to-void-950 px-2 pt-1.5 pb-2">
+        <div className="relative flex flex-col bg-gradient-to-b from-void-900 to-void-950 px-2 pt-1.5 pb-2">
           <div className="flex-none border-b border-void-600/80 pb-1 mb-1">
             <h3 className="text-[13px] font-display font-bold text-white leading-tight text-center line-clamp-2">
               {card.name}
@@ -77,7 +89,7 @@ export function TcgCardFace({ card, className = '' }: Props) {
             </p>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-h-24 overflow-y-auto">
             <p className="text-[10px] text-void-100 leading-snug text-center">
               {card.description || 'Sem efeito especial.'}
             </p>

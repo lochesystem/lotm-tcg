@@ -27,16 +27,7 @@ export function CollectionCardModal({ card, owned, quantity, onClose }: Props) {
         transition={{ type: 'spring', stiffness: 320, damping: 26 }}
       >
         <div className="relative">
-          <TcgCardFace card={card} />
-          {!owned && (
-            <div className="absolute inset-x-0 top-[30%] -translate-y-1/2 z-30 pointer-events-none">
-              <div className="w-[108%] -ml-[4%] -rotate-6 bg-void-950/92 border-y border-void-500/50 py-1.5 shadow-2xl">
-                <span className="block text-center text-[11px] font-black tracking-[0.35em] text-void-200">
-                  &lt;LOCKED&gt;
-                </span>
-              </div>
-            </div>
-          )}
+          <TcgCardFace card={card} showLockedBanner={!owned} />
         </div>
 
         <div className="w-full rounded-xl border border-void-600/80 bg-void-900/90 px-4 py-3 text-center backdrop-blur-sm">

@@ -6,12 +6,20 @@ import { setupSocketHandlers } from './game/socketHandlers.js';
 import { initDatabase } from './db/database.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://lochesystem.github.io',
+  ...(process.env.CLIENT_URL?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
+];
+
 const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });

@@ -1009,7 +1009,7 @@ export function BattleScreen({ onNavigate }: Props) {
         <StoryIntroBanner matchId={gameState.id} pathway={storyOpponentPathway} />
       )}
 
-      {!isGameOver && (
+      {!isGameOver && !showLog && !showGraveyard && (
         <button
           type="button"
           onClick={() => setShowConcedeConfirm(true)}
@@ -1670,16 +1670,33 @@ export function BattleScreen({ onNavigate }: Props) {
       {/* ─── Battle Log Sidebar ──────────────────────────────────────────── */}
       <AnimatePresence>
         {showLog && (
-          <motion.div
-            className="absolute right-0 top-0 bottom-0 w-52 bg-void-950/95 border-l border-void-700 z-30 flex flex-col"
-            initial={{ x: 200 }}
-            animate={{ x: 0 }}
-            exit={{ x: 200 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          >
-            <div className="flex items-center justify-between p-3 border-b border-void-700">
+          <>
+            <motion.button
+              type="button"
+              aria-label="Fechar log de batalha"
+              className="absolute inset-0 z-[44] bg-black/50 backdrop-blur-[1px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLog(false)}
+            />
+            <motion.div
+              className="absolute right-0 top-0 bottom-0 w-[min(13rem,85vw)] bg-void-950/98 border-l border-void-700 z-[50] flex flex-col shadow-2xl"
+              initial={{ x: 200 }}
+              animate={{ x: 0 }}
+              exit={{ x: 200 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+            <div className="flex items-center justify-between p-3 border-b border-void-700 shrink-0">
               <h4 className="text-xs font-bold text-void-200">Log de Batalha</h4>
-              <button onClick={() => setShowLog(false)} className="text-void-500 hover:text-void-200 text-xs">✕</button>
+              <button
+                type="button"
+                onClick={() => setShowLog(false)}
+                className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-void-100 hover:bg-void-800 text-sm"
+              >
+                ✕
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {battleLog.length === 0 && (
@@ -1703,24 +1720,42 @@ export function BattleScreen({ onNavigate }: Props) {
               ))}
             </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
 
       {/* ─── Graveyard Panel ─────────────────────────────────────────────── */}
       <AnimatePresence>
         {showGraveyard && (
-          <motion.div
-            className="absolute left-0 top-0 bottom-0 w-56 bg-void-950/95 border-r border-void-700 z-30 flex flex-col"
-            initial={{ x: -240 }}
-            animate={{ x: 0 }}
-            exit={{ x: -240 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          >
-            <div className="flex items-center justify-between p-3 border-b border-void-700">
+          <>
+            <motion.button
+              type="button"
+              aria-label="Fechar cemitério"
+              className="absolute inset-0 z-[44] bg-black/50 backdrop-blur-[1px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowGraveyard(null)}
+            />
+            <motion.div
+              className="absolute left-0 top-0 bottom-0 w-[min(14rem,85vw)] bg-void-950/98 border-r border-void-700 z-[50] flex flex-col shadow-2xl"
+              initial={{ x: -240 }}
+              animate={{ x: 0 }}
+              exit={{ x: -240 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+            <div className="flex items-center justify-between p-3 border-b border-void-700 shrink-0">
               <h4 className="text-xs font-bold text-void-200">
                 💀 Cemitério {showGraveyard === 'player' ? '(Seu)' : '(Inimigo)'}
               </h4>
-              <button onClick={() => setShowGraveyard(null)} className="text-void-500 hover:text-void-200 text-xs">✕</button>
+              <button
+                type="button"
+                onClick={() => setShowGraveyard(null)}
+                className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-void-100 hover:bg-void-800 text-sm"
+              >
+                ✕
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
               {(() => {
@@ -1824,6 +1859,7 @@ export function BattleScreen({ onNavigate }: Props) {
               <span className="text-[9px] text-void-500">{(showGraveyard === 'player' ? player.graveyard : opponent.graveyard).length} carta(s)</span>
             </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
 

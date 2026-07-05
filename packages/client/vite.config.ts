@@ -9,6 +9,19 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['battlefields/*.png'],
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /\/battlefields\/[^/]+\.png$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'battlefield-images',
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Beyond the Veil - LOTM TCG',
         short_name: 'LOTM TCG',

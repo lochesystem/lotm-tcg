@@ -39,6 +39,7 @@ import { getKeywordInfo } from '../components/KeywordTooltip';
 import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
 import { getBattlefieldUrl } from '../utils/battlefieldArt';
+import { BattlefieldBackground } from '../components/BattlefieldBackground';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { recordMatch } from '../sync/player-sync';
@@ -108,7 +109,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
-  const [battlefieldVisible, setBattlefieldVisible] = useState(true);
+  const [battlefieldReady, setBattlefieldReady] = useState(false);
   const [targetingHeroPower, setTargetingHeroPower] = useState(false);
   const [weaponAttackMode, setWeaponAttackMode] = useState(false);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
@@ -933,26 +934,30 @@ export function BattleScreen({ onNavigate }: Props) {
   );
 
   useEffect(() => {
-    setBattlefieldVisible(true);
+    if (!battlefieldUrl) {
+      setBattlefieldReady(false);
+      return;
+    }
+    setBattlefieldReady(false);
+    const img = new Image();
+    img.onload = () => setBattlefieldReady(true);
+    img.onerror = () => setBattlefieldReady(false);
+    img.src = battlefieldUrl;
   }, [battlefieldUrl]);
+
+  const showBattlefield = Boolean(battlefieldUrl && battlefieldReady);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden select-none">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
-      {battlefieldUrl && battlefieldVisible && (
-        <img
-          key={battlefieldUrl}
-          src={battlefieldUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-          onError={() => setBattlefieldVisible(false)}
-        />
+      {!showBattlefield && (
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
       )}
+      {showBattlefield && battlefieldUrl && <BattlefieldBackground url={battlefieldUrl} />}
       <div
-        className={`absolute inset-0 ${
-          battlefieldUrl && battlefieldVisible
-            ? 'bg-gradient-to-b from-black/55 via-black/30 to-black/60'
+        className={`absolute inset-0 z-[1] pointer-events-none ${
+          showBattlefield
+            ? 'bg-gradient-to-b from-black/35 via-black/15 to-black/45'
             : 'opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,_rgba(168,85,247,0.3)_0%,_transparent_50%)]'
         }`}
       />

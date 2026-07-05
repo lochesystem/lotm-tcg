@@ -62,6 +62,12 @@ export interface NpcPlayReveal {
   cardName: string;
 }
 
+export interface RemoteAttackAnim {
+  attackerId: string;
+  targetId: string | null;
+  targetHero: 'player' | null;
+}
+
 const NPC_TIMING = {
   playCardIntent: 900,
   playCard: 1600,
@@ -105,6 +111,9 @@ interface GameStore {
   pendingRitual: PendingRitual | null;
   npcPlayReveal: NpcPlayReveal | null;
   onlineSendAction: ((action: GameAction) => Promise<boolean>) | null;
+  deferredOnlineStates: GameState[];
+  remoteAttackAnimQueue: RemoteAttackAnim[];
+  remoteAttackAnimTick: number;
 
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
@@ -112,6 +121,8 @@ interface GameStore {
   startStoryBattle: () => void;
   enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null) => void;
   syncOnlineState: (state: GameState) => void;
+  applyDeferredOnlineState: () => boolean;
+  shiftRemoteAttackAnim: () => void;
   setOnlineSendAction: (send: (action: GameAction) => Promise<boolean>) => void;
   performAction: (action: GameAction) => void;
   reset: () => void;
@@ -375,6 +386,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingRitual: null,
   npcPlayReveal: null,
   onlineSendAction: null,
+  deferredOnlineStates: [],
+  remoteAttackAnimQueue: [],
+  remoteAttackAnimTick: 0,
 
   setPathway: (pathway) => {
     const storyProgress = useCollectionStore.getState().storyProgress;
@@ -473,22 +487,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingHeroPower: null,
       pendingRitual: null,
       npcPlayReveal: null,
+      deferredOnlineStates: [],
+      remoteAttackAnimQueue: [],
+      remoteAttackAnimTick: 0,
     });
   },
 
   syncOnlineState: (state) => {
-    set({
-      gameState: state,
-      ...(state.phase === 'ended'
-        ? {
-            npcThinking: false,
-            pendingAttack: null,
-            pendingHeroPower: null,
-            pendingRitual: null,
-            npcPlayReveal: null,
-          }
-        : {}),
-    });
+    const { gameState, opponentId } = get();
+
+    if (state.phase === 'ended') {
+      set({
+        gameState: state,
+        deferredOnlineStates: [],
+        remoteAttackAnimQueue: [],
+        npcThinking: false,
+        pendingAttack: null,
+        pendingHeroPower: null,
+        pendingRitual: null,
+        npcPlayReveal: null,
+      });
+      return;
+    }
+
+    if (!gameState) {
+      set({ gameState: state });
+      return;
+    }
+
+    const newEvents = state.log.slice(gameState.log.length);
+    const remoteAttacks = newEvents.filter(
+      (e) =>
+        e.playerId === opponentId &&
+        (e.type === 'attack' || e.type === 'attack-hero')
+    );
+
+    if (remoteAttacks.length > 0) {
+      const attacks: RemoteAttackAnim[] = remoteAttacks.map((e) => ({
+        attackerId: e.data.attacker as string,
+        targetId: e.type === 'attack' ? (e.data.target as string) : null,
+        targetHero: e.type === 'attack-hero' ? 'player' : null,
+      }));
+
+      set({
+        deferredOnlineStates: [...get().deferredOnlineStates, state],
+        remoteAttackAnimQueue: [...get().remoteAttackAnimQueue, ...attacks],
+        remoteAttackAnimTick: get().remoteAttackAnimTick + 1,
+      });
+      return;
+    }
+
+    set({ gameState: state });
+  },
+
+  applyDeferredOnlineState: () => {
+    const { gameState, deferredOnlineStates } = get();
+    if (deferredOnlineStates.length === 0) return false;
+
+    const [next, ...rest] = deferredOnlineStates;
+    const prevLen = gameState?.log.length ?? 0;
+    const hadDeath = next.log.slice(prevLen).some((e) => e.type === 'minion-death');
+
+    set({ gameState: next, deferredOnlineStates: rest });
+    return hadDeath;
+  },
+
+  shiftRemoteAttackAnim: () => {
+    const [, ...rest] = get().remoteAttackAnimQueue;
+    set({ remoteAttackAnimQueue: rest });
   },
 
   setOnlineSendAction: (send) => set({ onlineSendAction: send }),
@@ -609,6 +675,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingHeroPower: null,
       pendingRitual: null,
       npcPlayReveal: null,
+      deferredOnlineStates: [],
+      remoteAttackAnimQueue: [],
+      remoteAttackAnimTick: 0,
     });
   },
 }));

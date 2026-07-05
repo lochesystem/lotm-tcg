@@ -63,6 +63,7 @@ const REMOTE_ATTACK_TIMING = {
   preview: 2000,
   strike: 1000,
   impact: 800,
+  death: 1000,
   post: 600,
 } as const;
 
@@ -74,7 +75,7 @@ const PLAYER_ATTACK_TIMING = {
 } as const;
 
 export function BattleScreen({ onNavigate }: Props) {
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, remoteAttackAnimTick } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -109,8 +110,6 @@ export function BattleScreen({ onNavigate }: Props) {
   } | null>(null);
   const logIdRef = useRef(0);
   const processedLogRef = useRef(0);
-  const processedAttackAnimRef = useRef(0);
-  const remoteAttackQueueRef = useRef<Omit<PendingAttack, 'phase' | 'isNpc'>[]>([]);
   const remoteAttackPlayingRef = useRef(false);
   const rewardGrantedRef = useRef(false);
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
@@ -147,63 +146,45 @@ export function BattleScreen({ onNavigate }: Props) {
     }
   }, [gameState, gameState?.log.length, playerId, opponentId]);
 
-  // Online PvP: replay opponent attack animations from the authoritative log
+  // Online PvP: replay opponent attacks before applying authoritative board state
   useEffect(() => {
     if (!isOnline || !gameState) return;
+    if (remoteAttackPlayingRef.current) return;
+    if (useGameStore.getState().remoteAttackAnimQueue.length === 0) return;
 
-    const newEvents = gameState.log.slice(processedAttackAnimRef.current);
-    processedAttackAnimRef.current = gameState.log.length;
-    if (newEvents.length === 0) return;
+    remoteAttackPlayingRef.current = true;
 
-    for (const event of newEvents) {
-      if (event.playerId !== opponentId) continue;
-      if (event.type === 'attack') {
-        remoteAttackQueueRef.current.push({
-          attackerId: event.data.attacker as string,
-          targetId: event.data.target as string,
-          targetHero: null,
-        });
-      } else if (event.type === 'attack-hero') {
-        remoteAttackQueueRef.current.push({
-          attackerId: event.data.attacker as string,
-          targetId: null,
-          targetHero: 'player',
-        });
+    const runQueue = async () => {
+      const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+      while (useGameStore.getState().remoteAttackAnimQueue.length > 0) {
+        const next = useGameStore.getState().remoteAttackAnimQueue[0];
+        if (!next) break;
+
+        const base: PendingAttack = { ...next, isNpc: true, phase: 'preview' };
+        setRemoteOpponentAttack({ ...base, phase: 'preview' });
+        await wait(REMOTE_ATTACK_TIMING.preview);
+        setRemoteOpponentAttack({ ...base, phase: 'strike' });
+        await wait(REMOTE_ATTACK_TIMING.strike);
+        setRemoteOpponentAttack({ ...base, phase: 'impact' });
+        await wait(REMOTE_ATTACK_TIMING.impact);
+
+        const hadDeath = useGameStore.getState().applyDeferredOnlineState();
+        useGameStore.getState().shiftRemoteAttackAnim();
+        setRemoteOpponentAttack(null);
+
+        if (hadDeath) await wait(REMOTE_ATTACK_TIMING.death);
+        await wait(REMOTE_ATTACK_TIMING.post);
       }
-    }
 
-    if (!remoteAttackPlayingRef.current && remoteAttackQueueRef.current.length > 0) {
-      remoteAttackPlayingRef.current = true;
+      remoteAttackPlayingRef.current = false;
+    };
 
-      const runQueue = async () => {
-        const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-        while (remoteAttackQueueRef.current.length > 0) {
-          const next = remoteAttackQueueRef.current.shift();
-          if (!next) break;
-
-          const base: PendingAttack = { ...next, isNpc: true, phase: 'preview' };
-          setRemoteOpponentAttack({ ...base, phase: 'preview' });
-          await wait(REMOTE_ATTACK_TIMING.preview);
-          setRemoteOpponentAttack({ ...base, phase: 'strike' });
-          await wait(REMOTE_ATTACK_TIMING.strike);
-          setRemoteOpponentAttack({ ...base, phase: 'impact' });
-          await wait(REMOTE_ATTACK_TIMING.impact);
-          setRemoteOpponentAttack(null);
-          await wait(REMOTE_ATTACK_TIMING.post);
-        }
-
-        remoteAttackPlayingRef.current = false;
-      };
-
-      void runQueue();
-    }
-  }, [gameState, gameState?.log.length, isOnline, opponentId]);
+    void runQueue();
+  }, [gameState, gameState?.id, isOnline, remoteAttackAnimTick]);
 
   useEffect(() => {
     processedLogRef.current = 0;
-    processedAttackAnimRef.current = 0;
-    remoteAttackQueueRef.current = [];
     remoteAttackPlayingRef.current = false;
     setRemoteOpponentAttack(null);
     setPlayerAttackArrow(null);

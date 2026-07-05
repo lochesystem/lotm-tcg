@@ -46,15 +46,15 @@ export function TcgCardFace({ card, className = '' }: Props) {
 
   return (
     <div
-      className={`relative w-56 aspect-[2/3] rounded-2xl border-[3px] bg-void-950 ${rarity.border} ${rarity.glow} ${className}`}
+      className={`relative w-60 aspect-[2/3] rounded-2xl border-[3px] bg-void-950 ${rarity.border} ${rarity.glow} ${className}`}
     >
       <div className={`absolute inset-0 rounded-[13px] bg-gradient-to-b ${rarity.frame}`} />
 
       <div className="absolute inset-1.5 rounded-xl overflow-hidden flex flex-col bg-gradient-to-b border border-white/10 shadow-inner">
-        <div className={`relative flex-none h-[52%] bg-gradient-to-b ${gradient}`}>
-          <CardArt cardId={card.id} opacityClass="opacity-85" />
+        <div className={`relative flex-none h-[58%] bg-gradient-to-b ${gradient} overflow-hidden`}>
+          <CardArt cardId={card.id} opacityClass="opacity-90" fit="contain" />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/30 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent pointer-events-none" />
 
           <div className="absolute -top-0.5 -left-0.5 z-20 w-10 h-10 rounded-br-2xl rounded-tl-xl bg-gradient-to-br from-blue-300 via-blue-500 to-indigo-900 flex items-center justify-center text-base font-black text-white shadow-xl shadow-blue-600/50 border-r-2 border-b-2 border-blue-200/30">
             {card.cost}

@@ -6,6 +6,9 @@ Trading card game (Lord of the Mysteries) â€” React client + shared game engine.
 
 After enabling GitHub Pages: **https://lochesystem.github.io/lotm-tcg/**
 
+**Documentação completa:** [docs/GUIA-PROJETO.md](docs/GUIA-PROJETO.md)
+
+
 ## Local development
 
 ```bash

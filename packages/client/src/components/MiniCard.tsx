@@ -75,29 +75,19 @@ export function MiniCard({ card, className = '' }: MiniCardProps) {
 
 export function LockedMiniCard({ card }: { card: Card }) {
   return (
-    <div className="relative w-full aspect-[2/3] rounded-lg border-2 border-void-700 overflow-hidden bg-void-900">
-      <div className="absolute inset-0 bg-black/60 z-10" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-        <span className="text-lg opacity-60">🔒</span>
-        <span className="text-[7px] text-void-500 mt-0.5 text-center px-1 line-clamp-1">{card.name}</span>
+    <div
+      className={`relative w-full aspect-[2/3] rounded-lg border-2 overflow-hidden bg-gradient-to-b ${PATHWAY_GRADIENT[card.pathway]} border-void-600 ${RARITY_BORDER[card.rarity]} opacity-90`}
+    >
+      <CardArt cardId={card.id} opacityClass="opacity-40 saturate-50" />
+      <div className="absolute inset-0 bg-void-950/55 z-10" />
+
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+        <div className="w-[112%] -ml-[6%] -rotate-12 bg-void-950/90 border-y border-void-500/50 py-0.5 shadow-lg">
+          <span className="block text-center text-[6px] sm:text-[7px] font-black tracking-[0.25em] text-void-300">
+            &lt;LOCKED&gt;
+          </span>
+        </div>
       </div>
-      <div
-        className={`absolute inset-0 opacity-20 bg-gradient-to-b ${
-          card.pathway === 'fool'
-            ? 'from-slate-700 to-slate-900'
-            : card.pathway === 'red-priest'
-              ? 'from-red-900 to-red-950'
-              : card.pathway === 'tyrant'
-                ? 'from-sky-900 to-blue-950'
-                : card.pathway === 'sun'
-                  ? 'from-amber-800 to-amber-950'
-                  : card.pathway === 'door'
-                    ? 'from-emerald-800 to-emerald-950'
-                    : card.pathway === 'demoness'
-                      ? 'from-fuchsia-900 to-pink-950'
-                      : 'from-zinc-800 to-zinc-900'
-        }`}
-      />
     </div>
   );
 }

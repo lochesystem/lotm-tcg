@@ -1,9 +1,10 @@
 import { Screen } from '../App';
-import { getAllCards, Card, Pathway, BeyonderCard } from 'game-engine';
+import { getAllCards, Card, Pathway } from 'game-engine';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCollectionStore } from '../stores/collectionStore';
 import { MiniCard, LockedMiniCard } from '../components/MiniCard';
+import { CollectionCardModal } from '../components/CollectionCardModal';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -99,75 +100,14 @@ export function CollectionScreen({ onNavigate }: Props) {
           </div>
         </div>
 
-        {/* Card detail modal */}
         <AnimatePresence>
           {selectedCard && (
-            <motion.div
-              className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-6"
-              onClick={() => setSelectedCard(null)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                className="bg-void-900 border border-void-600 rounded-2xl p-6 max-w-xs w-full"
-                onClick={(e) => e.stopPropagation()}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg font-bold">{selectedCard.name}</h3>
-                  <span className="text-blue-400 font-bold text-lg">{selectedCard.cost}</span>
-                </div>
-                <div className="text-xs text-void-400 uppercase mb-2 flex items-center gap-2">
-                  <span>{selectedCard.type.replace('-', ' ')}</span>
-                  <span>•</span>
-                  <span>{selectedCard.pathway}</span>
-                  <span>•</span>
-                  <span className={
-                    selectedCard.rarity === 'legendary' ? 'text-yellow-400' :
-                    selectedCard.rarity === 'epic' ? 'text-purple-400' :
-                    selectedCard.rarity === 'rare' ? 'text-blue-400' : 'text-void-400'
-                  }>{selectedCard.rarity}</span>
-                </div>
-                <p className="text-sm text-void-200 mb-3">{selectedCard.description || 'Sem efeito especial.'}</p>
-                {selectedCard.keywords && selectedCard.keywords.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {selectedCard.keywords.map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 bg-purple-900/50 border border-purple-500/30 rounded text-[10px] text-purple-200 capitalize">
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {selectedCard.flavorText && (
-                  <p className="text-xs text-void-500 italic mb-3">"{selectedCard.flavorText}"</p>
-                )}
-                {selectedCard.type === 'beyonder' && (
-                  <div className="flex gap-4 mt-2 text-sm">
-                    <span className="text-yellow-400 font-semibold">⚔️ {(selectedCard as BeyonderCard).attack}</span>
-                    <span className="text-red-400 font-semibold">❤️ {(selectedCard as BeyonderCard).health}</span>
-                  </div>
-                )}
-
-                {/* Owned status */}
-                <div className="mt-3 pt-3 border-t border-void-700">
-                  {ownsCard(selectedCard.id) ? (
-                    <p className="text-xs text-green-400">✓ Possui x{getQuantity(selectedCard.id)}</p>
-                  ) : (
-                    <p className="text-xs text-void-500">🔒 Não adquirida — ganhe packs para desbloquear</p>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setSelectedCard(null)}
-                  className="mt-4 w-full py-2 bg-void-700 hover:bg-void-600 rounded-lg text-sm transition-all"
-                >
-                  Fechar
-                </button>
-              </motion.div>
-            </motion.div>
+            <CollectionCardModal
+              card={selectedCard}
+              owned={ownsCard(selectedCard.id)}
+              quantity={getQuantity(selectedCard.id)}
+              onClose={() => setSelectedCard(null)}
+            />
           )}
         </AnimatePresence>
       </div>

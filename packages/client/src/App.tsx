@@ -42,7 +42,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-void-950">
+    <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
       {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
       {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
       {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}

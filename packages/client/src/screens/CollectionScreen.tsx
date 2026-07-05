@@ -22,10 +22,10 @@ export function CollectionScreen({ onNavigate }: Props) {
   const ownedCount = allCards.filter((c) => ownsCard(c.id)).length;
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="flex-1 min-h-0 flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950" />
 
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
         <div className="flex-none flex items-center justify-between p-4">
           <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">

@@ -99,7 +99,7 @@ export function LobbyScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-4 sm:p-6 relative safe-bottom">
+    <div className="flex-1 min-h-0 screen-scroll safe-bottom flex flex-col items-center p-4 sm:p-6 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950" />
 
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm min-w-0 px-1">

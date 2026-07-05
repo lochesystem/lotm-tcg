@@ -165,10 +165,10 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
   const cloudEnabled = isSupabaseConfigured && !!getCurrentUserId();
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="flex-1 min-h-0 flex flex-col relative">
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950" />
 
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
         <div className="flex-none flex items-center justify-between p-4 gap-2">
           <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
             Voltar
@@ -247,7 +247,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         </div>
 
         <div className="flex-1 flex min-h-0">
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
+          <div className="flex-1 min-h-0 screen-scroll px-4 pb-4">
             <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
               {available.map((card) => {
                 const inDeckCount = deckCards.filter((c) => c.id === card.id).length;

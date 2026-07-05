@@ -50,8 +50,8 @@ export function HomeScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden safe-bottom">
-      <div className="relative min-h-full flex flex-col items-center p-4 sm:p-6 py-6">
+    <div className="flex-1 min-h-0 screen-scroll safe-bottom">
+      <div className="relative flex flex-col items-center p-4 sm:p-6 py-6 pb-10">
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950 pointer-events-none" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />

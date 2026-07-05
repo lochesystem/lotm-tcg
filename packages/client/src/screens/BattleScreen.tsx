@@ -997,7 +997,7 @@ export function BattleScreen({ onNavigate }: Props) {
   );
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden select-none">
+    <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden select-none">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
       <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,_rgba(168,85,247,0.3)_0%,_transparent_50%)]" />
@@ -1230,7 +1230,7 @@ export function BattleScreen({ onNavigate }: Props) {
         />
       )}
 
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* ─── Opponent area ─────────────────────────────────────────────── */}
         <div className="flex-none p-2 pb-1">
           <div className="flex items-center gap-3">

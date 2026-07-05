@@ -1451,7 +1451,7 @@ export function BattleScreen({ onNavigate }: Props) {
         </div>
 
         {/* ─── Hand ──────────────────────────────────────────────────────── */}
-        <div className="flex-none flex flex-col gap-4 pt-1 pb-1">
+        <div className="flex-none flex flex-col gap-4 pt-1 pb-1 min-w-0 w-full safe-bottom">
           <div className="min-h-[5.25rem] shrink-0 flex items-end justify-center px-3 relative z-50">
             {previewCard && (
               <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
@@ -1491,8 +1491,8 @@ export function BattleScreen({ onNavigate }: Props) {
             )}
           </div>
 
-          <div className="h-[8.5rem] relative flex items-end justify-center overflow-visible">
-            <div className="flex gap-1.5 max-w-full px-2 pb-1">
+          <div className="hand-scroll h-[8.5rem] w-full min-w-0 relative z-20" aria-label="Mão de cartas">
+            <div className="flex flex-nowrap items-end justify-center gap-1.5 w-max min-w-full px-3 pb-1 pt-2">
               <AnimatePresence mode="popLayout">
                 {player.hand.map((card, index) => {
                   const isSelected = selectedHandIndex === index || targetingHandIndex === index;
@@ -1507,7 +1507,7 @@ export function BattleScreen({ onNavigate }: Props) {
                       animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
                       exit={{ scale: 0.5, y: -60, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                      className={`relative ${isSelected ? 'z-30' : anotherSelected ? 'z-10' : 'z-20'}`}
+                      className={`relative flex-shrink-0 ${isSelected ? 'z-30' : anotherSelected ? 'z-10' : 'z-20'}`}
                     >
                       <CardComponent
                         card={card}

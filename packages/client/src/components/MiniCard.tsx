@@ -1,4 +1,6 @@
 import { Card, BeyonderCard, SealedArtifactCard } from 'game-engine';
+import { useState } from 'react';
+import { CardArt } from './CardArt';
 
 const PATHWAY_GRADIENT: Record<string, string> = {
   fool: 'from-slate-700 via-gray-800 to-slate-900',
@@ -25,19 +27,28 @@ interface MiniCardProps {
 export function MiniCard({ card, className = '' }: MiniCardProps) {
   const isBeyonder = card.type === 'beyonder';
   const isWeapon = card.type === 'sealed-artifact';
+  const [showName, setShowName] = useState(true);
 
   return (
     <div
       className={`relative w-full aspect-[2/3] rounded-lg border-2 overflow-hidden bg-gradient-to-b ${PATHWAY_GRADIENT[card.pathway]} ${RARITY_BORDER[card.rarity]} ${className}`}
     >
+      <CardArt
+        cardId={card.id}
+        opacityClass="opacity-70"
+        onLoaded={() => setShowName(false)}
+        onMissing={() => setShowName(true)}
+      />
       <div className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-700 flex items-center justify-center text-[9px] font-black text-white shadow-sm z-10">
         {card.cost}
       </div>
-      <div className="absolute inset-0 flex items-center justify-center px-1">
-        <span className="text-[8px] font-semibold text-center leading-tight text-white/90 line-clamp-2">
+      {showName && (
+      <div className="absolute inset-0 flex items-center justify-center px-1 z-[1] pointer-events-none">
+        <span className="text-[8px] font-semibold text-center leading-tight text-white/90 line-clamp-2 drop-shadow-md">
           {card.name}
         </span>
       </div>
+      )}
       {isBeyonder && (
         <div className="absolute bottom-0.5 inset-x-0 flex justify-between px-0.5">
           <div className="w-4 h-4 rounded-full bg-yellow-600 flex items-center justify-center text-[7px] font-bold text-white">

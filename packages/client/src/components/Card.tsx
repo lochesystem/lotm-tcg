@@ -3,28 +3,7 @@ import { motion } from 'framer-motion';
 import { Card as CardType, Keyword, BeyonderCard, SealedArtifactCard } from 'game-engine';
 import { KeywordTooltipContent, KeywordBadge } from './KeywordTooltip';
 import { AnchorTooltip } from './AnchorTooltip';
-
-function useCardArt(cardId: string): string | null {
-  const path = `/cards/${cardId}.png`;
-  return path;
-}
-
-function CardArt({ cardId, className }: { cardId: string; className?: string }) {
-  const [hasImage, setHasImage] = useState(true);
-  const src = useCardArt(cardId);
-
-  if (!src || !hasImage) return null;
-
-  return (
-    <img
-      src={src}
-      alt=""
-      onError={() => setHasImage(false)}
-      className={`absolute inset-0 w-full h-full object-cover opacity-60 ${className ?? ''}`}
-      loading="lazy"
-    />
-  );
-}
+import { CardArt } from './CardArt';
 
 interface Props {
   card: CardType;

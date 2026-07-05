@@ -87,3 +87,13 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Battle hand — horizontal scroll on narrow screens */
+.hand-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+}

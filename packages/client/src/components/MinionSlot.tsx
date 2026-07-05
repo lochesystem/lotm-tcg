@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
 import { MinionInstance, Keyword } from 'game-engine';
 import { KeywordTooltip } from './KeywordTooltip';
+import { CardArt } from './CardArt';
 
 interface Props {
   minion: MinionInstance;
@@ -17,6 +18,7 @@ interface Props {
 export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarget, isBeingAttacked, onClick, onHover }: Props) {
   const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [showName, setShowName] = useState(true);
   const controls = useAnimationControls();
   const prevHealthRef = useRef(minion.currentHealth);
 
@@ -69,7 +71,7 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
           y: isSelected ? -4 : 0,
         }}
         className={`
-          relative w-[4.2rem] h-[5.2rem] rounded-xl border-2 flex flex-col items-center justify-center transition-all duration-200
+          relative w-[4.2rem] h-[5.2rem] rounded-xl border-2 flex flex-col items-center justify-center transition-all duration-200 overflow-hidden
           ${isSelected ? 'border-green-400 shadow-green-400/40 shadow-lg ring-2 ring-green-400/30' : ''}
           ${isTarget && isEnemy ? 'border-red-400 shadow-red-500/50 shadow-lg cursor-crosshair ring-2 ring-red-400/40' : ''}
           ${isRitualTarget ? 'border-orange-400 shadow-orange-500/50 shadow-lg ring-2 ring-orange-400/50' : ''}
@@ -79,6 +81,13 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
           bg-gradient-to-b from-void-800 to-void-900
         `}
       >
+        <CardArt
+          cardId={minion.card.id}
+          opacityClass="opacity-75"
+          onLoaded={() => setShowName(false)}
+          onMissing={() => setShowName(true)}
+        />
+
         {/* Target hit flash */}
         {isBeingAttacked && (
           <motion.div
@@ -124,14 +133,16 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
           />
         )}
 
-        {/* Name */}
-        <div className="text-[8px] font-semibold text-center px-1 leading-tight line-clamp-2 mb-0.5 text-white/90">
+        {/* Name (fallback when no art) */}
+        {showName && (
+        <div className="relative z-[1] text-[8px] font-semibold text-center px-1 leading-tight line-clamp-2 mb-0.5 text-white/90 drop-shadow-md">
           {minion.card.name}
         </div>
+        )}
 
         {/* Keywords row */}
         {keywords.length > 0 && (
-          <div className="flex gap-0.5 mb-0.5">
+          <div className="relative z-[1] flex gap-0.5 mb-0.5">
             {hasStealth && (
               <span
                 className="text-[9px] cursor-help"
@@ -170,7 +181,7 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
         )}
 
         {/* Attack / Health */}
-        <div className="absolute bottom-0.5 inset-x-0 flex justify-between px-1">
+        <div className="absolute bottom-0.5 inset-x-0 z-10 flex justify-between px-1">
           <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-sm ${
             attackBuffed ? 'bg-green-500 text-white' :
             attackDebuffed ? 'bg-orange-500 text-white' :

@@ -6,3 +6,7 @@ dist/
 .supabase-db-password.local
 supabase/.temp/
 packages/server/data/
+
+# Generated locally for AI art workflows
+docs/card-image-prompts.md
+docs/battlefield-art-prompts.md

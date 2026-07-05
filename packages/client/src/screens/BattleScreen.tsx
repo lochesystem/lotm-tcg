@@ -38,6 +38,7 @@ import {
 import { getKeywordInfo } from '../components/KeywordTooltip';
 import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
+import { getBattlefieldUrl } from '../utils/battlefieldArt';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { recordMatch } from '../sync/player-sync';
@@ -107,6 +108,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [battlefieldVisible, setBattlefieldVisible] = useState(true);
   const [targetingHeroPower, setTargetingHeroPower] = useState(false);
   const [weaponAttackMode, setWeaponAttackMode] = useState(false);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
@@ -397,6 +399,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const playerIdx = gameState.players.findIndex((p) => p.id === playerId);
   const player = gameState.players[playerIdx];
   const opponent = gameState.players[1 - playerIdx];
+  const battlefieldPathway = isStoryMode && storyOpponentPathway ? storyOpponentPathway : opponent.pathway;
+  const battlefieldUrl = getBattlefieldUrl(battlefieldPathway);
   const isMyTurn = gameState.currentPlayerIndex === playerIdx;
   const isGameOver = gameState.phase === 'ended';
   const playerConceded = gameState.log.some((e) => e.type === 'concede' && e.playerId === playerId);
@@ -928,11 +932,30 @@ export function BattleScreen({ onNavigate }: Props) {
       : null
   );
 
+  useEffect(() => {
+    setBattlefieldVisible(true);
+  }, [battlefieldUrl]);
+
   return (
     <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden select-none">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
-      <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,_rgba(168,85,247,0.3)_0%,_transparent_50%)]" />
+      {battlefieldUrl && battlefieldVisible && (
+        <img
+          key={battlefieldUrl}
+          src={battlefieldUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+          onError={() => setBattlefieldVisible(false)}
+        />
+      )}
+      <div
+        className={`absolute inset-0 ${
+          battlefieldUrl && battlefieldVisible
+            ? 'bg-gradient-to-b from-black/55 via-black/30 to-black/60'
+            : 'opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,_rgba(168,85,247,0.3)_0%,_transparent_50%)]'
+        }`}
+      />
 
       {/* Turn banner — auto-gerenciado, aparece e some sozinho */}
       <TurnBanner turnNumber={gameState.turn} isYourTurn={isMyTurn} />

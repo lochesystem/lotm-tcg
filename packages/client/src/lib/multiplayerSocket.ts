@@ -5,9 +5,16 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
 export type OnlineRole = 'host' | 'guest';
 
+export interface RoomUpdatePayload {
+  status: string;
+  players?: number;
+  hostReady?: boolean;
+  guestReady?: boolean;
+}
+
 type GameStartListener = (state: GameState, role: OnlineRole) => void;
 type GameStateListener = (state: GameState) => void;
-type RoomUpdateListener = (data: { status: string; players?: number }) => void;
+type RoomUpdateListener = (data: RoomUpdatePayload) => void;
 type ConnectionListener = (connected: boolean) => void;
 
 let socket: Socket | null = null;
@@ -45,7 +52,7 @@ function ensureSocket(): Socket {
     for (const listener of gameStateListeners) listener(state);
   });
 
-  socket.on('room-update', (data: { status: string; players?: number }) => {
+  socket.on('room-update', (data: RoomUpdatePayload) => {
     for (const listener of roomUpdateListeners) listener(data);
   });
 

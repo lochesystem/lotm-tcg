@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { RoomManager } from '../rooms/RoomManager.js';
+import { RoomManager, type Room } from '../rooms/RoomManager.js';
 import {
   createGame,
   applyAction,
@@ -11,6 +11,15 @@ import {
 } from 'game-engine';
 import { NpcEngine } from '../npc/NpcEngine.js';
 import Database from 'better-sqlite3';
+
+function emitRoomUpdate(io: Server, room: Room): void {
+  io.to(room.code).emit('room-update', {
+    status: room.guestSocketId ? 'in-room' : 'waiting',
+    players: room.guestSocketId ? 2 : 1,
+    hostReady: room.hostReady,
+    guestReady: room.guestReady,
+  });
+}
 
 export function setupSocketHandlers(
   io: Server,
@@ -33,21 +42,19 @@ export function setupSocketHandlers(
       return;
     }
     socket.join(code);
-    io.to(code).emit('room-update', { status: 'ready', players: 2 });
+    emitRoomUpdate(io, room);
     callback({ success: true });
   });
-
-  // ─── Deck selection ──────────────────────────────────────────────────
 
   socket.on('select-deck', (deck: Deck) => {
     roomManager.setDeck(socket.id, deck);
     const room = roomManager.getRoomBySocket(socket.id);
     if (!room) return;
 
+    emitRoomUpdate(io, room);
+
     if (roomManager.isGameReady(room)) {
       startGame(io, room.code, roomManager);
-    } else {
-      io.to(room.code).emit('room-update', { status: 'waiting-deck' });
     }
   });
 

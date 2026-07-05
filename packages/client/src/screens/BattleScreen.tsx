@@ -66,6 +66,13 @@ const REMOTE_ATTACK_TIMING = {
   post: 600,
 } as const;
 
+const PLAYER_ATTACK_TIMING = {
+  preview: 400,
+  strike: 450,
+  impact: 700,
+  post: 450,
+} as const;
+
 export function BattleScreen({ onNavigate }: Props) {
   const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
@@ -90,6 +97,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [arrowTargetId, setArrowTargetId] = useState<string | null>(null);
   const [arrowTargetHero, setArrowTargetHero] = useState(false);
   const [remoteOpponentAttack, setRemoteOpponentAttack] = useState<PendingAttack | null>(null);
+  const [playerAttackArrow, setPlayerAttackArrow] = useState<PendingAttack | null>(null);
   const [damagedHero, setDamagedHero] = useState<'player' | 'opponent' | null>(null);
   const [impactTarget, setImpactTarget] = useState<{
     targetId: string | null;
@@ -198,6 +206,7 @@ export function BattleScreen({ onNavigate }: Props) {
     remoteAttackQueueRef.current = [];
     remoteAttackPlayingRef.current = false;
     setRemoteOpponentAttack(null);
+    setPlayerAttackArrow(null);
     setBattleLog([]);
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
@@ -396,7 +405,7 @@ export function BattleScreen({ onNavigate }: Props) {
     if (!pendingHeroPower) {
       const timer = setTimeout(() => {
         setCastingHero(null);
-        if (!activeEnemyAttack) {
+        if (!activeEnemyAttack && !playerAttackArrow) {
           setDamagedMinion(null);
           setDamagedHero(null);
         }
@@ -404,21 +413,21 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingHeroPower, activeEnemyAttack]);
+  }, [pendingHeroPower, activeEnemyAttack, playerAttackArrow]);
 
   useEffect(() => {
     if (!pendingRitual && !playerRitual) {
       const timer = setTimeout(() => {
         setRitualTargetIds(null);
         setRitualDamagedIds(null);
-        if (!activeEnemyAttack && !pendingHeroPower) {
+        if (!activeEnemyAttack && !playerAttackArrow && !pendingHeroPower) {
           setDamagedMinion(null);
           setDamagedHero(null);
         }
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingRitual, playerRitual, activeEnemyAttack, pendingHeroPower]);
+  }, [pendingRitual, playerRitual, activeEnemyAttack, playerAttackArrow, pendingHeroPower]);
 
   useEffect(() => () => {
     for (const timer of ritualTimersRef.current) clearTimeout(timer);
@@ -426,7 +435,7 @@ export function BattleScreen({ onNavigate }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!activeEnemyAttack) {
+    if (!activeEnemyAttack && !playerAttackArrow) {
       const timer = setTimeout(() => {
         setAttackingMinion(null);
         if (!pendingHeroPower && !pendingRitual) {
@@ -437,7 +446,7 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [activeEnemyAttack, pendingHeroPower, pendingRitual, playerRitual]);
+  }, [activeEnemyAttack, playerAttackArrow, pendingHeroPower, pendingRitual, playerRitual]);
 
   if (!gameState) {
     return (
@@ -713,40 +722,59 @@ export function BattleScreen({ onNavigate }: Props) {
     targetHero: 'player' | 'opponent' | null,
     cb: () => void
   ) => {
+    const base: PendingAttack = {
+      attackerId,
+      targetId,
+      targetHero,
+      isNpc: false,
+      phase: 'preview',
+    };
+
+    setPlayerAttackArrow({ ...base, phase: 'preview' });
     setImpactTarget(null);
-    setAttackingMinion(attackerId);
+    setAttackingMinion(null);
     setDamagedMinion(null);
     setDamagedHero(null);
     setShowAttackAnim(false);
 
     const logBefore = gameState.log.length;
+    const strikeAt = PLAYER_ATTACK_TIMING.preview;
+    const impactAt = strikeAt + PLAYER_ATTACK_TIMING.strike;
+    const actionAt = impactAt + PLAYER_ATTACK_TIMING.impact;
 
     setTimeout(() => {
+      setPlayerAttackArrow({ ...base, phase: 'strike' });
+      setAttackingMinion(attackerId);
+    }, strikeAt);
+
+    setTimeout(() => {
+      setPlayerAttackArrow({ ...base, phase: 'impact' });
       if (targetId) setDamagedMinion(targetId);
       else if (targetHero) setDamagedHero(targetHero);
       setImpactTarget({ targetId, targetHero });
       setShowAttackAnim(true);
+    }, impactAt);
+
+    setTimeout(() => {
+      setShowAttackAnim(false);
+      setPlayerAttackArrow(null);
+      cb();
 
       setTimeout(() => {
-        setShowAttackAnim(false);
-        cb();
+        const latest = useGameStore.getState().gameState;
+        const hadDeath = latest?.log
+          .slice(logBefore)
+          .some((e) => e.type === 'minion-death') ?? false;
+        const clearDelay = hadDeath ? 900 : PLAYER_ATTACK_TIMING.post;
 
         setTimeout(() => {
-          const latest = useGameStore.getState().gameState;
-          const hadDeath = latest?.log
-            .slice(logBefore)
-            .some((e) => e.type === 'minion-death') ?? false;
-          const clearDelay = hadDeath ? 900 : 450;
-
-          setTimeout(() => {
-            setAttackingMinion(null);
-            setDamagedMinion(null);
-            setDamagedHero(null);
-            setImpactTarget(null);
-          }, clearDelay);
-        }, 80);
-      }, 700);
-    }, 850);
+          setAttackingMinion(null);
+          setDamagedMinion(null);
+          setDamagedHero(null);
+          setImpactTarget(null);
+        }, clearDelay);
+      }, 80);
+    }, actionAt);
   };
 
   const startWeaponAttack = () => {
@@ -1090,6 +1118,17 @@ export function BattleScreen({ onNavigate }: Props) {
           showHero={weaponTargets.heroValid}
           targetHero="opponent"
           isPlayerAttacking
+        />
+      )}
+
+      {/* Player attack animation arrow (local + online PvP) */}
+      {playerAttackArrow && (
+        <AttackArrow
+          attackerId={playerAttackArrow.attackerId}
+          targetId={playerAttackArrow.targetId}
+          targetHero={playerAttackArrow.targetHero}
+          isPlayerAttacking
+          phase={playerAttackArrow.phase}
         />
       )}
 

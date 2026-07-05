@@ -839,6 +839,26 @@ export function validateAction(state: GameState, playerId: string, action: GameA
       case 'hero-power': {
         if (player.heroPowerUsed) return 'Already used';
         if (player.spirituality < 2) return 'Not enough Spirituality';
+        const opponent = state.players[1 - playerIndex];
+        switch (player.pathway) {
+          case 'red-priest':
+            if (!action.target) return 'Target required';
+            break;
+          case 'tyrant':
+            if (!action.target) return 'Target required';
+            if (!player.board.some((m) => m.instanceId === action.target)) {
+              return 'Friendly minion not found';
+            }
+            break;
+          case 'demoness':
+            if (!action.target) return 'Target required';
+            if (!opponent.board.some((m) => m.instanceId === action.target)) {
+              return 'Enemy minion not found';
+            }
+            break;
+          default:
+            break;
+        }
         return null;
       }
       case 'hero-attack': {

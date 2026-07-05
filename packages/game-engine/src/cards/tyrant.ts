@@ -87,7 +87,7 @@ export const TYRANT_CARDS: Card[] = [
     type: 'sealed-artifact',
     rarity: 'common',
     pathway: 'tyrant',
-    description: '',
+    description: 'Weapon — 2 Attack, 2 Durability. Equip to let your hero attack.',
     attack: 2,
     durability: 2,
   },

@@ -4,6 +4,7 @@ import type { Pathway } from 'game-engine';
 import type { CombatPhase } from '../stores/gameStore';
 import { HeroPowerBeam } from './HeroPowerBeam';
 import { HeroPowerImpact } from './HeroPowerImpact';
+import { LightningStrikeEffect } from './LightningStrikeEffect';
 
 interface Props {
   cardName: string;
@@ -51,6 +52,7 @@ export function RitualEffect({
 
   const singleTargetId = !isAoE && targetIds.length === 1 ? targetIds[0] : null;
   const singleTargetHero = !isAoE && targetIds.length === 0 ? targetHero : null;
+  const useLightning = pathway === 'tyrant' && !isAoE && (singleTargetId || singleTargetHero);
 
   useEffect(() => {
     const update = () => {
@@ -115,8 +117,8 @@ export function RitualEffect({
         )}
       </AnimatePresence>
 
-      {/* Single-target beam from enemy hero */}
-      {singleTargetId || singleTargetHero ? (
+      {/* Single-target beam from caster hero (non-lightning rituals) */}
+      {!useLightning && (singleTargetId || singleTargetHero) ? (
         <HeroPowerBeam
           sourceHero={isNpc ? 'opponent' : 'player'}
           targetId={singleTargetId}
@@ -125,6 +127,16 @@ export function RitualEffect({
           phase={phase}
         />
       ) : null}
+
+      {/* Tyrant lightning bolt from sky */}
+      {useLightning && (
+        <LightningStrikeEffect
+          targetId={singleTargetId}
+          targetHero={singleTargetHero}
+          phase={phase}
+          showImpact={showImpact}
+        />
+      )}
 
       {/* AoE targeting rings + board flash */}
       {isAoE && (
@@ -174,7 +186,7 @@ export function RitualEffect({
       )}
 
       {/* Impact on each target */}
-      {showImpact && targetIds.map((id) => (
+      {showImpact && !useLightning && targetIds.map((id) => (
         <HeroPowerImpact
           key={id}
           show
@@ -183,7 +195,7 @@ export function RitualEffect({
           pathway={pathway}
         />
       ))}
-      {showImpact && targetHero && targetIds.length === 0 && (
+      {showImpact && !useLightning && targetHero && targetIds.length === 0 && (
         <HeroPowerImpact
           show
           targetId={null}

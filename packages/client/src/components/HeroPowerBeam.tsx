@@ -14,6 +14,7 @@ interface Props {
 
 const BEAM_THEME: Record<string, { primary: string; glow: string; accent: string }> = {
   'red-priest': { primary: '#fb923c', glow: '#fde68a', accent: '#ef4444' },
+  tyrant: { primary: '#38bdf8', glow: '#e0f2fe', accent: '#fef08a' },
   sun: { primary: '#fbbf24', glow: '#fef3c7', accent: '#f59e0b' },
   demoness: { primary: '#e879f9', glow: '#fae8ff', accent: '#c026d3' },
 };

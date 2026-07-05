@@ -11,6 +11,7 @@ interface Props {
 
 const IMPACT_THEME: Record<string, { ring: string; flash: string; core: string }> = {
   'red-priest': { ring: 'border-orange-400/70', flash: 'bg-orange-300/50', core: 'bg-yellow-200/80' },
+  tyrant: { ring: 'border-sky-400/70', flash: 'bg-sky-300/50', core: 'bg-yellow-100/90' },
   sun: { ring: 'border-amber-400/70', flash: 'bg-amber-300/50', core: 'bg-yellow-100/80' },
   demoness: { ring: 'border-fuchsia-400/70', flash: 'bg-fuchsia-300/40', core: 'bg-pink-200/70' },
 };

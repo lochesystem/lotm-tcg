@@ -1,5 +1,5 @@
 import { Screen } from '../App';
-import { useGameStore } from '../stores/gameStore';
+import { useGameStore, type PendingRitual } from '../stores/gameStore';
 import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
@@ -17,7 +17,22 @@ import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult,
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
+import {
+  getHeroPowerTargetMode,
+  getHeroPowerEnemyMinionTargets,
+  getHeroPowerFriendlyMinionTargets,
+  heroPowerAllowsEnemyHero,
+  heroPowerAllowsFriendlyHero,
+  isValidHeroPowerTarget,
+  resolveHeroPowerTargetId,
+} from '../utils/heroPowerTargeting';
 import { cardNeedsTarget, getCardPlayTargets, isValidCardTarget } from '../utils/cardTargeting';
+import {
+  isDamagingRitual,
+  isAoERitual,
+  ritualPathway,
+  resolveRitualTargets,
+} from '../utils/ritualTargets';
 import { getKeywordInfo } from '../components/KeywordTooltip';
 import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
@@ -35,6 +50,13 @@ interface BattleLogEntry {
   type: 'action' | 'damage' | 'system' | 'reward' | 'enemy';
 }
 
+const PLAYER_RITUAL_TIMING = {
+  preview: 800,
+  charge: 650,
+  impact: 750,
+  post: 450,
+} as const;
+
 export function BattleScreen({ onNavigate }: Props) {
   const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
@@ -45,6 +67,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const [showAttackAnim, setShowAttackAnim] = useState(false);
   const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
   const [showRitualAnim, setShowRitualAnim] = useState(false);
+  const [playerRitual, setPlayerRitual] = useState<PendingRitual | null>(null);
+  const ritualTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [ritualTargetIds, setRitualTargetIds] = useState<Set<string> | null>(null);
   const [ritualDamagedIds, setRitualDamagedIds] = useState<Set<string> | null>(null);
   const [castingHero, setCastingHero] = useState<'player' | 'opponent' | null>(null);
@@ -73,6 +97,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [targetingHeroPower, setTargetingHeroPower] = useState(false);
+  const [weaponAttackMode, setWeaponAttackMode] = useState(false);
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
   const recordStoryWin = useCollectionStore((s) => s.recordStoryWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
@@ -107,6 +133,8 @@ export function BattleScreen({ onNavigate }: Props) {
     rewardGrantedRef.current = false;
     setRewardPack(null);
     setUnlockedPathway(null);
+    setTargetingHeroPower(false);
+    setWeaponAttackMode(false);
     setSelectedHandIndex(null);
     setTargetingHandIndex(null);
     setHoveredHandIndex(null);
@@ -307,7 +335,7 @@ export function BattleScreen({ onNavigate }: Props) {
   }, [pendingHeroPower, pendingAttack]);
 
   useEffect(() => {
-    if (!pendingRitual) {
+    if (!pendingRitual && !playerRitual) {
       const timer = setTimeout(() => {
         setRitualTargetIds(null);
         setRitualDamagedIds(null);
@@ -318,7 +346,12 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingRitual, pendingAttack, pendingHeroPower]);
+  }, [pendingRitual, playerRitual, pendingAttack, pendingHeroPower]);
+
+  useEffect(() => () => {
+    for (const timer of ritualTimersRef.current) clearTimeout(timer);
+    ritualTimersRef.current = [];
+  }, []);
 
   useEffect(() => {
     if (!pendingAttack) {
@@ -332,7 +365,7 @@ export function BattleScreen({ onNavigate }: Props) {
       }, 1100);
       return () => clearTimeout(timer);
     }
-  }, [pendingAttack, pendingHeroPower, pendingRitual]);
+  }, [pendingAttack, pendingHeroPower, pendingRitual, playerRitual]);
 
   if (!gameState) {
     return (
@@ -373,14 +406,22 @@ export function BattleScreen({ onNavigate }: Props) {
   const pathwayInfo = PATHWAYS[player.pathway];
   const opponentPathwayInfo = PATHWAYS[opponent.pathway];
   const attackTargets = selectedAttacker ? getAttackTargets(opponent) : null;
+  const weaponTargets = weaponAttackMode ? getAttackTargets(opponent) : null;
+  const heroPowerMode = targetingHeroPower ? getHeroPowerTargetMode(player.pathway) : null;
   const targetingCard = targetingHandIndex !== null ? player.hand[targetingHandIndex] : null;
   const playTargets = targetingCard ? getCardPlayTargets(targetingCard, player, opponent) : null;
   const opponentBoardTargets = targetingHandIndex !== null
     ? playTargets?.enemyMinionIds ?? null
-    : attackTargets?.validMinionIds ?? null;
+    : weaponAttackMode
+      ? weaponTargets?.validMinionIds ?? null
+      : heroPowerMode
+        ? getHeroPowerEnemyMinionTargets(heroPowerMode, opponent)
+        : attackTargets?.validMinionIds ?? null;
   const playerBoardTargets = targetingHandIndex !== null
     ? playTargets?.friendlyMinionIds ?? null
-    : null;
+    : heroPowerMode
+      ? getHeroPowerFriendlyMinionTargets(heroPowerMode, player)
+      : null;
 
   const previewHandIndex =
     targetingHandIndex ?? selectedHandIndex ?? hoveredHandIndex;
@@ -397,6 +438,32 @@ export function BattleScreen({ onNavigate }: Props) {
     setBattleLog((prev) => [...prev.slice(-20), { id: ++logIdRef.current, text, type }]);
   };
 
+  const clearActionModes = () => {
+    clearCardSelection();
+    setSelectedAttacker(null);
+    setTargetingHeroPower(false);
+    setWeaponAttackMode(false);
+    clearArrowPreview();
+  };
+
+  const executeHeroPower = (target?: string) => {
+    const action: GameAction = { type: 'hero-power', target };
+    const err = validateAction(gameState, playerId, action);
+    if (err) {
+      addLog(err, 'system');
+      return;
+    }
+    const buffedMinion = target ? player.board.find((m) => m.instanceId === target) : null;
+    performAction(action);
+    if (player.pathway === 'tyrant' && buffedMinion) {
+      addLog(`Tempest: ${buffedMinion.card.name} +1 Ataque neste turno`, 'action');
+    } else {
+      addLog(`Usou ${pathwayInfo.powerName}`, 'action');
+    }
+    setTargetingHeroPower(false);
+    setWeaponAttackMode(false);
+  };
+
   const handlePlayCard = (handIndex: number) => {
     if (!isMyTurn || isGameOver) return;
     performAction({ type: 'play-card', handIndex });
@@ -409,6 +476,82 @@ export function BattleScreen({ onNavigate }: Props) {
     setHoveredKeyword(null);
   };
 
+  const clearRitualTimers = () => {
+    for (const timer of ritualTimersRef.current) clearTimeout(timer);
+    ritualTimersRef.current = [];
+  };
+
+  const scheduleRitualPhase = (fn: () => void, delay: number) => {
+    const timer = setTimeout(fn, delay);
+    ritualTimersRef.current.push(timer);
+  };
+
+  const playRitualAnimation = (
+    handIndex: number,
+    target: string | undefined,
+    cardName: string
+  ) => {
+    const card = player.hand[handIndex];
+    if (!card || !isDamagingRitual(card)) return;
+
+    const { targetIds, targetHero } = resolveRitualTargets(
+      gameState,
+      playerId,
+      card.effect,
+      target
+    );
+    const ritualBase: PendingRitual = {
+      cardName: card.name,
+      pathway: ritualPathway(card),
+      targetIds,
+      targetHero,
+      isAoE: isAoERitual(card.effect),
+      isNpc: false,
+      phase: 'preview',
+    };
+
+    clearRitualTimers();
+    clearCardSelection();
+    setSelectedAttacker(null);
+    clearArrowPreview();
+    setRitualTargetIds(new Set(targetIds));
+    setRitualDamagedIds(null);
+    setDamagedMinion(null);
+    setDamagedHero(null);
+    setShowRitualAnim(false);
+    setPlayerRitual(ritualBase);
+    addLog(`Lançou ${cardName}`, 'action');
+
+    scheduleRitualPhase(() => {
+      setPlayerRitual({ ...ritualBase, phase: 'strike' });
+    }, PLAYER_RITUAL_TIMING.preview);
+
+    scheduleRitualPhase(() => {
+      setPlayerRitual({ ...ritualBase, phase: 'impact' });
+      setRitualDamagedIds(targetIds.length > 0 ? new Set(targetIds) : null);
+      if (targetIds.length === 1) {
+        setDamagedMinion(targetIds[0]);
+        setDamagedHero(null);
+      } else if (targetHero) {
+        setDamagedMinion(null);
+        setDamagedHero(targetHero);
+      }
+      setShowRitualAnim(true);
+
+      const action: GameAction = { type: 'play-card', handIndex, target };
+      performAction(action);
+    }, PLAYER_RITUAL_TIMING.preview + PLAYER_RITUAL_TIMING.charge);
+
+    scheduleRitualPhase(() => {
+      setShowRitualAnim(false);
+      setPlayerRitual(null);
+      setRitualTargetIds(null);
+      setRitualDamagedIds(null);
+      setDamagedMinion(null);
+      setDamagedHero(null);
+    }, PLAYER_RITUAL_TIMING.preview + PLAYER_RITUAL_TIMING.charge + PLAYER_RITUAL_TIMING.impact + PLAYER_RITUAL_TIMING.post);
+  };
+
   const executePlayCard = (handIndex: number, target?: string) => {
     const action: GameAction = { type: 'play-card', handIndex, target };
     const err = validateAction(gameState, playerId, action);
@@ -417,8 +560,19 @@ export function BattleScreen({ onNavigate }: Props) {
       return;
     }
     const cardName = player.hand[handIndex]?.name ?? 'carta';
+    const card = player.hand[handIndex];
+
+    if (card && isDamagingRitual(card)) {
+      playRitualAnimation(handIndex, target, cardName);
+      return;
+    }
+
     performAction(action);
-    addLog(`Jogou ${cardName}`, 'action');
+    if (card?.type === 'sealed-artifact') {
+      addLog(`Equipou ${cardName} — toque ⚔️ ou no herói para atacar`, 'action');
+    } else {
+      addLog(`Jogou ${cardName}`, 'action');
+    }
     clearCardSelection();
     setSelectedAttacker(null);
     clearArrowPreview();
@@ -522,8 +676,48 @@ export function BattleScreen({ onNavigate }: Props) {
     }, 850);
   };
 
+  const startWeaponAttack = () => {
+    clearCardSelection();
+    setSelectedAttacker(null);
+    setTargetingHeroPower(false);
+    setWeaponAttackMode(true);
+    const weaponName = player.weapon?.card.name ?? 'Arma';
+    addLog(`${weaponName} (${player.weapon?.currentAttack} atk) — escolha um alvo inimigo`, 'system');
+  };
+
   const handleMinionClick = (instanceId: string, isEnemy: boolean) => {
     if (!isMyTurn || isGameOver) return;
+
+    if (targetingHeroPower && heroPowerMode) {
+      if (isValidHeroPowerTarget(heroPowerMode, isEnemy, instanceId, player, opponent)) {
+        const target = resolveHeroPowerTargetId(
+          heroPowerMode,
+          isEnemy,
+          instanceId,
+          playerId,
+          opponentId
+        );
+        executeHeroPower(target);
+      } else if (!isEnemy && heroPowerMode === 'friendly-minion') {
+        addLog('Tempest: escolha um minion no seu campo', 'system');
+      } else {
+        addLog('Alvo inválido para o poder', 'system');
+      }
+      return;
+    }
+
+    if (weaponAttackMode && isEnemy) {
+      const action: GameAction = { type: 'hero-attack', targetInstanceId: instanceId };
+      const err = validateAction(gameState, playerId, action);
+      if (err) {
+        addLog(formatAttackError(err, weaponTargets ?? undefined), 'system');
+        return;
+      }
+      setWeaponAttackMode(false);
+      performAction(action);
+      addLog('Atacou com a arma equipada', 'action');
+      return;
+    }
 
     if (targetingHandIndex !== null) {
       const card = player.hand[targetingHandIndex];
@@ -572,6 +766,53 @@ export function BattleScreen({ onNavigate }: Props) {
   const handleHeroClick = (isEnemy: boolean) => {
     if (!isMyTurn || isGameOver) return;
 
+    if (targetingHeroPower && heroPowerMode) {
+      if (!isEnemy && heroPowerMode === 'friendly-minion') {
+        if (player.board.length === 0) {
+          addLog('Tempest: você precisa de um minion aliado no campo', 'system');
+        } else {
+          addLog('Tempest: clique em um minion aliado (não no herói)', 'system');
+        }
+        return;
+      }
+      if (isValidHeroPowerTarget(heroPowerMode, isEnemy, null, player, opponent)) {
+        const target = resolveHeroPowerTargetId(
+          heroPowerMode,
+          isEnemy,
+          null,
+          playerId,
+          opponentId
+        );
+        executeHeroPower(target);
+      } else {
+        addLog('Alvo inválido para o poder', 'system');
+      }
+      return;
+    }
+
+    if (!isEnemy && player.weapon && !targetingHandIndex && !targetingHeroPower) {
+      if (weaponAttackMode) {
+        setWeaponAttackMode(false);
+        addLog('Ataque com arma cancelado', 'system');
+      } else {
+        startWeaponAttack();
+      }
+      return;
+    }
+
+    if (weaponAttackMode && isEnemy) {
+      const action: GameAction = { type: 'hero-attack' };
+      const err = validateAction(gameState, playerId, action);
+      if (err) {
+        addLog(formatAttackError(err, weaponTargets ?? undefined), 'system');
+        return;
+      }
+      setWeaponAttackMode(false);
+      performAction(action);
+      addLog('Atacou o herói inimigo com a arma', 'action');
+      return;
+    }
+
     if (targetingHandIndex !== null) {
       const card = player.hand[targetingHandIndex];
       if (!card) return;
@@ -610,16 +851,36 @@ export function BattleScreen({ onNavigate }: Props) {
 
   const handleEndTurn = () => {
     if (!isMyTurn || isGameOver) return;
-    setSelectedAttacker(null);
-    clearCardSelection();
-    clearArrowPreview();
+    clearActionModes();
     addLog('Fim de turno', 'system');
     performAction({ type: 'end-turn' });
   };
 
   const handleHeroPower = () => {
     if (!isMyTurn || isGameOver || player.heroPowerUsed || player.spirituality < 2) return;
-    performAction({ type: 'hero-power' });
+    if (targetingHeroPower) {
+      setTargetingHeroPower(false);
+      return;
+    }
+    const mode = getHeroPowerTargetMode(player.pathway);
+    if (mode === 'none') {
+      executeHeroPower();
+      return;
+    }
+    setWeaponAttackMode(false);
+    setSelectedAttacker(null);
+    clearCardSelection();
+    setTargetingHeroPower(true);
+    if (mode === 'friendly-minion') {
+      addLog(
+        player.board.length > 0
+          ? 'Tempest: clique em um minion aliado no seu campo'
+          : 'Tempest: você precisa de um minion aliado no campo',
+        'system'
+      );
+    } else {
+      addLog(`Escolha o alvo para ${pathwayInfo.powerName}`, 'system');
+    }
   };
 
   const activeImpact = impactTarget ?? (
@@ -725,15 +986,15 @@ export function BattleScreen({ onNavigate }: Props) {
         pathway={pendingHeroPower?.pathway ?? opponent.pathway}
       />
 
-      {pendingRitual && (
+      {(pendingRitual ?? playerRitual) && (
         <RitualEffect
-          cardName={pendingRitual.cardName}
-          pathway={pendingRitual.pathway}
-          targetIds={pendingRitual.targetIds}
-          targetHero={pendingRitual.targetHero}
-          isAoE={pendingRitual.isAoE}
-          isNpc={pendingRitual.isNpc}
-          phase={pendingRitual.phase}
+          cardName={(pendingRitual ?? playerRitual)!.cardName}
+          pathway={(pendingRitual ?? playerRitual)!.pathway}
+          targetIds={(pendingRitual ?? playerRitual)!.targetIds}
+          targetHero={(pendingRitual ?? playerRitual)!.targetHero}
+          isAoE={(pendingRitual ?? playerRitual)!.isAoE}
+          isNpc={(pendingRitual ?? playerRitual)!.isNpc}
+          phase={(pendingRitual ?? playerRitual)!.phase}
           showImpact={showRitualAnim}
         />
       )}
@@ -846,14 +1107,25 @@ export function BattleScreen({ onNavigate }: Props) {
           <div className="flex items-center gap-3">
             <div
               data-hero-enemy
-              className={`relative ${attackTargets?.heroValid || playTargets?.allowEnemyHero ? 'cursor-crosshair' : ''}`}
+              className={`relative ${
+                attackTargets?.heroValid ||
+                playTargets?.allowEnemyHero ||
+                (weaponAttackMode && weaponTargets?.heroValid) ||
+                (heroPowerMode && heroPowerAllowsEnemyHero(heroPowerMode, opponent))
+                  ? 'cursor-crosshair'
+                  : ''
+              }`}
               onClick={() => handleHeroClick(true)}
               onMouseEnter={() => {
                 if (selectedAttacker && attackTargets?.heroValid) setArrowTargetHero(true);
+                if (weaponAttackMode && weaponTargets?.heroValid) setArrowTargetHero(true);
               }}
               onMouseLeave={() => setArrowTargetHero(false)}
             >
-              {(selectedAttacker && attackTargets?.heroValid) || playTargets?.allowEnemyHero ? (
+              {(selectedAttacker && attackTargets?.heroValid) ||
+              playTargets?.allowEnemyHero ||
+              (weaponAttackMode && weaponTargets?.heroValid) ||
+              (heroPowerMode && heroPowerAllowsEnemyHero(heroPowerMode, opponent)) ? (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-red-400/70 shadow-red-500/40 shadow-lg z-10 pointer-events-none"
                   animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
@@ -872,7 +1144,6 @@ export function BattleScreen({ onNavigate }: Props) {
                 maxHealth={opponent.maxHealth}
                 pathway={opponent.pathway}
                 isEnemy
-                onClick={() => handleHeroClick(true)}
                 hasWeapon={!!opponent.weapon}
                 weaponAttack={opponent.weapon?.currentAttack}
                 isBeingAttacked={damagedHero === 'opponent'}
@@ -952,7 +1223,19 @@ export function BattleScreen({ onNavigate }: Props) {
 
         {/* ─── Center divider + controls ─────────────────────────────────── */}
         <div className="flex-none flex items-center justify-center py-2 px-3">
-          <div className="flex items-center gap-3 w-full max-w-sm">
+          <div className="flex flex-col items-center gap-2 w-full max-w-sm">
+            {targetingHeroPower && heroPowerMode && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[11px] text-gold-200 text-center px-3 py-1.5 rounded-lg bg-gold-900/30 border border-gold-400/40"
+              >
+                {heroPowerMode === 'friendly-minion'
+                  ? '⚡ Tempest — clique em um minion aliado no seu campo'
+                  : `Escolha o alvo para ${pathwayInfo.powerName}`}
+              </motion.p>
+            )}
+          <div className="flex items-center gap-3 w-full">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-void-600" />
 
             <div className="flex items-center gap-2">
@@ -992,6 +1275,7 @@ export function BattleScreen({ onNavigate }: Props) {
 
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-void-600" />
           </div>
+          </div>
         </div>
 
         {/* ─── Player board ──────────────────────────────────────────────── */}
@@ -1012,10 +1296,18 @@ export function BattleScreen({ onNavigate }: Props) {
           <div className="flex items-center gap-3">
             <div
               data-hero-player
-              className={`relative ${damagedHero === 'player' ? 'z-20' : ''} ${playTargets?.allowFriendlyHero ? 'cursor-crosshair' : ''}`}
+              className={`relative ${damagedHero === 'player' ? 'z-20' : ''} ${
+                playTargets?.allowFriendlyHero ||
+                (heroPowerMode && heroPowerAllowsFriendlyHero(heroPowerMode)) ||
+                (player.weapon && isMyTurn && !isGameOver && !targetingHeroPower)
+                  ? 'cursor-crosshair'
+                  : ''
+              }`}
               onClick={() => handleHeroClick(false)}
             >
-              {playTargets?.allowFriendlyHero && (
+              {(playTargets?.allowFriendlyHero ||
+                (heroPowerMode && heroPowerAllowsFriendlyHero(heroPowerMode)) ||
+                weaponAttackMode) && (
                 <motion.div
                   className="absolute inset-0 rounded-full border-2 border-green-400/70 shadow-green-500/40 shadow-lg z-10 pointer-events-none"
                   animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.05, 1] }}
@@ -1034,7 +1326,6 @@ export function BattleScreen({ onNavigate }: Props) {
                 maxHealth={player.maxHealth}
                 pathway={player.pathway}
                 isEnemy={false}
-                onClick={() => handleHeroClick(false)}
                 hasWeapon={!!player.weapon}
                 weaponAttack={player.weapon?.currentAttack}
                 isBeingAttacked={damagedHero === 'player'}
@@ -1090,6 +1381,29 @@ export function BattleScreen({ onNavigate }: Props) {
             </div>
 
             {/* Hero power */}
+            {player.weapon && isMyTurn && !isGameOver && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  if (weaponAttackMode) {
+                    setWeaponAttackMode(false);
+                    addLog('Ataque com arma cancelado', 'system');
+                  } else {
+                    startWeaponAttack();
+                  }
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`relative px-2.5 py-2 rounded-xl text-[10px] font-medium border transition-all ${
+                  weaponAttackMode
+                    ? 'ring-2 ring-yellow-400/70 border-yellow-400/50 bg-yellow-900/30 text-yellow-100'
+                    : 'border-yellow-600/50 bg-yellow-900/20 text-yellow-200 hover:bg-yellow-900/40'
+                }`}
+              >
+                <div className="font-bold text-[11px]">⚔️ {player.weapon.currentAttack}</div>
+                <div className="text-[8px] text-yellow-300/80">{player.weapon.durability} dur</div>
+              </motion.button>
+            )}
             <motion.button
               ref={heroPowerBtnRef}
               onClick={handleHeroPower}
@@ -1099,7 +1413,9 @@ export function BattleScreen({ onNavigate }: Props) {
               whileHover={isMyTurn && !player.heroPowerUsed ? { scale: 1.05 } : undefined}
               whileTap={isMyTurn && !player.heroPowerUsed ? { scale: 0.95 } : undefined}
               className={`relative px-3 py-2 rounded-xl text-[10px] font-medium border transition-all ${
-                isMyTurn && !player.heroPowerUsed && player.spirituality >= 2
+                targetingHeroPower
+                  ? 'ring-2 ring-gold-400/70 border-gold-400/50 bg-gold-900/20 text-gold-100'
+                  : isMyTurn && !player.heroPowerUsed && player.spirituality >= 2
                   ? 'border-purple-400/60 bg-purple-900/50 text-purple-200 hover:bg-purple-800/60'
                   : 'border-void-700 bg-void-900/50 text-void-500 cursor-not-allowed'
               }`}
@@ -1153,7 +1469,10 @@ export function BattleScreen({ onNavigate }: Props) {
                   <>
                     <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
                     <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
-                      {previewCard.description || 'Sem efeito especial.'}
+                      {previewCard.description ||
+                        (previewCard.type === 'sealed-artifact'
+                          ? 'Arma — equipe e clique no seu herói para atacar.'
+                          : 'Sem efeito especial.')}
                     </p>
                     {previewCard.keywords && previewCard.keywords.length > 0 && (
                       <p className="text-[9px] text-purple-300 mt-1">

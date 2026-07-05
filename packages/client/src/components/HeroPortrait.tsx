@@ -6,7 +6,7 @@ interface Props {
   maxHealth: number;
   pathway: Pathway;
   isEnemy: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   hasWeapon?: boolean;
   weaponAttack?: number;
   isBeingAttacked?: boolean;
@@ -27,27 +27,17 @@ export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, has
   const theme = PATHWAY_THEME[pathway];
   const lowHealth = health <= 10;
 
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={isEnemy ? { scale: 1.08 } : undefined}
-      whileTap={isEnemy ? { scale: 0.95 } : undefined}
-      animate={
-        isCastingPower
-          ? { scale: [1, 1.14, 1.08], boxShadow: ['0 0 0px rgba(251,146,60,0)', '0 0 24px rgba(251,146,60,0.8)', '0 0 12px rgba(251,146,60,0.5)'] }
-          : isBeingAttacked
-          ? { x: [0, -5, 5, -4, 4, 0], scale: [1, 0.94, 1] }
-          : {}
-      }
-      transition={isCastingPower ? { duration: 0.9, repeat: Infinity, repeatType: 'reverse' } : isBeingAttacked ? { duration: 0.45 } : {}}
-      className={`
-        relative w-14 h-14 rounded-full border-2 flex items-center justify-center
-        ${isEnemy ? 'border-red-600/60 hover:border-red-400' : 'border-purple-500/60'}
-        bg-gradient-to-br ${theme.color}
-        ring-2 ${theme.ring}
-        shadow-lg
-      `}
-    >
+  const className = `
+    relative w-14 h-14 rounded-full border-2 flex items-center justify-center
+    ${isEnemy ? 'border-red-600/60 hover:border-red-400' : 'border-purple-500/60'}
+    bg-gradient-to-br ${theme.color}
+    ring-2 ${theme.ring}
+    shadow-lg
+    ${onClick ? 'cursor-pointer' : ''}
+  `;
+
+  const content = (
+    <>
       <span className="text-xl drop-shadow-md">{theme.icon}</span>
 
       {/* Health bar underneath */}
@@ -77,7 +67,7 @@ export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, has
       {/* Weapon indicator */}
       {hasWeapon && (
         <motion.div
-          className="absolute -right-2 -top-1 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-800 border-2 border-yellow-400/60 flex items-center justify-center text-[10px] font-black shadow-md"
+          className="absolute -right-2 -top-1 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-800 border-2 border-yellow-400/60 flex items-center justify-center text-[10px] font-black shadow-md pointer-events-none"
           initial={{ scale: 0 }}
           animate={{ scale: 1, rotate: [0, -5, 5, 0] }}
           transition={{ type: 'spring' }}
@@ -89,11 +79,39 @@ export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, has
       {/* Low health warning */}
       {lowHealth && (
         <motion.div
-          className="absolute inset-0 rounded-full border-2 border-red-500/50"
+          className="absolute inset-0 rounded-full border-2 border-red-500/50 pointer-events-none"
           animate={{ opacity: [0.3, 0.8, 0.3] }}
           transition={{ duration: 1, repeat: Infinity }}
         />
       )}
+    </>
+  );
+
+  if (!onClick) {
+    return (
+      <div className={className}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={isEnemy ? { scale: 1.08 } : undefined}
+      whileTap={isEnemy ? { scale: 0.95 } : undefined}
+      animate={
+        isCastingPower
+          ? { scale: [1, 1.14, 1.08], boxShadow: ['0 0 0px rgba(251,146,60,0)', '0 0 24px rgba(251,146,60,0.8)', '0 0 12px rgba(251,146,60,0.5)'] }
+          : isBeingAttacked
+          ? { x: [0, -5, 5, -4, 4, 0], scale: [1, 0.94, 1] }
+          : {}
+      }
+      transition={isCastingPower ? { duration: 0.9, repeat: Infinity, repeatType: 'reverse' } : isBeingAttacked ? { duration: 0.45 } : {}}
+      className={className}
+    >
+      {content}
     </motion.button>
   );
 }

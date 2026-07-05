@@ -6,7 +6,6 @@ import {
   Deck,
   Card,
   RitualCard,
-  SpellEffect,
   createGame,
   applyAction,
   createStarterDeck,
@@ -21,6 +20,12 @@ import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { updatePreferredPathway } from '../sync/player-sync';
 import { isSupabaseConfigured } from '../lib/supabase';
+import {
+  isDamagingRitual,
+  isAoERitual,
+  ritualPathway,
+  resolveRitualTargets,
+} from '../utils/ritualTargets';
 
 export type CombatPhase = 'preview' | 'strike' | 'impact';
 
@@ -74,77 +79,6 @@ const NPC_TIMING = {
   ritualPost: 500,
   betweenActions: 700,
 } as const;
-
-function ritualPathway(card: RitualCard): Pathway {
-  return card.pathway === 'neutral' ? 'fool' : card.pathway;
-}
-
-function isDamagingRitual(card: Card): card is RitualCard {
-  return card.type === 'ritual' && card.effect.type === 'damage';
-}
-
-function isAoERitual(effect: SpellEffect): boolean {
-  return effect.target === 'all-enemies' || effect.target === 'all';
-}
-
-function resolveRitualTargets(
-  state: GameState,
-  casterId: string,
-  effect: SpellEffect,
-  explicitTarget?: string
-): { targetIds: string[]; targetHero: 'player' | 'opponent' | null } {
-  const casterIdx = state.players.findIndex((p) => p.id === casterId);
-  const opponentIdx = 1 - casterIdx;
-  const caster = state.players[casterIdx];
-  const opponent = state.players[opponentIdx];
-  const enemyHero: 'player' | 'opponent' = casterIdx === 0 ? 'opponent' : 'player';
-
-  if (effect.target === 'all-enemies') {
-    return { targetIds: opponent.board.map((m) => m.instanceId), targetHero: null };
-  }
-
-  if (effect.target === 'all') {
-    return {
-      targetIds: [...caster.board, ...opponent.board].map((m) => m.instanceId),
-      targetHero: null,
-    };
-  }
-
-  if (effect.target === 'enemy-hero') {
-    return { targetIds: [], targetHero: enemyHero };
-  }
-
-  if (effect.target === 'random-enemy') {
-    if (opponent.board.length > 0) {
-      const pick = opponent.board[Math.floor(Math.random() * opponent.board.length)];
-      return { targetIds: [pick.instanceId], targetHero: null };
-    }
-    return { targetIds: [], targetHero: enemyHero };
-  }
-
-  if (explicitTarget) {
-    const onOpponent = opponent.board.some((m) => m.instanceId === explicitTarget);
-    const onCaster = caster.board.some((m) => m.instanceId === explicitTarget);
-    if (onOpponent || onCaster) {
-      return { targetIds: [explicitTarget], targetHero: null };
-    }
-  }
-
-  if (effect.target === 'enemy' || effect.target === 'any') {
-    const pool = effect.target === 'enemy' ? opponent.board : [...opponent.board, ...caster.board];
-    const pick = [...pool].sort((a, b) => a.currentHealth - b.currentHealth)[0];
-    if (pick) return { targetIds: [pick.instanceId], targetHero: null };
-    return { targetIds: [], targetHero: enemyHero };
-  }
-
-  if (effect.target === 'friendly' || effect.target === 'friendly-hero') {
-    const pick = [...caster.board].sort((a, b) => a.currentHealth - b.currentHealth)[0];
-    if (pick) return { targetIds: [pick.instanceId], targetHero: null };
-    return { targetIds: [], targetHero: casterIdx === 0 ? 'player' : 'opponent' };
-  }
-
-  return { targetIds: [], targetHero: null };
-}
 
 /** Hero powers that deal damage to an enemy target and warrant attack-style VFX */
 function isDamagingHeroPower(pathway: Pathway): boolean {

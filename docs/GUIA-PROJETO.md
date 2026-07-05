@@ -247,11 +247,13 @@ curl https://lotm-tcg.onrender.com/health
 ### Para o jogador (passo a passo)
 
 1. Abra https://lochesystem.github.io/lotm-tcg/
-2. Escolha o **pathway** na tela inicial (define o deck starter se não houver deck salvo)
-3. Menu → **Multiplayer**
-4. **Jogador A:** clique em **Criar sala** → anote o código de 4 caracteres (ex.: `K7M2`)
-5. **Jogador B:** digite o código → **Entrar**
-6. Quando os dois enviarem o deck, a partida abre automaticamente na tela de batalha
+2. Menu → **Jogar com Amigos**
+3. **Jogador A (host):** **Criar sala** → anote o código de 4 caracteres (ex.: `K7M2`)
+4. **Jogador B (guest):** digite o código → **Entrar**
+5. Na **tela da sala**, cada um escolhe o **Pathway** e clica em **Confirmar e jogar**
+6. Quando os dois confirmarem, a partida abre na tela de batalha
+
+> O pathway da tela inicial **não** define o deck do PvP automaticamente — a escolha é feita na sala, antes da batalha.
 
 ### O que acontece por baixo dos panos
 
@@ -270,7 +272,7 @@ curl https://lotm-tcg.onrender.com/health
 |---------|--------|
 | `packages/client/src/lib/multiplayerSocket.ts` | Conexão Socket.IO singleton, create/join/send |
 | `packages/client/src/lib/initMultiplayerBridge.ts` | Liga eventos do socket ao `gameStore` e navega para batalha |
-| `packages/client/src/screens/LobbyScreen.tsx` | UI criar sala / entrar |
+| `packages/client/src/screens/LobbyScreen.tsx` | UI criar sala / entrar / escolher pathway e confirmar deck |
 | `packages/client/src/stores/gameStore.ts` | `enterOnlineBattle`, `syncOnlineState`, `performAction` online |
 | `packages/client/src/App.tsx` | Inicializa o bridge na montagem do app |
 

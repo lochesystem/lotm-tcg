@@ -133,7 +133,7 @@ interface GameStore {
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
-  startStoryBattle: (bossPathway?: Pathway) => void;
+  startStoryBattle: (bossPathway?: Pathway, playerDeckOverride?: Deck) => void;
   enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null) => void;
   syncOnlineState: (state: GameState) => void;
   applyDeferredOnlineState: () => boolean;
@@ -578,7 +578,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setActiveDeckFromCloud: (cardIds, pathway, deckId) => {
     const deck: Deck = { pathway, cards: cardIds };
-    set({ selectedPathway: pathway, deck, activeDeckId: deckId });
+    set({ deck, activeDeckId: deckId });
   },
 
   startLocalGame: () => {
@@ -606,7 +606,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ gameState: finalState, deck: playerDeck, isStoryMode: false, storyOpponentPathway: null, storyAdvancesOnWin: false });
   },
 
-  startStoryBattle: (bossPathway) => {
+  startStoryBattle: (bossPathway, playerDeckOverride) => {
     const { playerId, opponentId, selectedPathway, deck } = get();
     const storyProgress = useCollectionStore.getState().storyProgress;
     const selectable = getSelectableStoryBosses(storyProgress);
@@ -618,9 +618,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const advances = isStoryProgressionBoss(storyProgress, resolvedBoss);
 
     const playerDeck =
-      deck && deck.cards.length === 30 && deck.pathway === selectedPathway
-        ? deck
-        : createStarterDeck(selectedPathway);
+      playerDeckOverride ??
+      (deck && deck.cards.length === 30 ? deck : createStarterDeck(selectedPathway));
     const npcDeck = createStarterDeck(resolvedBoss);
 
     if (!isSupabaseConfigured || !getCurrentUserId()) {

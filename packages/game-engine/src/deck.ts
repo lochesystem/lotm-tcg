@@ -24,10 +24,6 @@ export function validateDeck(deck: Deck): DeckValidation {
       continue;
     }
 
-    if (card.pathway !== 'neutral' && card.pathway !== deck.pathway) {
-      errors.push(`Card "${card.name}" belongs to ${card.pathway}, not ${deck.pathway}`);
-    }
-
     const maxCopies = card.rarity === 'legendary' ? MAX_LEGENDARY_COPIES : MAX_COPIES;
     if (count > maxCopies) {
       errors.push(`Card "${card.name}" has ${count} copies (max ${maxCopies})`);

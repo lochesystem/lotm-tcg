@@ -15,6 +15,7 @@ import {
   type Pathway,
 } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
+import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 interface Props {
@@ -36,6 +37,7 @@ export function HomeScreen({ onNavigate }: Props) {
   const storyProgress = useCollectionStore((s) => s.storyProgress);
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showDeckSelect, setShowDeckSelect] = useState(false);
 
   const nextBoss = getCurrentStoryBoss(storyProgress);
   const storyDone = isStoryComplete(storyProgress);
@@ -60,7 +62,12 @@ export function HomeScreen({ onNavigate }: Props) {
   }, [selectedPathway, isPathwayUnlocked, setPathway]);
 
   const handleStoryBattle = () => {
-    startStoryBattle(selectedStoryBoss);
+    setShowDeckSelect(true);
+  };
+
+  const handleDeckChosen = (choice: DeckChoice) => {
+    setShowDeckSelect(false);
+    startStoryBattle(selectedStoryBoss, choice.deck);
     onNavigate('battle');
   };
 
@@ -292,6 +299,13 @@ export function HomeScreen({ onNavigate }: Props) {
       </div>
 
       <HowToPlay show={showHowToPlay} onClose={() => setShowHowToPlay(false)} />
+      <DeckSelectModal
+        show={showDeckSelect}
+        starterPathway={selectedPathway}
+        title="Modo História — escolha seu deck"
+        onSelect={handleDeckChosen}
+        onClose={() => setShowDeckSelect(false)}
+      />
       </div>
     </div>
   );

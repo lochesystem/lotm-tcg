@@ -22,6 +22,7 @@ import {
   waitForConnection,
   type RoomUpdatePayload,
 } from '../lib/multiplayerSocket';
+import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -39,7 +40,7 @@ const PATHWAY_ICONS: Record<string, string> = {
 };
 
 function resolveDeckForPathway(pathway: Pathway, savedDeck: Deck | null): Deck {
-  if (savedDeck && savedDeck.pathway === pathway && savedDeck.cards.length === 30) {
+  if (savedDeck && savedDeck.cards.length === 30) {
     return savedDeck;
   }
   return createStarterDeck(pathway);
@@ -59,15 +60,16 @@ export function LobbyScreen({ onNavigate }: Props) {
   const [opponentJoined, setOpponentJoined] = useState(false);
   const [deckSubmitted, setDeckSubmitted] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const [showDeckSelect, setShowDeckSelect] = useState(false);
+  const [pendingDeck, setPendingDeck] = useState<Deck | null>(null);
 
   const isHost = getOnlineRole() === 'host';
 
   const chosenDeck = useMemo(
-    () => resolveDeckForPathway(selectedPathway, savedDeck),
-    [selectedPathway, savedDeck],
+    () => (pendingDeck ? pendingDeck : resolveDeckForPathway(selectedPathway, savedDeck)),
+    [selectedPathway, savedDeck, pendingDeck],
   );
-  const usingSavedDeck =
-    !!savedDeck && savedDeck.pathway === selectedPathway && savedDeck.cards.length === 30;
+  const usingSavedDeck = !!pendingDeck || (!!savedDeck && savedDeck.cards.length === 30);
 
   useEffect(() => subscribeConnection(setConnected), []);
 
@@ -152,9 +154,14 @@ export function LobbyScreen({ onNavigate }: Props) {
   };
 
   const handleConfirmDeck = () => {
+    setShowDeckSelect(true);
+  };
+
+  const handleDeckChosen = (choice: DeckChoice) => {
+    setShowDeckSelect(false);
+    setPendingDeck(choice.deck);
     setError('');
-    setPathway(selectedPathway);
-    submitMultiplayerDeck(chosenDeck);
+    submitMultiplayerDeck(choice.deck);
     setDeckSubmitted(true);
     if (!opponentJoined) {
       setStatus('Deck confirmado. Aguardando oponente entrar na sala...');
@@ -237,11 +244,15 @@ export function LobbyScreen({ onNavigate }: Props) {
           <div className="w-full bg-void-800/40 border border-void-700 rounded-xl p-3">
             <p className="text-xs text-void-300">
               <span className="text-purple-300 font-semibold">Deck:</span>{' '}
-              {usingSavedDeck ? 'Seu deck salvo (30 cartas)' : 'Deck starter (30 cartas)'}
+              {deckSubmitted
+                ? `${usingSavedDeck ? 'Deck escolhido' : 'Starter'} (${chosenDeck.cards.length} cartas)`
+                : 'Escolha ao confirmar'}
             </p>
-            <p className="text-[10px] text-void-500 mt-1">
-              Pathway Power: {PATHWAYS[selectedPathway].powerName}
-            </p>
+            {deckSubmitted && (
+              <p className="text-[10px] text-void-500 mt-1">
+                Poder: {PATHWAYS[chosenDeck.pathway].powerName}
+              </p>
+            )}
           </div>
 
           {deckSubmitted ? (
@@ -261,7 +272,7 @@ export function LobbyScreen({ onNavigate }: Props) {
               whileTap={{ scale: 0.98 }}
               className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold text-lg transition-all"
             >
-              Confirmar e jogar
+              Escolher deck e jogar
             </motion.button>
           )}
 
@@ -275,6 +286,14 @@ export function LobbyScreen({ onNavigate }: Props) {
           >
             Sair da sala
           </button>
+
+          <DeckSelectModal
+            show={showDeckSelect}
+            starterPathway={selectedPathway}
+            title="Multiplayer — escolha seu deck"
+            onSelect={handleDeckChosen}
+            onClose={() => setShowDeckSelect(false)}
+          />
         </div>
       </div>
     );

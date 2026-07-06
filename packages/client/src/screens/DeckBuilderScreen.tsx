@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { useCollectionStore } from '../stores/collectionStore';
-import { getCardById, Card, Pathway, getCardsForPathway, validateDeck } from 'game-engine';
+import { getCardById, Card, Pathway, getAllCards, validateDeck, PATHWAYS } from 'game-engine';
 import { MiniCard } from '../components/MiniCard';
 import { getCurrentUserId } from '../lib/sessionContext';
 import {
@@ -23,11 +23,14 @@ function cardsFromIds(ids: string[]): Card[] {
 }
 
 export function DeckBuilderScreen({ onNavigate }: Props) {
-  const { selectedPathway, activeDeckId, setPathway, setActiveDeckFromCloud } = useGameStore();
+  const { activeDeckId, setActiveDeckFromCloud } = useGameStore();
   const ownsCard = useCollectionStore((s) => s.ownsCard);
   const getQuantity = useCollectionStore((s) => s.getQuantity);
+  const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [deckCards, setDeckCards] = useState<Card[]>([]);
   const [deckName, setDeckName] = useState('Meu Deck');
+  const [deckHeroPathway, setDeckHeroPathway] = useState<Pathway>('fool');
+  const [collectionPathwayFilter, setCollectionPathwayFilter] = useState<'all' | Pathway>('all');
   const [filterType, setFilterType] = useState<'all' | 'beyonder' | 'ritual' | 'sealed-artifact' | 'mystical-item'>('all');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -39,7 +42,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     (slot: number, slots: (DbDeck | null)[]) => {
       const deck = slots[slot];
       if (deck && deck.cards.length > 0) {
-        setPathway(deck.pathway as Pathway);
+        setDeckHeroPathway(deck.pathway as Pathway);
         setDeckName(deck.name);
         setDeckCards(cardsFromIds(deck.cards));
         if (deck.cards.length === 30) {
@@ -50,7 +53,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         setDeckCards([]);
       }
     },
-    [setPathway, setActiveDeckFromCloud]
+    [setActiveDeckFromCloud]
   );
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     setLoadingSlots(true);
     void (async () => {
       try {
-        const slots = await ensureDeckSlots(userId, useGameStore.getState().selectedPathway);
+        const slots = await ensureDeckSlots(userId, deckHeroPathway);
         setSavedSlots(slots);
         const activeSlot = slots.findIndex((d) => d?.is_active);
         const startSlot = activeSlot >= 0 ? activeSlot : 0;
@@ -99,15 +102,13 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     }
   };
 
-  const available = [
-    ...getCardsForPathway(selectedPathway),
-    ...getCardsForPathway('neutral'),
-  ].filter((c) => {
+  const available = getAllCards().filter((c) => {
     if (filterType !== 'all' && c.type !== filterType) return false;
+    if (collectionPathwayFilter !== 'all' && c.pathway !== collectionPathwayFilter) return false;
     if (isSupabaseConfigured && getCurrentUserId()) {
       return ownsCard(c.id);
     }
-    return true;
+    return c.pathway === deckHeroPathway || c.pathway === 'neutral';
   });
 
   const addCard = (card: Card) => {
@@ -132,7 +133,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     }
 
     const cardIds = deckCards.map((c) => c.id);
-    const validation = validateDeck({ pathway: selectedPathway, cards: cardIds });
+    const validation = validateDeck({ pathway: deckHeroPathway, cards: cardIds });
     if (!validation.valid) {
       setSaveMessage(validation.errors[0] ?? 'Deck inválido');
       return;
@@ -144,7 +145,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
       const saved = await saveDeckToSlot(userId, selectedSlot, {
         id: savedSlots[selectedSlot]?.id,
         name: deckName.trim() || `Deck ${selectedSlot + 1}`,
-        pathway: selectedPathway,
+        pathway: deckHeroPathway,
         cards: cardIds,
         isActive: true,
       });
@@ -173,7 +174,22 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
           <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
             Voltar
           </button>
-          <h2 className="text-lg font-bold capitalize truncate">{selectedPathway}</h2>
+          <div className="text-center min-w-0">
+            <p className="text-[10px] text-void-500 uppercase tracking-wider">Poder do deck</p>
+            <select
+              value={deckHeroPathway}
+              onChange={(e) => setDeckHeroPathway(e.target.value as Pathway)}
+              className="text-sm font-bold capitalize bg-transparent text-void-100 text-center focus:outline-none cursor-pointer"
+            >
+              {Object.values(PATHWAYS)
+                .filter((pw) => isPathwayUnlocked(pw.id as Pathway))
+                .map((pw) => (
+                  <option key={pw.id} value={pw.id} className="bg-void-900 text-void-100">
+                    {pw.name}
+                  </option>
+                ))}
+            </select>
+          </div>
           <span className={`text-sm font-bold shrink-0 ${deckCards.length === 30 ? 'text-green-400' : 'text-void-400'}`}>
             {deckCards.length}/30
           </span>
@@ -228,6 +244,36 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
             className="w-full px-3 py-2 rounded-lg bg-void-800 border border-void-600 text-sm"
             placeholder="Nome do deck"
           />
+        </div>
+
+        <div className="flex-none flex gap-1.5 px-4 pb-2 overflow-x-auto">
+          <button
+            onClick={() => setCollectionPathwayFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-[10px] font-medium whitespace-nowrap transition-all ${
+              collectionPathwayFilter === 'all'
+                ? 'bg-gold-600/30 text-gold-200 border border-gold-500/40'
+                : 'bg-void-800 text-void-400 border border-transparent'
+            }`}
+          >
+            Todas
+          </button>
+          {Object.values(PATHWAYS).map((pw) => {
+            const id = pw.id as Pathway;
+            if (!isPathwayUnlocked(id)) return null;
+            return (
+              <button
+                key={id}
+                onClick={() => setCollectionPathwayFilter(id)}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-medium whitespace-nowrap transition-all capitalize ${
+                  collectionPathwayFilter === id
+                    ? 'bg-gold-600/30 text-gold-200 border border-gold-500/40'
+                    : 'bg-void-800 text-void-400 border border-transparent'
+                }`}
+              >
+                {pw.name}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex-none flex gap-1.5 px-4 pb-3 overflow-x-auto">
@@ -312,7 +358,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
             <p className="text-xs text-center mt-2 text-void-400">{saveMessage}</p>
           )}
           {cloudEnabled && activeDeckId && savedSlots[selectedSlot]?.id === activeDeckId && (
-            <p className="text-[10px] text-center mt-1 text-green-400/80">Este deck será usado nas partidas</p>
+            <p className="text-[10px] text-center mt-1 text-green-400/80">Deck ativo — escolha na hora da batalha</p>
           )}
         </div>
       </div>

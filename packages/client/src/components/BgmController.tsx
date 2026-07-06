@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import type { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { bgmPlayer } from '../audio/bgmPlayer';
@@ -7,6 +7,26 @@ import { getHubBgmUrl, getScreenBgmUrl, resolveBattleBgmUrl } from '../audio/bgm
 interface Props {
   screen: Screen;
   enabled: boolean;
+}
+
+/** Browsers may block autoplay even when unlock was restored from a prior session. */
+function useGestureBgmPlay(play: () => void) {
+  useEffect(() => {
+    play();
+
+    const onGesture = () => play();
+    const opts = { once: true, capture: true } as const;
+
+    window.addEventListener('pointerdown', onGesture, opts);
+    window.addEventListener('touchstart', onGesture, { ...opts, passive: true });
+    window.addEventListener('keydown', onGesture, opts);
+
+    return () => {
+      window.removeEventListener('pointerdown', onGesture, opts);
+      window.removeEventListener('touchstart', onGesture);
+      window.removeEventListener('keydown', onGesture, opts);
+    };
+  }, [play]);
 }
 
 export function BgmController({ screen, enabled }: Props) {
@@ -20,36 +40,23 @@ export function BgmController({ screen, enabled }: Props) {
     bgmPlayer.restoreUnlock();
   }, []);
 
-  useEffect(() => {
+  const url =
+    screen === 'battle' && gameState
+      ? resolveBattleBgmUrl({
+          isOnline,
+          isStoryMode,
+          storyOpponentPathway,
+          opponentPathway: gameState.players.find((p) => p.id === opponentId)?.pathway,
+        })
+      : getScreenBgmUrl(screen);
+
+  const play = useCallback(() => {
     if (!enabled) return;
+    bgmPlayer.unlock();
+    bgmPlayer.play(url);
+  }, [enabled, url]);
 
-    const url =
-      screen === 'battle' && gameState
-        ? resolveBattleBgmUrl({
-            isOnline,
-            isStoryMode,
-            storyOpponentPathway,
-            opponentPathway: gameState.players.find((p) => p.id === opponentId)?.pathway,
-          })
-        : getScreenBgmUrl(screen);
-
-    const play = () => {
-      bgmPlayer.unlock();
-      bgmPlayer.play(url);
-    };
-
-    if (bgmPlayer.isUnlocked()) {
-      play();
-      return;
-    }
-
-    window.addEventListener('pointerdown', play, { once: true });
-    window.addEventListener('keydown', play, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', play);
-      window.removeEventListener('keydown', play);
-    };
-  }, [enabled, screen, gameState, isOnline, isStoryMode, storyOpponentPathway, opponentId]);
+  useGestureBgmPlay(play);
 
   return null;
 }
@@ -58,16 +65,14 @@ export function BgmController({ screen, enabled }: Props) {
 export function BgmAuthWarmup() {
   useEffect(() => {
     bgmPlayer.restoreUnlock();
-    const play = () => {
-      bgmPlayer.unlock();
-      bgmPlayer.play(getHubBgmUrl());
-    };
-    if (bgmPlayer.isUnlocked()) {
-      play();
-      return;
-    }
-    window.addEventListener('pointerdown', play, { once: true });
-    return () => window.removeEventListener('pointerdown', play);
   }, []);
+
+  const play = useCallback(() => {
+    bgmPlayer.unlock();
+    bgmPlayer.play(getHubBgmUrl());
+  }, []);
+
+  useGestureBgmPlay(play);
+
   return null;
 }

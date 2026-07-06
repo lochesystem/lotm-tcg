@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { completeTurnBannerWait, TURN_BANNER_EXIT_MS, TURN_BANNER_VISIBLE_MS } from '../constants/turnBanner';
+import { useTranslation } from '../i18n';
 
 interface Props {
   turnNumber: number;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function TurnBanner({ turnNumber, isYourTurn }: Props) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [displayTurn, setDisplayTurn] = useState(turnNumber);
   const [displayIsYours, setDisplayIsYours] = useState(isYourTurn);
@@ -100,7 +102,7 @@ export function TurnBanner({ turnNumber, isYourTurn }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15, duration: 0.25 }}
               >
-                {displayIsYours ? 'Seu Turno' : 'Turno Inimigo'}
+                {displayIsYours ? t('battle.yourTurn') : t('battle.enemyTurn')}
               </motion.h2>
               <motion.p
                 className="text-xs text-center text-white/50 mt-1 tracking-wider"
@@ -108,7 +110,7 @@ export function TurnBanner({ turnNumber, isYourTurn }: Props) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                TURNO {displayTurn}
+                {t('battle.turnLabel', { n: displayTurn })}
               </motion.p>
             </div>
           </motion.div>

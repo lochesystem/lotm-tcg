@@ -23,6 +23,7 @@ import {
   type RoomUpdatePayload,
 } from '../lib/multiplayerSocket';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
+import { useTranslation } from '../i18n';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -47,6 +48,7 @@ function resolveDeckForPathway(pathway: Pathway, savedDeck: Deck | null): Deck {
 }
 
 export function LobbyScreen({ onNavigate }: Props) {
+  const { t } = useTranslation();
   const { selectedPathway, setPathway, deck: savedDeck } = useGameStore();
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
 
@@ -78,7 +80,7 @@ export function LobbyScreen({ onNavigate }: Props) {
       if (data.players === 2) {
         setOpponentJoined(true);
         if (!deckSubmitted) {
-          setStatus('Oponente na sala! Escolha seu deck e confirme.');
+          setStatus(t('lobby.statusOpponentJoined'));
         }
       }
 
@@ -89,13 +91,13 @@ export function LobbyScreen({ onNavigate }: Props) {
         setOpponentReady(otherReady);
 
         if (deckSubmitted && otherReady) {
-          setStatus('Ambos prontos! Iniciando batalha...');
+          setStatus(t('lobby.statusBothReady'));
         } else if (deckSubmitted) {
-          setStatus('Aguardando oponente confirmar deck...');
+          setStatus(t('lobby.statusWaitingOpponentDeck'));
         }
       }
     });
-  }, [deckSubmitted]);
+  }, [deckSubmitted, t]);
 
   const resetRoomState = () => {
     clearMultiplayerSession();
@@ -112,15 +114,15 @@ export function LobbyScreen({ onNavigate }: Props) {
     setError('');
     setBusy(true);
     try {
-      setStatus('Conectando ao servidor...');
+      setStatus(t('lobby.statusConnecting'));
       await waitForConnection();
-      setStatus('Criando sala...');
+      setStatus(t('lobby.statusCreating'));
       const code = await createMultiplayerRoom();
       setActiveRoomCode(code);
       setPhase('room');
-      setStatus('Compartilhe o código e escolha seu deck.');
+      setStatus(t('lobby.statusShareAndDeck'));
     } catch (e) {
-      setError((e as Error).message || 'Falha ao criar sala');
+      setError((e as Error).message || t('lobby.errorCreateFailed'));
       setStatus('');
     } finally {
       setBusy(false);
@@ -132,21 +134,21 @@ export function LobbyScreen({ onNavigate }: Props) {
     setError('');
     setBusy(true);
     try {
-      setStatus('Conectando ao servidor...');
+      setStatus(t('lobby.statusConnecting'));
       await waitForConnection();
-      setStatus('Entrando na sala...');
+      setStatus(t('lobby.statusJoining'));
       const ok = await joinMultiplayerRoom(roomCode);
       if (!ok) {
-        setError('Sala não encontrada ou já cheia');
+        setError(t('lobby.errorRoomNotFound'));
         setStatus('');
         return;
       }
       setActiveRoomCode(roomCode.toUpperCase());
       setOpponentJoined(true);
       setPhase('room');
-      setStatus('Escolha seu deck e confirme para jogar.');
+      setStatus(t('lobby.statusChooseDeck'));
     } catch (e) {
-      setError((e as Error).message || 'Falha ao entrar na sala');
+      setError((e as Error).message || t('lobby.errorJoinFailed'));
       setStatus('');
     } finally {
       setBusy(false);
@@ -164,9 +166,9 @@ export function LobbyScreen({ onNavigate }: Props) {
     submitMultiplayerDeck(choice.deck);
     setDeckSubmitted(true);
     if (!opponentJoined) {
-      setStatus('Deck confirmado. Aguardando oponente entrar na sala...');
+      setStatus(t('lobby.statusDeckConfirmedWaiting'));
     } else {
-      setStatus('Aguardando oponente confirmar deck...');
+      setStatus(t('lobby.statusWaitingOpponentDeck'));
     }
   };
 
@@ -181,28 +183,28 @@ export function LobbyScreen({ onNavigate }: Props) {
 
         <div className="relative z-10 flex flex-col items-center gap-4 p-4 sm:p-6 max-w-lg w-full mx-auto pb-10">
           <div className="text-center w-full">
-            <h2 className="text-xl font-bold mb-1">Sala {activeRoomCode}</h2>
+            <h2 className="text-xl font-bold mb-1">{t('lobby.roomTitle', { code: activeRoomCode ?? '' })}</h2>
             {isHost && !opponentJoined && (
               <>
                 <p className="text-[10px] text-void-500 uppercase tracking-wider mb-2">
-                  Compartilhe com seu amigo
+                  {t('lobby.shareCode')}
                 </p>
                 <div className="text-4xl sm:text-5xl font-mono font-bold text-purple-300 tracking-widest">
                   {activeRoomCode}
                 </div>
                 <p className="text-xs text-amber-400/90 mt-2 animate-pulse">
-                  Aguardando oponente entrar...
+                  {t('lobby.waitingOpponentJoin')}
                 </p>
               </>
             )}
             {opponentJoined && (
-              <p className="text-xs text-green-400/90 mt-1">● Oponente conectado</p>
+              <p className="text-xs text-green-400/90 mt-1">{t('lobby.opponentConnected')}</p>
             )}
           </div>
 
           <div className="w-full">
             <p className="text-[10px] text-void-400 uppercase tracking-widest mb-2 text-center font-medium">
-              Escolha seu Pathway
+              {t('lobby.choosePathway')}
             </p>
             <div className="grid grid-cols-3 gap-2">
               {Object.values(PATHWAYS).map((pw: PathwayDefinition) => {
@@ -243,25 +245,25 @@ export function LobbyScreen({ onNavigate }: Props) {
 
           <div className="w-full bg-void-800/40 border border-void-700 rounded-xl p-3">
             <p className="text-xs text-void-300">
-              <span className="text-purple-300 font-semibold">Deck:</span>{' '}
+              <span className="text-purple-300 font-semibold">{t('lobby.deckLabel')}</span>{' '}
               {deckSubmitted
-                ? `${usingSavedDeck ? 'Deck escolhido' : 'Starter'} (${chosenDeck.cards.length} cartas)`
-                : 'Escolha ao confirmar'}
+                ? `${usingSavedDeck ? t('lobby.deckChosen') : t('lobby.starter')} (${t('lobby.cardsCount', { count: chosenDeck.cards.length })})`
+                : t('lobby.chooseOnConfirm')}
             </p>
             {deckSubmitted && (
               <p className="text-[10px] text-void-500 mt-1">
-                Poder: {PATHWAYS[chosenDeck.pathway].powerName}
+                {t('lobby.powerLabel', { name: PATHWAYS[chosenDeck.pathway].powerName })}
               </p>
             )}
           </div>
 
           {deckSubmitted ? (
             <div className="w-full text-center space-y-2">
-              <p className="text-sm text-purple-200">✓ Deck confirmado</p>
+              <p className="text-sm text-purple-200">{t('lobby.deckConfirmed')}</p>
               <p className="text-xs text-void-400">
                 {opponentReady
-                  ? 'Iniciando partida...'
-                  : 'Aguardando oponente confirmar deck...'}
+                  ? t('lobby.startingMatch')
+                  : t('lobby.waitingOpponentDeck')}
               </p>
             </div>
           ) : (
@@ -272,7 +274,7 @@ export function LobbyScreen({ onNavigate }: Props) {
               whileTap={{ scale: 0.98 }}
               className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold text-lg transition-all"
             >
-              Escolher deck e jogar
+              {t('lobby.chooseDeckAndPlay')}
             </motion.button>
           )}
 
@@ -284,13 +286,13 @@ export function LobbyScreen({ onNavigate }: Props) {
             onClick={handleCancel}
             className="text-sm text-void-500 hover:text-void-300 transition-all"
           >
-            Sair da sala
+            {t('lobby.leaveRoom')}
           </button>
 
           <DeckSelectModal
             show={showDeckSelect}
             starterPathway={selectedPathway}
-            title="Multiplayer — escolha seu deck"
+            title={t('lobby.deckSelectTitle')}
             onSelect={handleDeckChosen}
             onClose={() => setShowDeckSelect(false)}
           />
@@ -304,13 +306,13 @@ export function LobbyScreen({ onNavigate }: Props) {
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950 pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm min-w-0 px-1">
-        <h2 className="text-2xl font-bold">Multiplayer</h2>
+        <h2 className="text-2xl font-bold">{t('lobby.title')}</h2>
 
         <p className="text-[10px] text-void-500 text-center">
           {connected ? (
-            <span className="text-green-400/90">● Conectado</span>
+            <span className="text-green-400/90">{t('lobby.connected')}</span>
           ) : (
-            <span className="text-amber-400/90">○ Conectando...</span>
+            <span className="text-amber-400/90">{t('lobby.connecting')}</span>
           )}
           <span className="text-void-600 mx-1">·</span>
           <span className="break-all">{getMultiplayerServerUrl()}</span>
@@ -322,10 +324,10 @@ export function LobbyScreen({ onNavigate }: Props) {
           disabled={busy}
           className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 disabled:opacity-60 rounded-xl font-bold text-lg transition-all"
         >
-          {busy ? 'Aguarde...' : 'Criar sala'}
+          {busy ? t('common.loading') : t('lobby.createRoom')}
         </button>
 
-        <div className="text-void-500 text-sm">ou</div>
+        <div className="text-void-500 text-sm">{t('lobby.or')}</div>
 
         <div className="w-full min-w-0 flex flex-col gap-2">
           <input
@@ -336,7 +338,7 @@ export function LobbyScreen({ onNavigate }: Props) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && roomCode.length === 4 && !busy) void handleJoin();
             }}
-            placeholder="CÓDIGO"
+            placeholder={t('lobby.codePlaceholder')}
             disabled={busy}
             className="w-full min-w-0 box-border px-4 py-3 bg-void-800 border border-void-600 rounded-xl text-center text-2xl font-mono tracking-widest focus:outline-none focus:border-purple-500 disabled:opacity-60"
           />
@@ -346,7 +348,7 @@ export function LobbyScreen({ onNavigate }: Props) {
             disabled={roomCode.length !== 4 || busy}
             className="w-full py-3 bg-green-700 hover:bg-green-600 disabled:bg-void-700 disabled:text-void-500 rounded-xl font-bold transition-all"
           >
-            Entrar
+            {t('lobby.join')}
           </button>
         </div>
 
@@ -358,7 +360,7 @@ export function LobbyScreen({ onNavigate }: Props) {
           onClick={() => onNavigate('home')}
           className="text-sm text-void-500 hover:text-void-300 transition-all"
         >
-          Voltar ao menu
+          {t('lobby.backToMenu')}
         </button>
       </div>
     </div>

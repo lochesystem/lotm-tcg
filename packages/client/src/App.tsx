@@ -9,10 +9,12 @@ import { useAuthStore } from './stores/authStore';
 import { isSupabaseConfigured } from './lib/supabase';
 import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
 import { BgmController } from './components/BgmController';
+import { useTranslation } from './i18n';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
 
 export default function App() {
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>('home');
   const { status, bootstrap } = useAuthStore();
   const navigateRef = useRef(setScreen);
@@ -36,7 +38,7 @@ export default function App() {
 
       {isBooting ? (
         <div className="h-screen w-screen flex items-center justify-center bg-void-950 text-void-400 text-sm">
-          Carregando...
+          {t('common.loading')}
         </div>
       ) : showAuth ? (
         <div className="h-screen w-screen overflow-hidden bg-void-950">

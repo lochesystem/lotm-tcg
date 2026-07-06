@@ -1,53 +1,75 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Keyword } from 'game-engine';
+import { useLocaleStore } from '../i18n/localeStore';
+import { getKeywordText } from '../i18n/gameText';
 
 interface Props {
   keyword: Keyword;
   show: boolean;
 }
 
-const KEYWORD_INFO: Record<Keyword, { name: string; description: string; icon: string }> = {
+const KEYWORD_ICONS: Record<Keyword, string> = {
+  stealth: '👁️‍🗨️',
+  provoke: '🛡️',
+  corruption: '☠️',
+  divination: '🔮',
+  frenzy: '⚔️',
+  haste: '💨',
+  madness: '🌀',
+  'sequence-ascend': '⬆️',
+};
+
+const KEYWORD_FALLBACKS: Record<Keyword, { name: string; description: string }> = {
   stealth: {
-    name: 'Stealth (Furtividade)',
-    description: 'Não pode ser alvo de ataques ou habilidades até que ataque pela primeira vez.',
-    icon: '👁️‍🗨️',
+    name: 'Stealth',
+    description:
+      'Cannot be targeted by attacks or abilities until it attacks for the first time.',
   },
   provoke: {
-    name: 'Provoke (Provocar)',
-    description: 'Inimigos devem atacar este minion primeiro. Não podem atacar outros enquanto existir um Provoke.',
-    icon: '🛡️',
+    name: 'Provoke',
+    description:
+      'Enemies must attack this minion first. They cannot attack others while a Provoke minion exists.',
   },
   corruption: {
-    name: 'Corruption (Corrupção)',
-    description: 'Destrói instantaneamente qualquer minion que danificar, independente da vida restante.',
-    icon: '☠️',
+    name: 'Corruption',
+    description:
+      'Instantly destroys any minion that damages it, regardless of remaining health.',
   },
   divination: {
-    name: 'Divination (Adivinhação)',
-    description: 'Ignora completamente o primeiro dano recebido. O escudo é consumido após absorver um hit.',
-    icon: '🔮',
+    name: 'Divination',
+    description:
+      'Completely ignores the first damage received. The shield is consumed after blocking one hit.',
   },
   frenzy: {
-    name: 'Frenzy (Frenesi)',
-    description: 'Pode atacar minions inimigos no mesmo turno em que é jogado (mas NÃO o herói).',
-    icon: '⚔️',
+    name: 'Frenzy',
+    description:
+      'Can attack enemy minions on the same turn it is played (but NOT the hero).',
   },
   haste: {
-    name: 'Haste (Pressa)',
-    description: 'Pode atacar qualquer alvo imediatamente no turno em que é jogado — minions ou herói.',
-    icon: '💨',
+    name: 'Haste',
+    description:
+      'Can attack any target immediately on the turn it is played — minions or hero.',
   },
   madness: {
-    name: 'Madness (Loucura)',
-    description: 'No fim de cada turno, causa dano ao SEU herói. Poder vem com um preço.',
-    icon: '🌀',
+    name: 'Madness',
+    description: 'At the end of each turn, deals damage to YOUR hero. Power comes at a price.',
   },
   'sequence-ascend': {
-    name: 'Sequence Ascend (Ascensão)',
-    description: 'Se cumprir a condição, transforma-se em uma versão superior mais poderosa.',
-    icon: '⬆️',
+    name: 'Sequence Ascend',
+    description:
+      'If its condition is met, transforms into a more powerful upgraded version.',
   },
 };
+
+function useKeywordInfo(keyword: Keyword) {
+  const locale = useLocaleStore((s) => s.locale);
+  const fallback = KEYWORD_FALLBACKS[keyword];
+  return {
+    icon: KEYWORD_ICONS[keyword],
+    name: getKeywordText(locale, keyword, 'name', fallback.name, fallback.description),
+    description: getKeywordText(locale, keyword, 'description', fallback.name, fallback.description),
+  };
+}
 
 export function KeywordTooltip({ keyword, show }: Props) {
   return (
@@ -68,7 +90,7 @@ export function KeywordTooltip({ keyword, show }: Props) {
 }
 
 export function KeywordTooltipContent({ keyword }: { keyword: Keyword }) {
-  const info = KEYWORD_INFO[keyword];
+  const info = useKeywordInfo(keyword);
   return (
     <>
       <div className="flex items-center gap-2 mb-1.5">
@@ -80,12 +102,26 @@ export function KeywordTooltipContent({ keyword }: { keyword: Keyword }) {
   );
 }
 
+export function getLocalizedKeywordInfo(keyword: Keyword, locale: import('../i18n/types').Locale) {
+  const fallback = KEYWORD_FALLBACKS[keyword];
+  return {
+    icon: KEYWORD_ICONS[keyword],
+    name: getKeywordText(locale, keyword, 'name', fallback.name, fallback.description),
+    description: getKeywordText(locale, keyword, 'description', fallback.name, fallback.description),
+  };
+}
+
 export function getKeywordInfo(keyword: Keyword) {
-  return KEYWORD_INFO[keyword];
+  const fallback = KEYWORD_FALLBACKS[keyword];
+  return {
+    icon: KEYWORD_ICONS[keyword],
+    name: fallback.name,
+    description: fallback.description,
+  };
 }
 
 export function KeywordBadge({ keyword, onHover }: { keyword: Keyword; onHover?: (show: boolean) => void }) {
-  const info = KEYWORD_INFO[keyword];
+  const info = useKeywordInfo(keyword);
 
   return (
     <span

@@ -35,7 +35,7 @@ import {
   ritualPathway,
   resolveRitualTargets,
 } from '../utils/ritualTargets';
-import { getKeywordInfo } from '../components/KeywordTooltip';
+import { getLocalizedKeywordInfo } from '../components/KeywordTooltip';
 import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
 import { getBattlefieldUrl } from '../utils/battlefieldArt';
@@ -43,6 +43,8 @@ import { BattlefieldBackground } from '../components/BattlefieldBackground';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { recordMatch } from '../sync/player-sync';
+import { useTranslation } from '../i18n';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -69,6 +71,8 @@ const PLAYER_ATTACK_TIMING = {
 } as const;
 
 export function BattleScreen({ onNavigate }: Props) {
+  const { t, locale } = useTranslation();
+  const { cardDescription, cardType, rarity, pathwayPowerDescription, noEffect } = useLocalizedCardText();
   const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
@@ -129,7 +133,7 @@ export function BattleScreen({ onNavigate }: Props) {
     const entries: BattleLogEntry[] = [];
     const baseIndex = processedLogRef.current - newEvents.length;
     for (let i = 0; i < newEvents.length; i++) {
-      const formatted = formatGameEvent(newEvents[i], gameState, playerId, opponentId, baseIndex + i);
+      const formatted = formatGameEvent(newEvents[i], gameState, playerId, opponentId, locale, baseIndex + i);
       if (formatted) {
         entries.push({ id: ++logIdRef.current, ...formatted });
       }
@@ -137,7 +141,7 @@ export function BattleScreen({ onNavigate }: Props) {
     if (entries.length > 0) {
       setBattleLog((prev) => [...prev.slice(-40), ...entries]);
     }
-  }, [gameState, gameState?.log.length, playerId, opponentId]);
+  }, [gameState, gameState?.log.length, playerId, opponentId, locale]);
 
   useEffect(() => {
     processedLogRef.current = 0;
@@ -390,12 +394,12 @@ export function BattleScreen({ onNavigate }: Props) {
   if (!gameState) {
     return (
       <div className="h-full flex items-center justify-center flex-col gap-4">
-        <p className="text-void-400">Nenhuma partida em andamento</p>
+        <p className="text-void-400">{t('battle.noGame')}</p>
         <button
           onClick={() => onNavigate('home')}
           className="px-4 py-2 bg-purple-700 rounded-lg text-sm"
         >
-          Voltar ao Menu
+          {t('battle.backToMenu')}
         </button>
       </div>
     );
@@ -419,7 +423,7 @@ export function BattleScreen({ onNavigate }: Props) {
     }
     setShowConcedeConfirm(false);
     performAction({ type: 'concede' });
-    addLog('Você desistiu da partida', 'system');
+    addLog(t('battle.lossConceded'), 'system');
     clearCardSelection();
     setSelectedAttacker(null);
     clearArrowPreview();
@@ -478,9 +482,9 @@ export function BattleScreen({ onNavigate }: Props) {
     const buffedMinion = target ? player.board.find((m) => m.instanceId === target) : null;
     performAction(action);
     if (player.pathway === 'tyrant' && buffedMinion) {
-      addLog(`Tempest: ${buffedMinion.card.name} +1 Ataque neste turno`, 'action');
+      addLog(t('battle.actions.tempestBuff', { name: buffedMinion.card.name }), 'action');
     } else {
-      addLog(`Usou ${pathwayInfo.powerName}`, 'action');
+      addLog(t('battle.actions.usedPower', { power: pathwayInfo.powerName }), 'action');
     }
     setTargetingHeroPower(false);
     setWeaponAttackMode(false);
@@ -543,7 +547,7 @@ export function BattleScreen({ onNavigate }: Props) {
     setDamagedHero(null);
     setShowRitualAnim(false);
     setPlayerRitual(ritualBase);
-    addLog(`Lançou ${cardName}`, 'action');
+    addLog(t('battle.actions.castRitual', { name: cardName }), 'action');
 
     scheduleRitualPhase(() => {
       setPlayerRitual({ ...ritualBase, phase: 'strike' });
@@ -582,7 +586,7 @@ export function BattleScreen({ onNavigate }: Props) {
       addLog(err, 'system');
       return;
     }
-    const cardName = player.hand[handIndex]?.name ?? 'carta';
+    const cardName = player.hand[handIndex]?.name ?? t('battle.actions.defaultCard');
     const card = player.hand[handIndex];
 
     if (card && isDamagingRitual(card)) {
@@ -592,9 +596,9 @@ export function BattleScreen({ onNavigate }: Props) {
 
     performAction(action);
     if (card?.type === 'sealed-artifact') {
-      addLog(`Equipou ${cardName} — toque ⚔️ ou no herói para atacar`, 'action');
+      addLog(t('battle.actions.equippedWeapon', { name: cardName }), 'action');
     } else {
-      addLog(`Jogou ${cardName}`, 'action');
+      addLog(t('battle.actions.playedCard', { name: cardName }), 'action');
     }
     clearCardSelection();
     setSelectedAttacker(null);
@@ -619,7 +623,7 @@ export function BattleScreen({ onNavigate }: Props) {
 
     if (targetingHandIndex === index) {
       setTargetingHandIndex(null);
-      addLog('Seleção de alvo cancelada', 'system');
+      addLog(t('battle.targetCancelled'), 'system');
       return;
     }
 
@@ -633,24 +637,24 @@ export function BattleScreen({ onNavigate }: Props) {
     if (!playable) return;
 
     if (card.type === 'beyonder' && player.board.length >= 7) {
-      addLog('Tabuleiro cheio', 'system');
+      addLog(t('battle.boardFull'), 'system');
       return;
     }
     if (card.type === 'mystical-item' && player.secrets.length >= 3) {
-      addLog('Máximo de segredos atingido', 'system');
+      addLog(t('battle.maxSecrets'), 'system');
       return;
     }
 
     if (cardNeedsTarget(card)) {
       const targets = getCardPlayTargets(card, player, opponent);
       if (!targets.hasAny) {
-        addLog('Sem alvos válidos para esta carta', 'system');
+        addLog(t('battle.noValidTargets'), 'system');
         return;
       }
       setTargetingHandIndex(index);
       setSelectedAttacker(null);
       clearArrowPreview();
-      addLog(`Escolha o alvo para ${card.name}`, 'system');
+      addLog(t('battle.selectTargetForCard', { name: card.name }), 'system');
       return;
     }
 
@@ -723,8 +727,8 @@ export function BattleScreen({ onNavigate }: Props) {
     setSelectedAttacker(null);
     setTargetingHeroPower(false);
     setWeaponAttackMode(true);
-    const weaponName = player.weapon?.card.name ?? 'Arma';
-    addLog(`${weaponName} (${player.weapon?.currentAttack} atk) — escolha um alvo inimigo`, 'system');
+    const weaponName = player.weapon?.card.name ?? t('battle.actions.defaultWeapon');
+    addLog(t('battle.weaponAttackSelect', { name: weaponName, atk: player.weapon?.currentAttack ?? 0 }), 'system');
   };
 
   const handleMinionClick = (instanceId: string, isEnemy: boolean) => {
@@ -741,9 +745,9 @@ export function BattleScreen({ onNavigate }: Props) {
         );
         executeHeroPower(target);
       } else if (!isEnemy && heroPowerMode === 'friendly-minion') {
-        addLog('Tempest: escolha um minion no seu campo', 'system');
+        addLog(t('battle.tempestSelectField'), 'system');
       } else {
-        addLog('Alvo inválido para o poder', 'system');
+        addLog(t('battle.invalidPowerTarget'), 'system');
       }
       return;
     }
@@ -752,12 +756,12 @@ export function BattleScreen({ onNavigate }: Props) {
       const action: GameAction = { type: 'hero-attack', targetInstanceId: instanceId };
       const err = validateAction(gameState, playerId, action);
       if (err) {
-        addLog(formatAttackError(err, weaponTargets ?? undefined), 'system');
+        addLog(formatAttackError(err, weaponTargets ?? undefined, locale), 'system');
         return;
       }
       setWeaponAttackMode(false);
       performAction(action);
-      addLog('Atacou com a arma equipada', 'action');
+      addLog(t('battle.weaponAttack'), 'action');
       return;
     }
 
@@ -768,7 +772,7 @@ export function BattleScreen({ onNavigate }: Props) {
       if (isValidCardTarget(targets, instanceId, isEnemy)) {
         executePlayCard(targetingHandIndex, instanceId);
       } else {
-        addLog('Alvo inválido', 'system');
+        addLog(t('battle.invalidTarget'), 'system');
       }
       return;
     }
@@ -779,7 +783,7 @@ export function BattleScreen({ onNavigate }: Props) {
         const action: GameAction = { type: 'attack', attackerInstanceId: atkId, targetInstanceId: instanceId };
         const err = validateAction(gameState, playerId, action);
         if (err) {
-          addLog(formatAttackError(err, attackTargets ?? undefined), 'system');
+          addLog(formatAttackError(err, attackTargets ?? undefined, locale), 'system');
           return;
         }
         const attacker = player.board.find((m) => m.instanceId === atkId);
@@ -800,7 +804,7 @@ export function BattleScreen({ onNavigate }: Props) {
       if (minion?.canAttack && !minion.exhausted) {
         setSelectedAttacker(instanceId);
         clearArrowPreview();
-        addLog(`Selecionou ${minion.card.name} para atacar`, 'system');
+        addLog(t('battle.actions.selectedAttacker', { name: minion.card.name }), 'system');
       }
     }
   };
@@ -811,9 +815,9 @@ export function BattleScreen({ onNavigate }: Props) {
     if (targetingHeroPower && heroPowerMode) {
       if (!isEnemy && heroPowerMode === 'friendly-minion') {
         if (player.board.length === 0) {
-          addLog('Tempest: você precisa de um minion aliado no campo', 'system');
+          addLog(t('battle.tempestNeedMinion'), 'system');
         } else {
-          addLog('Tempest: clique em um minion aliado (não no herói)', 'system');
+          addLog(t('battle.tempestClickMinion'), 'system');
         }
         return;
       }
@@ -827,7 +831,7 @@ export function BattleScreen({ onNavigate }: Props) {
         );
         executeHeroPower(target);
       } else {
-        addLog('Alvo inválido para o poder', 'system');
+        addLog(t('battle.invalidPowerTarget'), 'system');
       }
       return;
     }
@@ -835,7 +839,7 @@ export function BattleScreen({ onNavigate }: Props) {
     if (!isEnemy && player.weapon && !targetingHandIndex && !targetingHeroPower) {
       if (weaponAttackMode) {
         setWeaponAttackMode(false);
-        addLog('Ataque com arma cancelado', 'system');
+        addLog(t('battle.weaponAttackCancelled'), 'system');
       } else {
         startWeaponAttack();
       }
@@ -846,12 +850,12 @@ export function BattleScreen({ onNavigate }: Props) {
       const action: GameAction = { type: 'hero-attack' };
       const err = validateAction(gameState, playerId, action);
       if (err) {
-        addLog(formatAttackError(err, weaponTargets ?? undefined), 'system');
+        addLog(formatAttackError(err, weaponTargets ?? undefined, locale), 'system');
         return;
       }
       setWeaponAttackMode(false);
       performAction(action);
-      addLog('Atacou o herói inimigo com a arma', 'action');
+      addLog(t('battle.weaponAttackHero'), 'action');
       return;
     }
 
@@ -864,7 +868,7 @@ export function BattleScreen({ onNavigate }: Props) {
       } else if (!isEnemy && targets.allowFriendlyHero) {
         executePlayCard(targetingHandIndex, player.id);
       } else {
-        addLog('Alvo inválido', 'system');
+        addLog(t('battle.invalidTarget'), 'system');
       }
       return;
     }
@@ -874,7 +878,7 @@ export function BattleScreen({ onNavigate }: Props) {
       const action: GameAction = { type: 'attack-hero', attackerInstanceId: atkId };
       const err = validateAction(gameState, playerId, action);
       if (err) {
-        addLog(formatAttackError(err, attackTargets ?? undefined), 'system');
+        addLog(formatAttackError(err, attackTargets ?? undefined, locale), 'system');
         return;
       }
       const attacker = player.board.find((m) => m.instanceId === atkId);
@@ -894,7 +898,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const handleEndTurn = () => {
     if (!isMyTurn || isGameOver) return;
     clearActionModes();
-    addLog('Fim de turno', 'system');
+    addLog(t('battle.actions.endTurn'), 'system');
     performAction({ type: 'end-turn' });
   };
 
@@ -916,12 +920,12 @@ export function BattleScreen({ onNavigate }: Props) {
     if (mode === 'friendly-minion') {
       addLog(
         player.board.length > 0
-          ? 'Tempest: clique em um minion aliado no seu campo'
-          : 'Tempest: você precisa de um minion aliado no campo',
+          ? t('battle.tempestClickAlly')
+          : t('battle.tempestNeedMinion'),
         'system'
       );
     } else {
-      addLog(`Escolha o alvo para ${pathwayInfo.powerName}`, 'system');
+      addLog(t('battle.selectTargetForPower', { name: pathwayInfo.powerName }), 'system');
     }
   };
 
@@ -979,7 +983,7 @@ export function BattleScreen({ onNavigate }: Props) {
           onClick={() => setShowConcedeConfirm(true)}
           className="absolute top-2 right-2 z-40 px-2.5 py-1 text-[10px] font-semibold text-red-400/90 hover:text-red-300 border border-red-900/50 hover:border-red-700/60 rounded-lg bg-void-950/80 backdrop-blur-sm transition-colors"
         >
-          Desistir
+          {t('battle.concede')}
         </button>
       )}
 
@@ -999,9 +1003,9 @@ export function BattleScreen({ onNavigate }: Props) {
               exit={{ scale: 0.9, y: 12 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-base font-bold text-white mb-1">Desistir da partida?</h3>
+              <h3 className="text-base font-bold text-white mb-1">{t('battle.concedeTitle')}</h3>
               <p className="text-xs text-void-400 mb-4">
-                Você perderá esta partida{isStoryMode ? ' e não avançará no modo história' : ''}.
+                {isStoryMode ? t('battle.concedeHintStory') : t('battle.concedeHint')}
               </p>
               <div className="flex gap-2">
                 <button
@@ -1009,14 +1013,14 @@ export function BattleScreen({ onNavigate }: Props) {
                   onClick={() => setShowConcedeConfirm(false)}
                   className="flex-1 py-2 rounded-lg bg-void-800 hover:bg-void-700 text-sm transition-colors"
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConcede}
                   className="flex-1 py-2 rounded-lg bg-red-900/80 hover:bg-red-800 text-sm font-semibold text-red-100 transition-colors"
                 >
-                  Desistir
+                  {t('battle.concede')}
                 </button>
               </div>
             </motion.div>
@@ -1041,7 +1045,7 @@ export function BattleScreen({ onNavigate }: Props) {
           targetHero={pendingHeroPower.targetHero}
           pathway={pendingHeroPower.pathway}
           phase={pendingHeroPower.phase}
-          powerName={pendingHeroPower.isNpc ? `Inimigo: ${pendingHeroPower.powerName}` : pendingHeroPower.powerName}
+          powerName={pendingHeroPower.isNpc ? t('battle.enemyPowerPrefix', { power: pendingHeroPower.powerName }) : pendingHeroPower.powerName}
         />
       )}
       <HeroPowerImpact
@@ -1128,11 +1132,11 @@ export function BattleScreen({ onNavigate }: Props) {
                 transition={{ delay: 0.3 }}
               >
                 {gameState.winner === playerId ? (
-                  <span className="text-gold-400">Vitória!</span>
+                  <span className="text-gold-400">{t('battle.victory')}</span>
                 ) : gameState.winner === null ? (
-                  <span className="text-void-300">Empate</span>
+                  <span className="text-void-300">{t('battle.draw')}</span>
                 ) : (
-                  <span className="text-blood-500">Derrota</span>
+                  <span className="text-blood-500">{t('battle.defeat')}</span>
                 )}
               </motion.h2>
               <motion.p
@@ -1143,15 +1147,15 @@ export function BattleScreen({ onNavigate }: Props) {
               >
                 {gameState.winner === playerId
                   ? unlockedPathway
-                    ? `Pathway ${PATHWAYS[unlockedPathway].name} desbloqueado!`
+                    ? t('battle.winPathwayUnlocked', { name: PATHWAYS[unlockedPathway].name })
                     : rewardPack
-                      ? 'Você ganhou um pacote de cartas!'
-                      : 'Seu oponente foi derrotado!'
+                      ? t('battle.winPackReward')
+                      : t('battle.winOpponentDefeated')
                   : gameState.winner === null
-                  ? 'Ambos caíram ao mesmo tempo.'
+                  ? t('battle.drawBothFallen')
                   : playerConceded
-                    ? 'Você desistiu da partida.'
-                    : 'Sua vida chegou a zero.'}
+                    ? t('battle.lossConceded')
+                    : t('battle.lossZeroHealth')}
               </motion.p>
               {gameState.winner === playerId && unlockedPathway && (
                 <motion.p
@@ -1160,7 +1164,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.6 }}
                 >
-                  🔓 {PATHWAYS[unlockedPathway].name} agora pode ser escolhido no menu.
+                  {t('battle.unlockPathwayHint', { name: PATHWAYS[unlockedPathway].name })}
                 </motion.p>
               )}
               {gameState.winner === playerId && rewardPack && (
@@ -1170,7 +1174,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.65 }}
                 >
-                  Abra o pacote para desbloquear novas cartas na coleção.
+                  {t('battle.openPackHint')}
                 </motion.p>
               )}
               <motion.button
@@ -1180,7 +1184,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
-                Voltar ao Menu
+                {t('battle.backToMenu')}
               </motion.button>
             </motion.div>
           </motion.div>
@@ -1282,7 +1286,9 @@ export function BattleScreen({ onNavigate }: Props) {
               <div className="flex items-center gap-1 px-2 py-1 bg-gold-400/10 border border-gold-400/30 rounded-lg">
                 <span className="text-xs">❓</span>
                 <span className="text-[10px] text-gold-400 font-medium">
-                  {opponent.secrets.length} segredo{opponent.secrets.length > 1 ? 's' : ''}
+                  {opponent.secrets.length === 1
+                    ? t('battle.secrets', { count: opponent.secrets.length })
+                    : t('battle.secretsPlural', { count: opponent.secrets.length })}
                 </span>
               </div>
             )}
@@ -1329,15 +1335,15 @@ export function BattleScreen({ onNavigate }: Props) {
                 className="text-[11px] text-gold-200 text-center px-3 py-1.5 rounded-lg bg-gold-900/30 border border-gold-400/40"
               >
                 {heroPowerMode === 'friendly-minion'
-                  ? '⚡ Tempest — clique em um minion aliado no seu campo'
-                  : `Escolha o alvo para ${pathwayInfo.powerName}`}
+                  ? t('battle.tempestSelectAlly')
+                  : t('battle.selectTargetForPower', { name: pathwayInfo.powerName })}
               </motion.p>
             )}
           <div className="flex items-center gap-3 w-full">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-void-600" />
 
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-void-500 font-mono">T{gameState.turn}</span>
+              <span className="text-[10px] text-void-500 font-mono">{t('battle.turnShort', { n: gameState.turn })}</span>
 
               {isMyTurn && !isGameOver && (
                 <motion.button
@@ -1346,7 +1352,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   whileTap={{ scale: 0.95 }}
                   className="px-5 py-2 bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 rounded-xl text-xs font-bold transition-all shadow-lg shadow-green-900/30 border border-green-500/30"
                 >
-                  Finalizar Turno
+                  {t('battle.endTurn')}
                 </motion.button>
               )}
               {!isMyTurn && !isGameOver && (
@@ -1356,7 +1362,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   transition={{ duration: 1.5, repeat: Infinity }}
                 >
                   <span className="text-xs text-red-300">
-                    {npcThinking ? 'Inimigo agindo...' : 'Turno inimigo...'}
+                    {npcThinking ? t('battle.opponentThinking') : t('battle.enemyTurnWaiting')}
                   </span>
                 </motion.div>
               )}
@@ -1365,7 +1371,7 @@ export function BattleScreen({ onNavigate }: Props) {
               <button
                 onClick={() => setShowLog(!showLog)}
                 className="w-8 h-8 rounded-full bg-void-800 border border-void-600 flex items-center justify-center text-xs hover:bg-void-700 transition-all"
-                title="Log de batalha"
+                title={t('battle.logTitle')}
               >
                 📜
               </button>
@@ -1463,7 +1469,7 @@ export function BattleScreen({ onNavigate }: Props) {
                     animate={{ opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                   >
-                    ⚠️ Fatigue {player.fatigueDamage > 0 ? `(-${player.fatigueDamage + 1})` : ''}
+                    ⚠️ {t('battle.fatigue')} {player.fatigueDamage > 0 ? `(-${player.fatigueDamage + 1})` : ''}
                   </motion.span>
                 )}
                 {/* Graveyard indicator */}
@@ -1485,7 +1491,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 onClick={() => {
                   if (weaponAttackMode) {
                     setWeaponAttackMode(false);
-                    addLog('Ataque com arma cancelado', 'system');
+                    addLog(t('battle.weaponAttackCancelled'), 'system');
                   } else {
                     startWeaponAttack();
                   }
@@ -1499,7 +1505,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 }`}
               >
                 <div className="font-bold text-[11px]">⚔️ {player.weapon.currentAttack}</div>
-                <div className="text-[8px] text-yellow-300/80">{player.weapon.durability} dur</div>
+                <div className="text-[8px] text-yellow-300/80">{t('battle.durability', { n: player.weapon.durability })}</div>
               </motion.button>
             )}
             <motion.button
@@ -1519,7 +1525,7 @@ export function BattleScreen({ onNavigate }: Props) {
               }`}
             >
               <div className="font-bold text-[11px]">{pathwayInfo.powerName}</div>
-              <div className="text-[8px] text-void-400">Custo: 2</div>
+              <div className="text-[8px] text-void-400">{t('battle.heroPowerCost')}</div>
             </motion.button>
             <AnchorTooltip
               anchorEl={heroPowerBtnRef.current}
@@ -1527,17 +1533,17 @@ export function BattleScreen({ onNavigate }: Props) {
               placement="top"
             >
               <p className="text-[10px] font-semibold text-purple-200 mb-1">{pathwayInfo.powerName}</p>
-              <p className="text-[10px] text-void-200 leading-relaxed">{pathwayInfo.powerDescription}</p>
+              <p className="text-[10px] text-void-200 leading-relaxed">{pathwayPowerDescription(player.pathway)}</p>
             </AnchorTooltip>
 
             {/* Fate coin */}
             {player.hasFateCoin && (
               <motion.button
-                onClick={() => { addLog('Usou Fate Coin (+1 Spirituality)', 'action'); performAction({ type: 'use-fate-coin' }); }}
+                onClick={() => { addLog(t('battle.fateCoinUsed'), 'action'); performAction({ type: 'use-fate-coin' }); }}
                 whileHover={{ scale: 1.1, rotate: 10 }}
                 whileTap={{ scale: 0.9 }}
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-gold-400 to-yellow-700 flex items-center justify-center text-sm font-bold shadow-lg border border-yellow-300/30"
-                title="Fate Coin: +1 Spirituality neste turno"
+                title={t('battle.fateCoinTitle')}
               >
                 🪙
               </motion.button>
@@ -1552,33 +1558,38 @@ export function BattleScreen({ onNavigate }: Props) {
               <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
                 {targetingHandIndex !== null ? (
                   <p className="text-[10px] text-gold-200">
-                    Escolha o alvo para <span className="font-semibold">{previewCard.name}</span>
+                    {t('battle.selectTargetForCard', { name: previewCard.name })}
                   </p>
                 ) : hoveredKeyword ? (
+                  (() => {
+                    const kwInfo = getLocalizedKeywordInfo(hoveredKeyword, locale);
+                    return (
                   <>
                     <p className="text-[11px] font-semibold text-purple-200">
-                      {getKeywordInfo(hoveredKeyword).icon} {getKeywordInfo(hoveredKeyword).name}
+                      {kwInfo.icon} {kwInfo.name}
                     </p>
                     <p className="text-[10px] text-void-200 mt-1 leading-snug">
-                      {getKeywordInfo(hoveredKeyword).description}
+                      {kwInfo.description}
                     </p>
                   </>
+                    );
+                  })()
                 ) : (
                   <>
                     <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
                     <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
-                      {previewCard.description ||
+                      {cardDescription(previewCard.description) ||
                         (previewCard.type === 'sealed-artifact'
-                          ? 'Arma — equipe e clique no seu herói para atacar.'
-                          : 'Sem efeito especial.')}
+                          ? t('battle.weaponEquipHint')
+                          : noEffect)}
                     </p>
                     {previewCard.keywords && previewCard.keywords.length > 0 && (
                       <p className="text-[9px] text-purple-300 mt-1">
-                        Passe o mouse na palavra-chave na carta para ver o significado
+                        {t('battle.hoverKeywordHint')}
                       </p>
                     )}
                     {selectedHandIndex !== null && targetingHandIndex === null && (
-                      <p className="text-[9px] text-gold-300 mt-1">Clique na carta de novo para jogar</p>
+                      <p className="text-[9px] text-gold-300 mt-1">{t('battle.clickAgainToPlay')}</p>
                     )}
                   </>
                 )}
@@ -1586,7 +1597,7 @@ export function BattleScreen({ onNavigate }: Props) {
             )}
           </div>
 
-          <div className="hand-scroll h-[8.5rem] w-full min-w-0 relative z-20" aria-label="Mão de cartas">
+          <div className="hand-scroll h-[8.5rem] w-full min-w-0 relative z-20" aria-label={t('battle.handAria')}>
             <div className="flex flex-nowrap items-end justify-center gap-1.5 w-max min-w-full px-3 pb-1 pt-2">
               <AnimatePresence mode="popLayout">
                 {player.hand.map((card, index) => {
@@ -1637,7 +1648,7 @@ export function BattleScreen({ onNavigate }: Props) {
           <>
             <motion.button
               type="button"
-              aria-label="Fechar log de batalha"
+              aria-label={t('battle.logCloseAria')}
               className="absolute inset-0 z-[44] bg-black/50 backdrop-blur-[1px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1653,7 +1664,7 @@ export function BattleScreen({ onNavigate }: Props) {
               onClick={(e) => e.stopPropagation()}
             >
             <div className="flex items-center justify-between p-3 border-b border-void-700 shrink-0">
-              <h4 className="text-xs font-bold text-void-200">Log de Batalha</h4>
+              <h4 className="text-xs font-bold text-void-200">{t('battle.log')}</h4>
               <button
                 type="button"
                 onClick={() => setShowLog(false)}
@@ -1664,7 +1675,7 @@ export function BattleScreen({ onNavigate }: Props) {
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {battleLog.length === 0 && (
-                <p className="text-[10px] text-void-600 text-center mt-4">Nenhuma ação ainda</p>
+                <p className="text-[10px] text-void-600 text-center mt-4">{t('battle.logEmpty')}</p>
               )}
               {battleLog.map((entry) => (
                 <motion.div
@@ -1694,7 +1705,7 @@ export function BattleScreen({ onNavigate }: Props) {
           <>
             <motion.button
               type="button"
-              aria-label="Fechar cemitério"
+              aria-label={t('battle.graveyardCloseAria')}
               className="absolute inset-0 z-[44] bg-black/50 backdrop-blur-[1px]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1711,7 +1722,7 @@ export function BattleScreen({ onNavigate }: Props) {
             >
             <div className="flex items-center justify-between p-3 border-b border-void-700 shrink-0">
               <h4 className="text-xs font-bold text-void-200">
-                💀 Cemitério {showGraveyard === 'player' ? '(Seu)' : '(Inimigo)'}
+                💀 {showGraveyard === 'player' ? t('battle.graveyardPlayer') : t('battle.graveyardOpponent')}
               </h4>
               <button
                 type="button"
@@ -1725,7 +1736,7 @@ export function BattleScreen({ onNavigate }: Props) {
               {(() => {
                 const graveyard = showGraveyard === 'player' ? player.graveyard : opponent.graveyard;
                 if (graveyard.length === 0) {
-                  return <p className="text-[10px] text-void-600 text-center mt-4">Cemitério vazio</p>;
+                  return <p className="text-[10px] text-void-600 text-center mt-4">{t('battle.graveyardEmpty')}</p>;
                 }
                 return (
                   <div className="space-y-1">
@@ -1740,7 +1751,7 @@ export function BattleScreen({ onNavigate }: Props) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-medium text-void-200 truncate">{card.name}</p>
-                          <p className="text-[8px] text-void-500 capitalize">{card.type.replace('-', ' ')} • {card.rarity}</p>
+                          <p className="text-[8px] text-void-500 capitalize">{cardType(card.type)} • {rarity(card.rarity)}</p>
                         </div>
                         {card.type === 'beyonder' && (
                           <div className="flex gap-1 text-[8px] flex-shrink-0">
@@ -1766,14 +1777,14 @@ export function BattleScreen({ onNavigate }: Props) {
                   >
                     <div className="flex items-center justify-between p-3 border-b border-void-700">
                       <button onClick={() => setGraveyardDetail(null)} className="text-[10px] text-void-400 hover:text-void-200">
-                        ← Voltar
+                        {t('common.back')}
                       </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4">
                       <h3 className="text-sm font-bold text-white mb-1">{graveyardDetail.name}</h3>
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-[10px] px-2 py-0.5 rounded bg-blue-900/50 text-blue-300 font-bold">
-                          Custo: {graveyardDetail.cost}
+                          {t('common.costLabel', { cost: graveyardDetail.cost })}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded capitalize ${
                           graveyardDetail.rarity === 'legendary' ? 'bg-yellow-900/50 text-yellow-300' :
@@ -1781,14 +1792,14 @@ export function BattleScreen({ onNavigate }: Props) {
                           graveyardDetail.rarity === 'rare' ? 'bg-blue-900/50 text-blue-300' :
                           'bg-void-700 text-void-300'
                         }`}>
-                          {graveyardDetail.rarity}
+                          {rarity(graveyardDetail.rarity)}
                         </span>
                       </div>
                       <p className="text-[10px] text-void-400 uppercase mb-2">
-                        {graveyardDetail.type.replace('-', ' ')} • {graveyardDetail.pathway}
+                        {cardType(graveyardDetail.type)} • {graveyardDetail.pathway}
                       </p>
                       <p className="text-xs text-void-200 leading-relaxed mb-3">
-                        {graveyardDetail.description || 'Sem efeito especial.'}
+                        {cardDescription(graveyardDetail.description) || noEffect}
                       </p>
                       {graveyardDetail.keywords && graveyardDetail.keywords.length > 0 && (
                         <div className="flex flex-wrap gap-1 mb-3">
@@ -1820,7 +1831,7 @@ export function BattleScreen({ onNavigate }: Props) {
               </AnimatePresence>
             </div>
             <div className="flex-none p-2 border-t border-void-700 text-center">
-              <span className="text-[9px] text-void-500">{(showGraveyard === 'player' ? player.graveyard : opponent.graveyard).length} carta(s)</span>
+              <span className="text-[9px] text-void-500">{t('battle.graveyardCardCount', { count: (showGraveyard === 'player' ? player.graveyard : opponent.graveyard).length })}</span>
             </div>
           </motion.div>
           </>
@@ -1839,19 +1850,19 @@ export function BattleScreen({ onNavigate }: Props) {
             <div className="bg-void-900/90 border border-green-500/40 rounded-xl px-4 py-2 shadow-lg backdrop-blur-sm">
               <p className="text-xs text-green-300 text-center">
                 {attackTargets?.hasProvoke
-                  ? `Provoke: ataque ${attackTargets.provokeNames.join(', ')} primeiro`
-                  : 'Selecione um alvo inimigo para atacar'}
+                  ? t('battle.selectTargetProvoke', { names: attackTargets.provokeNames.join(', ') })
+                  : t('battle.selectTarget')}
               </p>
               <p className="text-[9px] text-void-500 text-center mt-0.5">
                 {attackTargets?.hasProvoke
-                  ? 'Minions com 🛡️ bloqueiam ataques ao herói'
-                  : 'Toque em um minion ou no herói inimigo'}
+                  ? t('battle.selectTargetProvokeHint')
+                  : t('battle.selectTargetHint')}
               </p>
               <button
                 onClick={() => { setSelectedAttacker(null); clearArrowPreview(); }}
                 className="mt-1.5 w-full text-[10px] text-void-400 hover:text-void-200 text-center"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </motion.div>

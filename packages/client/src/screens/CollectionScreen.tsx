@@ -1,16 +1,18 @@
 import { Screen } from '../App';
-import { getAllCards, Card, Pathway } from 'game-engine';
+import { getAllCards, Card, Pathway, PATHWAYS } from 'game-engine';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCollectionStore } from '../stores/collectionStore';
 import { MiniCard, LockedMiniCard } from '../components/MiniCard';
 import { CollectionCardModal } from '../components/CollectionCardModal';
+import { useTranslation } from '../i18n';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
 }
 
 export function CollectionScreen({ onNavigate }: Props) {
+  const { t } = useTranslation();
   const [filterPathway, setFilterPathway] = useState<Pathway | 'neutral' | 'all'>('all');
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const { ownsCard, getQuantity } = useCollectionStore();
@@ -30,9 +32,9 @@ export function CollectionScreen({ onNavigate }: Props) {
         {/* Header */}
         <div className="flex-none flex items-center justify-between p-4">
           <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
-            ← Voltar
+            {t('common.back')}
           </button>
-          <h2 className="text-xl font-bold">Coleção</h2>
+          <h2 className="text-xl font-bold">{t('collection.title')}</h2>
           <div className="text-sm text-void-400">{ownedCount}/{allCards.length}</div>
         </div>
 
@@ -48,7 +50,11 @@ export function CollectionScreen({ onNavigate }: Props) {
                   : 'bg-void-800 text-void-400 hover:bg-void-700'
               }`}
             >
-              {pw === 'all' ? 'Todas' : pw.charAt(0).toUpperCase() + pw.slice(1).replace('-', ' ')}
+              {pw === 'all'
+                ? t('collection.filterAll')
+                : pw === 'neutral'
+                  ? t('collection.filterNeutral')
+                  : PATHWAYS[pw].name}
             </button>
           ))}
         </div>

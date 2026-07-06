@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getStoryChapterLabel, type Pathway } from 'game-engine';
+import { type Pathway } from 'game-engine';
+import { useTranslation } from '../i18n';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 const VISIBLE_MS = 3200;
 
@@ -10,6 +12,8 @@ interface Props {
 }
 
 export function StoryIntroBanner({ matchId, pathway }: Props) {
+  const { t } = useTranslation();
+  const { storyChapter } = useLocalizedCardText();
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -29,7 +33,7 @@ export function StoryIntroBanner({ matchId, pathway }: Props) {
           exit={{ opacity: 0, y: -8, scale: 0.97, transition: { duration: 0.45 } }}
         >
           <div className="px-4 py-1.5 rounded-full bg-purple-900/90 border border-purple-500/40 text-[10px] font-medium text-purple-100 shadow-lg shadow-purple-900/30 backdrop-blur-sm whitespace-nowrap">
-            Modo História — {getStoryChapterLabel(pathway)}
+            {t('battle.storyIntro', { chapter: storyChapter(pathway) })}
           </div>
         </motion.div>
       )}

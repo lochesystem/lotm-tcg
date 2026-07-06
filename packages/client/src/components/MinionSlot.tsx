@@ -3,6 +3,7 @@ import { motion, useAnimationControls, AnimatePresence } from 'framer-motion';
 import { MinionInstance, Keyword } from 'game-engine';
 import { KeywordTooltip } from './KeywordTooltip';
 import { CardArt } from './CardArt';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 interface Props {
   minion: MinionInstance;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarget, isBeingAttacked, onClick, onHover }: Props) {
+  const { cardDescription, noAbility } = useLocalizedCardText();
   const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showName, setShowName] = useState(true);
@@ -233,7 +235,7 @@ export function MinionSlot({ minion, isEnemy, isSelected, isTarget, isRitualTarg
           >
             <p className="text-xs font-bold mb-1 text-white">{minion.card.name}</p>
             <p className="text-[10px] text-void-300 leading-relaxed">
-              {minion.card.description || 'Sem habilidade especial.'}
+              {minion.card.description ? cardDescription(minion.card.description) : noAbility}
             </p>
             <div className="flex gap-3 mt-2 text-[10px]">
               <span className="text-yellow-400 font-semibold">⚔️ {minion.currentAttack}/{minion.card.attack}</span>

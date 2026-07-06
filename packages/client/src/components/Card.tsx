@@ -4,6 +4,8 @@ import { Card as CardType, Keyword, BeyonderCard, SealedArtifactCard } from 'gam
 import { KeywordTooltipContent, KeywordBadge } from './KeywordTooltip';
 import { AnchorTooltip } from './AnchorTooltip';
 import { CardArt } from './CardArt';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
+import { useTranslation } from '../i18n';
 
 interface Props {
   card: CardType;
@@ -43,13 +45,6 @@ const PATHWAY_GRADIENT = {
   neutral: 'from-zinc-700 via-zinc-800 to-zinc-900',
 };
 
-const TYPE_LABELS = {
-  beyonder: 'Beyonder',
-  'sealed-artifact': 'Sealed Artifact',
-  ritual: 'Ritual',
-  'mystical-item': 'Mystical Item',
-};
-
 export function CardComponent({
   card,
   playable,
@@ -65,6 +60,7 @@ export function CardComponent({
   onKeywordHover,
   small,
 }: Props) {
+  const { cardDescription } = useLocalizedCardText();
   const isPlayable = playable ?? canPlay;
   const [showDetailLocal, setShowDetailLocal] = useState(false);
   const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
@@ -184,7 +180,7 @@ export function CardComponent({
 
       <AnchorTooltip anchorEl={descAnchorRef.current} show={descHovered && !!card.description}>
         <p className="text-[8px] font-semibold text-blue-200 mb-0.5">Efeito</p>
-        <p className="text-[9px] text-void-100 leading-snug">{card.description}</p>
+        <p className="text-[9px] text-void-100 leading-snug">{cardDescription(card.description)}</p>
       </AnchorTooltip>
 
       {card.keywords?.map((kw) => (
@@ -241,7 +237,7 @@ export function CardComponent({
             onMouseEnter={(e) => { e.stopPropagation(); setDescHovered(true); }}
             onMouseLeave={() => setDescHovered(false)}
           >
-            {card.description}
+            {cardDescription(card.description)}
           </span>
         )}
 
@@ -323,12 +319,13 @@ function CardHoverPreview({ card }: { card: CardType }) {
 }
 
 function CardHoverPreviewContent({ card }: { card: CardType }) {
+  const { cardDescription } = useLocalizedCardText();
   const isWeapon = card.type === 'sealed-artifact';
   return (
     <>
       <p className="text-[11px] font-semibold text-white">{card.name}</p>
       {card.description && (
-        <p className="text-[10px] text-void-200 mt-1 leading-snug">{card.description}</p>
+        <p className="text-[10px] text-void-200 mt-1 leading-snug">{cardDescription(card.description)}</p>
       )}
       {isWeapon && (
         <p className="text-[10px] text-void-300 mt-1">
@@ -352,6 +349,9 @@ function CardHoverPreviewContent({ card }: { card: CardType }) {
 }
 
 function CardDetailOverlay({ card, onClose }: { card: CardType; onClose: () => void }) {
+  const { cardDescription, cardType, rarity: rarityLabel } = useLocalizedCardText();
+  const { t } = useTranslation();
+
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
@@ -371,7 +371,7 @@ function CardDetailOverlay({ card, onClose }: { card: CardType; onClose: () => v
           <div>
             <h3 className="text-lg font-display font-bold text-white">{card.name}</h3>
             <p className="text-xs text-void-400 capitalize mt-0.5">
-              {TYPE_LABELS[card.type]} • {card.pathway} • {card.rarity}
+              {cardType(card.type)} • {card.pathway} • {rarityLabel(card.rarity)}
             </p>
           </div>
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-bold flex-shrink-0">
@@ -415,7 +415,7 @@ function CardDetailOverlay({ card, onClose }: { card: CardType; onClose: () => v
 
         {/* Description */}
         {card.description && (
-          <p className="text-sm text-void-100 mb-3 leading-relaxed">{card.description}</p>
+          <p className="text-sm text-void-100 mb-3 leading-relaxed">{cardDescription(card.description)}</p>
         )}
 
         {/* Keywords explained */}
@@ -439,7 +439,7 @@ function CardDetailOverlay({ card, onClose }: { card: CardType; onClose: () => v
           onClick={onClose}
           className="mt-4 w-full py-2.5 bg-void-700 hover:bg-void-600 rounded-xl text-sm font-medium transition-all"
         >
-          Fechar
+          {t('common.close')}
         </button>
       </motion.div>
     </motion.div>

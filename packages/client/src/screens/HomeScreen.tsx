@@ -8,7 +8,6 @@ import {
   PATHWAYS,
   PathwayDefinition,
   getCurrentStoryBoss,
-  getStoryChapterLabel,
   getSelectableStoryBosses,
   isStoryComplete,
   isStoryProgressionBoss,
@@ -16,7 +15,10 @@ import {
 } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
+import { LocaleSwitcher } from '../components/LocaleSwitcher';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { useTranslation } from '../i18n';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -32,6 +34,8 @@ const PATHWAY_ICONS: Record<string, string> = {
 };
 
 export function HomeScreen({ onNavigate }: Props) {
+  const { t } = useTranslation();
+  const { pathwayIdentity, pathwayPowerDescription, storyChapter } = useLocalizedCardText();
   const { selectedPathway, setPathway, startStoryBattle } = useGameStore();
   const { profile, signOut } = useAuthStore();
   const storyProgress = useCollectionStore((s) => s.storyProgress);
@@ -77,6 +81,7 @@ export function HomeScreen({ onNavigate }: Props) {
   return (
     <div className="flex-1 min-h-0 screen-scroll safe-bottom">
       <div className="relative flex flex-col items-center p-4 sm:p-6 py-6 pb-10">
+      <LocaleSwitcher className="absolute top-4 right-4 z-20" />
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950 pointer-events-none" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
@@ -92,7 +97,7 @@ export function HomeScreen({ onNavigate }: Props) {
             Beyond the Veil
           </h1>
           <p className="text-void-300 text-xs tracking-[0.25em] uppercase font-medium">
-            Lord of the Mysteries TCG
+            {t('home.gameSubtitle')}
           </p>
           {isSupabaseConfigured && profile && (
             <p className="text-void-500 text-xs mt-2">@{profile.username}</p>
@@ -106,7 +111,7 @@ export function HomeScreen({ onNavigate }: Props) {
           transition={{ delay: 0.2 }}
         >
           <p className="text-[10px] text-void-400 uppercase tracking-widest mb-2 text-center font-medium">
-            Escolha seu Pathway
+            {t('home.choosePathway')}
           </p>
           <div className="grid grid-cols-3 gap-2">
             {Object.values(PATHWAYS).map((pw: PathwayDefinition) => {
@@ -131,7 +136,7 @@ export function HomeScreen({ onNavigate }: Props) {
                   {!unlocked && (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/65 backdrop-blur-[1px]">
                       <span className="text-base opacity-80">🔒</span>
-                      <span className="text-[8px] font-bold tracking-wider text-void-400 mt-0.5">LOCKED</span>
+                      <span className="text-[8px] font-bold tracking-wider text-void-400 mt-0.5">{t('home.locked')}</span>
                     </div>
                   )}
 
@@ -146,7 +151,7 @@ export function HomeScreen({ onNavigate }: Props) {
                     <span className="text-base">{PATHWAY_ICONS[pw.id]}</span>
                     <div>
                       <div className="font-bold text-xs">{pw.name}</div>
-                      <div className="text-[9px] text-void-400">{pw.identity}</div>
+                      <div className="text-[9px] text-void-400">{pathwayIdentity(pw.id as Pathway)}</div>
                     </div>
                   </div>
                 </motion.button>
@@ -162,12 +167,12 @@ export function HomeScreen({ onNavigate }: Props) {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-purple-300 font-bold">Pathway Power:</span>
+            <span className="text-purple-300 font-bold">{t('home.pathwayPower')}</span>
             <span className="text-void-200">{PATHWAYS[selectedPathway].powerName}</span>
-            <span className="text-void-500">(Custo 2)</span>
+            <span className="text-void-500">{t('home.pathwayPowerCost')}</span>
           </div>
           <p className="text-[10px] text-void-400 mt-1">
-            {PATHWAYS[selectedPathway].powerDescription}
+            {pathwayPowerDescription(selectedPathway)}
           </p>
         </motion.div>
 
@@ -178,26 +183,27 @@ export function HomeScreen({ onNavigate }: Props) {
           transition={{ delay: 0.3 }}
         >
           <p className="text-[10px] text-purple-300 uppercase tracking-wider font-semibold mb-1">
-            Modo História
+            {t('home.storyMode')}
           </p>
           {storyDone ? (
-            <p className="text-xs text-green-400">História completa! Escolha um capítulo para reviver.</p>
+            <p className="text-xs text-green-400">{t('home.storyComplete')}</p>
           ) : nextBoss ? (
             <>
-              <p className="text-xs text-void-200">{getStoryChapterLabel(nextBoss)}</p>
+              <p className="text-xs text-void-200">{storyChapter(nextBoss)}</p>
               <p className="text-[10px] text-void-500 mt-1">
-                Derrote o mestre {PATHWAYS[nextBoss].name} para avançar
                 {nextBoss === 'sun' || nextBoss === 'door' || nextBoss === 'demoness'
-                  ? ` e desbloquear ${PATHWAYS[nextBoss].name}`
-                  : ''}
-                .
+                  ? t('home.defeatBossUnlock', {
+                      name: PATHWAYS[nextBoss].name,
+                      unlockName: PATHWAYS[nextBoss].name,
+                    })
+                  : t('home.defeatBoss', { name: PATHWAYS[nextBoss].name })}
               </p>
             </>
           ) : null}
           {canPickBoss && (
             <div className="mt-3">
               <p className="text-[10px] text-void-400 uppercase tracking-wider mb-2">
-                {storyDone ? 'Escolha o oponente' : 'Capítulo'}
+                {storyDone ? t('home.pickOpponent') : t('home.chapter')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {selectableBosses.map((boss) => {
@@ -217,7 +223,7 @@ export function HomeScreen({ onNavigate }: Props) {
                       <span className="mr-1">{PATHWAY_ICONS[boss]}</span>
                       {PATHWAYS[boss].name}
                       {isCurrent && !storyDone && (
-                        <span className="ml-1 text-[8px] text-gold-400">• atual</span>
+                        <span className="ml-1 text-[8px] text-gold-400">{t('home.current')}</span>
                       )}
                     </button>
                   );
@@ -247,11 +253,11 @@ export function HomeScreen({ onNavigate }: Props) {
             whileTap={{ scale: 0.98 }}
             className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold text-lg tracking-wide transition-all shadow-lg shadow-purple-900/40 border border-purple-500/20"
           >
-            <span>Modo História</span>
+            <span>{t('home.storyModeButton')}</span>
             {(canPickBoss || (!storyDone && nextBoss)) && (
               <span className="block text-[10px] font-normal text-purple-200/80 mt-0.5">
-                vs {PATHWAYS[selectedStoryBoss].name}
-                {isReplay && ' (replay)'}
+                {t('home.vsOpponent', { name: PATHWAYS[selectedStoryBoss].name })}
+                {isReplay && ` ${t('home.replay')}`}
               </span>
             )}
           </motion.button>
@@ -261,7 +267,7 @@ export function HomeScreen({ onNavigate }: Props) {
             whileTap={{ scale: 0.98 }}
             className="w-full py-3 bg-void-800/80 border border-void-500 hover:border-purple-500 rounded-xl font-medium transition-all"
           >
-            Jogar com Amigos
+            {t('home.playWithFriends')}
           </motion.button>
           <div className="flex gap-2.5">
             <motion.button
@@ -270,7 +276,7 @@ export function HomeScreen({ onNavigate }: Props) {
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-3 bg-void-800/50 border border-void-700 hover:border-void-500 rounded-xl text-sm font-medium transition-all"
             >
-              Montar Deck
+              {t('home.buildDeck')}
             </motion.button>
             <motion.button
               onClick={() => onNavigate('collection')}
@@ -278,21 +284,21 @@ export function HomeScreen({ onNavigate }: Props) {
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-3 bg-void-800/50 border border-void-700 hover:border-void-500 rounded-xl text-sm font-medium transition-all"
             >
-              Coleção
+              {t('home.collection')}
             </motion.button>
           </div>
           <button
             onClick={() => setShowHowToPlay(true)}
             className="text-xs text-void-500 hover:text-purple-300 transition-all mt-1 underline underline-offset-2"
           >
-            Como Jogar — Regras e Tutorial
+            {t('home.howToPlayLink')}
           </button>
           {isSupabaseConfigured && (
             <button
               onClick={() => void signOut()}
               className="text-xs text-void-600 hover:text-red-400 transition-all underline underline-offset-2"
             >
-              Sair da conta
+              {t('home.signOut')}
             </button>
           )}
         </motion.div>
@@ -302,7 +308,7 @@ export function HomeScreen({ onNavigate }: Props) {
       <DeckSelectModal
         show={showDeckSelect}
         starterPathway={selectedPathway}
-        title="Modo História — escolha seu deck"
+        title={t('home.deckSelectTitle')}
         onSelect={handleDeckChosen}
         onClose={() => setShowDeckSelect(false)}
       />

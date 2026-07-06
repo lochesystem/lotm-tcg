@@ -13,6 +13,7 @@ import {
   saveDeckToSlot,
 } from '../sync/player-sync';
 import { isSupabaseConfigured, type DbDeck } from '../lib/supabase';
+import { useTranslation } from '../i18n';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -23,12 +24,13 @@ function cardsFromIds(ids: string[]): Card[] {
 }
 
 export function DeckBuilderScreen({ onNavigate }: Props) {
+  const { t } = useTranslation();
   const { activeDeckId, setActiveDeckFromCloud } = useGameStore();
   const ownsCard = useCollectionStore((s) => s.ownsCard);
   const getQuantity = useCollectionStore((s) => s.getQuantity);
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [deckCards, setDeckCards] = useState<Card[]>([]);
-  const [deckName, setDeckName] = useState('Meu Deck');
+  const [deckName, setDeckName] = useState(() => t('deck.defaultName'));
   const [deckHeroPathway, setDeckHeroPathway] = useState<Pathway>('fool');
   const [collectionPathwayFilter, setCollectionPathwayFilter] = useState<'all' | Pathway>('all');
   const [filterType, setFilterType] = useState<'all' | 'beyonder' | 'ritual' | 'sealed-artifact' | 'mystical-item'>('all');
@@ -49,11 +51,11 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
           setActiveDeckFromCloud(deck.cards, deck.pathway as Pathway, deck.id);
         }
       } else {
-        setDeckName(`Deck ${slot + 1}`);
+        setDeckName(t('deck.defaultSlotName', { n: slot + 1 }));
         setDeckCards([]);
       }
     },
-    [setActiveDeckFromCloud]
+    [setActiveDeckFromCloud, t],
   );
 
   useEffect(() => {
@@ -128,14 +130,14 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
   const handleSave = async () => {
     const userId = getCurrentUserId();
     if (!userId || !isSupabaseConfigured) {
-      setSaveMessage('Login necessário para salvar na nuvem.');
+      setSaveMessage(t('deck.loginRequiredCloud'));
       return;
     }
 
     const cardIds = deckCards.map((c) => c.id);
     const validation = validateDeck({ pathway: deckHeroPathway, cards: cardIds });
     if (!validation.valid) {
-      setSaveMessage(validation.errors[0] ?? 'Deck inválido');
+      setSaveMessage(validation.errors[0] ?? t('deck.invalidDeck'));
       return;
     }
 
@@ -144,7 +146,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
     try {
       const saved = await saveDeckToSlot(userId, selectedSlot, {
         id: savedSlots[selectedSlot]?.id,
-        name: deckName.trim() || `Deck ${selectedSlot + 1}`,
+        name: deckName.trim() || t('deck.defaultSlotName', { n: selectedSlot + 1 }),
         pathway: deckHeroPathway,
         cards: cardIds,
         isActive: true,
@@ -155,7 +157,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
       });
       setSavedSlots(nextSlots);
       setActiveDeckFromCloud(saved.cards, saved.pathway as Pathway, saved.id);
-      setSaveMessage('Deck salvo!');
+      setSaveMessage(t('deck.deckSaved'));
     } catch (e) {
       setSaveMessage((e as Error).message);
     } finally {
@@ -172,10 +174,10 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         <div className="flex-none flex items-center justify-between p-4 gap-2">
           <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
-            Voltar
+            {t('deck.back')}
           </button>
           <div className="text-center min-w-0">
-            <p className="text-[10px] text-void-500 uppercase tracking-wider">Poder do deck</p>
+            <p className="text-[10px] text-void-500 uppercase tracking-wider">{t('deck.deckPower')}</p>
             <select
               value={deckHeroPathway}
               onChange={(e) => setDeckHeroPathway(e.target.value as Pathway)}
@@ -197,7 +199,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
 
         {cloudEnabled && (
           <div className="flex-none px-4 pb-2">
-            <p className="text-[10px] text-void-500 uppercase tracking-wider mb-1.5">Seus decks na nuvem</p>
+            <p className="text-[10px] text-void-500 uppercase tracking-wider mb-1.5">{t('deck.cloudDecks')}</p>
             <div className="grid grid-cols-3 gap-1.5">
               {Array.from({ length: DECK_SLOT_COUNT }, (_, slot) => {
                 const saved = savedSlots[slot];
@@ -218,16 +220,16 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
                     } ${loadingSlots ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold text-void-200">Slot {slot + 1}</span>
+                      <span className="text-[10px] font-bold text-void-200">{t('deck.slot', { n: slot + 1 })}</span>
                       {isInUse && (
-                        <span className="text-[8px] font-semibold text-green-400 uppercase">Em uso</span>
+                        <span className="text-[8px] font-semibold text-green-400 uppercase">{t('deck.inUse')}</span>
                       )}
                     </div>
                     <p className="text-[9px] text-void-300 truncate mt-0.5">
-                      {saved?.name ?? 'Vazio'}
+                      {saved?.name ?? t('deck.empty')}
                     </p>
                     <p className="text-[8px] text-void-500 mt-0.5">
-                      {cardCount > 0 ? `${cardCount}/30 cartas` : 'Sem cartas'}
+                      {cardCount > 0 ? t('deck.cardCount', { count: cardCount }) : t('deck.noCards')}
                     </p>
                   </button>
                 );
@@ -242,7 +244,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
             className="w-full px-3 py-2 rounded-lg bg-void-800 border border-void-600 text-sm"
-            placeholder="Nome do deck"
+            placeholder={t('deck.namePlaceholder')}
           />
         </div>
 
@@ -255,7 +257,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
                 : 'bg-void-800 text-void-400 border border-transparent'
             }`}
           >
-            Todas
+            {t('deck.filterAll')}
           </button>
           {Object.values(PATHWAYS).map((pw) => {
             const id = pw.id as Pathway;
@@ -277,17 +279,17 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         </div>
 
         <div className="flex-none flex gap-1.5 px-4 pb-3 overflow-x-auto">
-          {(['all', 'beyonder', 'ritual', 'sealed-artifact', 'mystical-item'] as const).map((t) => (
+          {(['all', 'beyonder', 'ritual', 'sealed-artifact', 'mystical-item'] as const).map((cardType) => (
             <button
-              key={t}
-              onClick={() => setFilterType(t)}
+              key={cardType}
+              onClick={() => setFilterType(cardType)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                filterType === t
+                filterType === cardType
                   ? 'bg-purple-700 text-purple-100'
                   : 'bg-void-800 text-void-400 hover:bg-void-700'
               }`}
             >
-              {t === 'all' ? 'Todas' : t.replace('-', ' ')}
+              {cardType === 'all' ? t('deck.filterAll') : t(`cardTypes.${cardType}`)}
             </button>
           ))}
         </div>
@@ -325,9 +327,9 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
           </div>
 
           <div className="w-36 border-l border-void-700 overflow-y-auto px-2 py-2">
-            <div className="text-xs text-void-400 mb-2 text-center">Seu deck</div>
+            <div className="text-xs text-void-400 mb-2 text-center">{t('deck.yourDeck')}</div>
             {deckCards.length === 0 ? (
-              <p className="text-xs text-void-600 text-center">Toque nas cartas</p>
+              <p className="text-xs text-void-600 text-center">{t('deck.tapCards')}</p>
             ) : (
               <div className="flex flex-col gap-0.5">
                 {deckCards.map((card, i) => (
@@ -352,13 +354,13 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
             disabled={saving || deckCards.length !== 30 || !cloudEnabled}
             className="w-full py-3 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 rounded-xl font-bold text-sm"
           >
-            {saving ? 'Salvando...' : cloudEnabled ? 'Salvar deck na nuvem' : 'Login necessário para salvar'}
+            {saving ? t('deck.saving') : cloudEnabled ? t('deck.saveCloud') : t('deck.loginRequiredSave')}
           </button>
           {saveMessage && (
             <p className="text-xs text-center mt-2 text-void-400">{saveMessage}</p>
           )}
           {cloudEnabled && activeDeckId && savedSlots[selectedSlot]?.id === activeDeckId && (
-            <p className="text-[10px] text-center mt-1 text-green-400/80">Deck ativo — escolha na hora da batalha</p>
+            <p className="text-[10px] text-center mt-1 text-green-400/80">{t('deck.deckActive')}</p>
           )}
         </div>
       </div>

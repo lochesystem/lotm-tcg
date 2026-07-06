@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../stores/authStore';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { useTranslation } from '../i18n';
 
 export function AuthScreen() {
+  const { t } = useTranslation();
   const { signIn, signUp, error } = useAuthStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -21,7 +23,7 @@ export function AuthScreen() {
         await signIn(email.trim(), password);
       } else {
         if (!username.trim()) {
-          setLocalError('Escolha um nome de usuário.');
+          setLocalError(t('auth.chooseUsername'));
           return;
         }
         await signUp(email.trim(), password, username.trim());
@@ -37,8 +39,8 @@ export function AuthScreen() {
     return (
       <div className="h-full flex items-center justify-center p-6 bg-void-950">
         <div className="max-w-sm text-center text-void-400 text-sm">
-          <p className="mb-2 text-void-200 font-medium">Supabase não configurado</p>
-          <p>Defina <code className="text-purple-300">VITE_SUPABASE_URL</code> e <code className="text-purple-300">VITE_SUPABASE_ANON_KEY</code> no arquivo <code>.env</code> para login na nuvem.</p>
+          <p className="mb-2 text-void-200 font-medium">{t('auth.supabaseNotConfiguredTitle')}</p>
+          <p>{t('auth.supabaseNotConfiguredHint')}</p>
         </div>
       </div>
     );
@@ -54,8 +56,8 @@ export function AuthScreen() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl font-display font-bold text-center text-gold-400 mb-1">Beyond the Veil</h1>
-        <p className="text-center text-xs text-void-400 mb-6">Entre para salvar sua coleção na nuvem</p>
+        <h1 className="text-2xl font-display font-bold text-center text-gold-400 mb-1">{t('auth.title')}</h1>
+        <p className="text-center text-xs text-void-400 mb-6">{t('auth.subtitle')}</p>
 
         <div className="flex gap-2 mb-4">
           <button
@@ -63,20 +65,20 @@ export function AuthScreen() {
             onClick={() => setMode('login')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium ${mode === 'login' ? 'bg-purple-700 text-white' : 'bg-void-800 text-void-400'}`}
           >
-            Entrar
+            {t('auth.loginTab')}
           </button>
           <button
             type="button"
             onClick={() => setMode('register')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium ${mode === 'register' ? 'bg-purple-700 text-white' : 'bg-void-800 text-void-400'}`}
           >
-            Cadastrar
+            {t('auth.registerTab')}
           </button>
         </div>
 
         {mode === 'register' && (
           <label className="block mb-3">
-            <span className="text-xs text-void-400">Usuário</span>
+            <span className="text-xs text-void-400">{t('auth.usernameLabel')}</span>
             <input
               type="text"
               value={username}
@@ -88,7 +90,7 @@ export function AuthScreen() {
         )}
 
         <label className="block mb-3">
-          <span className="text-xs text-void-400">E-mail</span>
+          <span className="text-xs text-void-400">{t('auth.emailLabel')}</span>
           <input
             type="email"
             value={email}
@@ -100,7 +102,7 @@ export function AuthScreen() {
         </label>
 
         <label className="block mb-4">
-          <span className="text-xs text-void-400">Senha</span>
+          <span className="text-xs text-void-400">{t('auth.passwordLabel')}</span>
           <input
             type="password"
             value={password}
@@ -121,7 +123,7 @@ export function AuthScreen() {
           disabled={loading}
           className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl font-bold text-sm disabled:opacity-50"
         >
-          {loading ? 'Aguarde...' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+          {loading ? t('auth.waiting') : mode === 'login' ? t('auth.submitLogin') : t('auth.submitRegister')}
         </button>
       </motion.form>
     </div>

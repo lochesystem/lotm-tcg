@@ -1,10 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '../i18n';
 
 interface Props {
   cardName: string | null;
 }
 
 export function NpcPlayReveal({ cardName }: Props) {
+  const { t } = useTranslation();
+
   return (
     <AnimatePresence>
       {cardName && (
@@ -17,7 +20,7 @@ export function NpcPlayReveal({ cardName }: Props) {
         >
           <div className="px-5 py-3 rounded-xl bg-red-950/95 border border-red-500/50 shadow-xl shadow-red-900/40 backdrop-blur-sm">
             <p className="text-[10px] text-red-300/80 uppercase tracking-widest text-center mb-0.5">
-              Inimigo joga
+              {t('battle.enemyPlays')}
             </p>
             <p className="text-sm font-bold text-white text-center whitespace-nowrap">
               {cardName}

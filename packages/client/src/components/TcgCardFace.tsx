@@ -1,6 +1,7 @@
 import { Card, BeyonderCard, SealedArtifactCard } from 'game-engine';
 import { CardArt } from './CardArt';
 import { KeywordBadge } from './KeywordTooltip';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 const RARITY_STYLES = {
   common: { border: 'border-void-500', frame: 'from-void-700 to-void-900', glow: '' },
@@ -19,13 +20,6 @@ const PATHWAY_GRADIENT: Record<string, string> = {
   neutral: 'from-zinc-600 via-zinc-800 to-zinc-950',
 };
 
-const TYPE_LABELS: Record<Card['type'], string> = {
-  beyonder: 'Beyonder',
-  'sealed-artifact': 'Sealed Artifact',
-  ritual: 'Ritual',
-  'mystical-item': 'Mystical Item',
-};
-
 const TYPE_ICONS: Record<Card['type'], string> = {
   beyonder: '⚔',
   ritual: '✦',
@@ -40,6 +34,7 @@ interface Props {
 }
 
 export function TcgCardFace({ card, className = '', showLockedBanner = false }: Props) {
+  const { cardDescription, cardType, rarity: rarityLabel, noEffect } = useLocalizedCardText();
   const rarity = RARITY_STYLES[card.rarity];
   const gradient = PATHWAY_GRADIENT[card.pathway];
   const isBeyonder = card.type === 'beyonder';
@@ -64,7 +59,7 @@ export function TcgCardFace({ card, className = '', showLockedBanner = false }: 
 
           <div className="absolute top-1.5 right-1.5 z-20 flex items-center gap-1">
             <span className="text-[9px] uppercase tracking-wider font-semibold text-white/70 bg-black/45 px-1.5 py-0.5 rounded border border-white/10">
-              {TYPE_ICONS[card.type]} {TYPE_LABELS[card.type]}
+              {TYPE_ICONS[card.type]} {cardType(card.type)}
             </span>
           </div>
 
@@ -85,13 +80,13 @@ export function TcgCardFace({ card, className = '', showLockedBanner = false }: 
               {card.name}
             </h3>
             <p className="text-[8px] text-center text-void-400 uppercase tracking-widest mt-0.5 capitalize">
-              {card.pathway.replace('-', ' ')} • {card.rarity}
+              {card.pathway.replace('-', ' ')} • {rarityLabel(card.rarity)}
             </p>
           </div>
 
           <div className="max-h-24 overflow-y-auto">
             <p className="text-[10px] text-void-100 leading-snug text-center">
-              {card.description || 'Sem efeito especial.'}
+              {card.description ? cardDescription(card.description) : noEffect}
             </p>
 
             {card.keywords && card.keywords.length > 0 && (

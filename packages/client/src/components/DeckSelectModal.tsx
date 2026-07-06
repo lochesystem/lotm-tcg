@@ -10,6 +10,7 @@ import { DECK_SLOT_COUNT, ensureDeckSlots } from '../sync/player-sync';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { isSupabaseConfigured, type DbDeck } from '../lib/supabase';
 import { useCollectionStore } from '../stores/collectionStore';
+import { useTranslation } from '../i18n';
 
 const PATHWAY_ICONS: Record<string, string> = {
   fool: '🎭',
@@ -43,6 +44,7 @@ function dbDeckToChoice(deck: DbDeck): DeckChoice {
 }
 
 export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose }: Props) {
+  const { t } = useTranslation();
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [customDecks, setCustomDecks] = useState<DbDeck[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,7 +73,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
 
   const starterChoice: DeckChoice = {
     deck: createStarterDeck(starterPathway),
-    label: `Starter — ${PATHWAYS[starterPathway].name}`,
+    label: t('deckSelect.starterLabel', { name: PATHWAYS[starterPathway].name }),
     kind: 'starter',
   };
 
@@ -90,7 +92,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
             type="button"
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t('deckSelect.closeAria')}
           />
 
           <motion.div
@@ -101,10 +103,10 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
           >
             <div className="p-4 border-b border-void-700">
               <h3 className="text-lg font-bold text-void-100">
-                {title ?? 'Escolha seu deck'}
+                {title ?? t('deckSelect.defaultTitle')}
               </h3>
               <p className="text-xs text-void-400 mt-1">
-                Deck predefinido do pathway ou um dos seus decks salvos
+                {t('deckSelect.subtitle')}
               </p>
             </div>
 
@@ -113,23 +115,23 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
                 <DeckOptionButton
                   choice={starterChoice}
                   icon={PATHWAY_ICONS[starterPathway]}
-                  subtitle={`Poder: ${PATHWAYS[starterPathway].powerName}`}
+                  subtitle={t('deckSelect.powerSubtitle', { name: PATHWAYS[starterPathway].powerName })}
                   onSelect={onSelect}
                 />
               ) : (
                 <p className="text-xs text-void-500 text-center py-2">
-                  Pathway {PATHWAYS[starterPathway].name} bloqueado
+                  {t('deckSelect.pathwayLocked', { name: PATHWAYS[starterPathway].name })}
                 </p>
               )}
 
               {loading && (
-                <p className="text-xs text-void-500 text-center py-2">Carregando decks...</p>
+                <p className="text-xs text-void-500 text-center py-2">{t('deckSelect.loadingDecks')}</p>
               )}
 
               {!loading && customDecks.length > 0 && (
                 <>
                   <p className="text-[10px] text-void-500 uppercase tracking-wider mt-2 mb-1">
-                    Seus decks
+                    {t('deckSelect.yourDecks')}
                   </p>
                   {customDecks.map((saved) => {
                     const pw = saved.pathway as Pathway;
@@ -138,8 +140,8 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
                         key={saved.id}
                         choice={dbDeckToChoice(saved)}
                         icon={PATHWAY_ICONS[pw] ?? '🃏'}
-                        subtitle={`Poder: ${PATHWAYS[pw]?.powerName ?? saved.pathway} • ${saved.cards.length}/30`}
-                        badge={saved.is_active ? 'Em uso' : undefined}
+                        subtitle={`${t('deckSelect.powerSubtitle', { name: PATHWAYS[pw]?.powerName ?? saved.pathway })} • ${saved.cards.length}/30`}
+                        badge={saved.is_active ? t('deckSelect.inUse') : undefined}
                         onSelect={onSelect}
                       />
                     );
@@ -149,7 +151,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
 
               {!loading && isSupabaseConfigured && getCurrentUserId() && customDecks.length === 0 && (
                 <p className="text-xs text-void-500 text-center py-2">
-                  Nenhum deck custom salvo com 30 cartas. Monte um em &quot;Montar Deck&quot;.
+                  {t('deckSelect.noCustomDecks')}
                 </p>
               )}
             </div>
@@ -160,7 +162,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
                 onClick={onClose}
                 className="w-full py-2.5 text-sm text-void-400 hover:text-void-200 transition-colors"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
             </div>
           </motion.div>

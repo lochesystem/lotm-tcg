@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Card } from 'game-engine';
 import { TcgCardFace } from './TcgCardFace';
+import { useTranslation } from '../i18n';
 
 interface Props {
   card: Card;
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function CollectionCardModal({ card, owned, quantity, onClose }: Props) {
+  const { t } = useTranslation();
+
   return (
     <motion.div
       className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
@@ -32,9 +35,11 @@ export function CollectionCardModal({ card, owned, quantity, onClose }: Props) {
 
         <div className="w-full rounded-xl border border-void-600/80 bg-void-900/90 px-4 py-3 text-center backdrop-blur-sm">
           {owned ? (
-            <p className="text-sm text-green-400 font-medium">✓ Possui x{quantity}</p>
+            <p className="text-sm text-green-400 font-medium">
+              {t('collection.owned', { quantity })}
+            </p>
           ) : (
-            <p className="text-sm text-void-400">Não adquirida — ganhe packs para desbloquear</p>
+            <p className="text-sm text-void-400">{t('collection.notOwned')}</p>
           )}
         </div>
 
@@ -43,7 +48,7 @@ export function CollectionCardModal({ card, owned, quantity, onClose }: Props) {
           onClick={onClose}
           className="text-xs text-void-500 hover:text-void-300 transition-colors py-1"
         >
-          Fechar
+          {t('common.close')}
         </button>
       </motion.div>
     </motion.div>

@@ -1,4 +1,6 @@
 import { MinionInstance, PlayerState } from 'game-engine';
+import type { Locale } from '../i18n/types';
+import { translate } from '../i18n/useTranslation';
 
 export interface AttackTargetInfo {
   heroValid: boolean;
@@ -29,12 +31,16 @@ export function isValidMinionTarget(minion: MinionInstance, targets: AttackTarge
   return targets.validMinionIds.has(minion.instanceId);
 }
 
-export function formatAttackError(error: string, targets?: AttackTargetInfo): string {
+export function formatAttackError(
+  error: string,
+  targets: AttackTargetInfo | undefined,
+  locale: Locale,
+): string {
   if (error.includes('Provoke') && targets?.hasProvoke) {
     const names = targets.provokeNames.join(', ');
-    return `Provoke: ataque ${names} primeiro (🛡️)`;
+    return translate(locale, 'battle.combat.provoke', { names });
   }
-  if (error.includes('stealth')) return 'Não pode atacar minion com Stealth';
-  if (error === 'Cannot attack') return 'Este minion não pode atacar agora';
+  if (error.includes('stealth')) return translate(locale, 'battle.combat.stealth');
+  if (error === 'Cannot attack') return translate(locale, 'battle.combat.cannotAttack');
   return error;
 }

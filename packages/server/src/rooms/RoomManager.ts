@@ -6,6 +6,8 @@ export interface Room {
   guestSocketId: string | null;
   hostDeck: Deck | null;
   guestDeck: Deck | null;
+  hostDisplayName: string | null;
+  guestDisplayName: string | null;
   hostReady: boolean;
   guestReady: boolean;
   gameState: GameState | null;
@@ -46,6 +48,8 @@ export class RoomManager {
       guestSocketId: null,
       hostDeck: null,
       guestDeck: null,
+      hostDisplayName: null,
+      guestDisplayName: null,
       hostReady: false,
       guestReady: false,
       gameState: null,
@@ -79,16 +83,18 @@ export class RoomManager {
     return this.rooms.size;
   }
 
-  setDeck(socketId: string, deck: Deck): boolean {
+  setDeck(socketId: string, deck: Deck, displayName?: string): boolean {
     const room = this.getRoomBySocket(socketId);
     if (!room) return false;
 
     if (socketId === room.hostSocketId) {
       room.hostDeck = deck;
       room.hostReady = true;
+      if (displayName) room.hostDisplayName = displayName;
     } else if (socketId === room.guestSocketId) {
       room.guestDeck = deck;
       room.guestReady = true;
+      if (displayName) room.guestDisplayName = displayName;
     }
     return true;
   }

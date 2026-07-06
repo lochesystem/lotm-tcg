@@ -16,6 +16,7 @@ import {
 import { HowToPlay } from '../components/HowToPlay';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
 import { OptionsModal } from '../components/OptionsModal';
+import { ProfileModal } from '../components/ProfileModal';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useTranslation } from '../i18n';
 import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
@@ -43,6 +44,7 @@ export function HomeScreen({ onNavigate }: Props) {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showDeckSelect, setShowDeckSelect] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const nextBoss = getCurrentStoryBoss(storyProgress);
   const storyDone = isStoryComplete(storyProgress);
@@ -109,7 +111,13 @@ export function HomeScreen({ onNavigate }: Props) {
             {t('home.gameSubtitle')}
           </p>
           {isSupabaseConfigured && profile && (
-            <p className="text-void-500 text-xs mt-2">@{profile.username}</p>
+            <button
+              type="button"
+              onClick={() => setShowProfile(true)}
+              className="text-void-500 text-xs mt-2 hover:text-purple-300 transition-colors underline underline-offset-2"
+            >
+              @{profile.username}
+            </button>
           )}
         </motion.div>
 
@@ -314,7 +322,12 @@ export function HomeScreen({ onNavigate }: Props) {
       </div>
 
       <HowToPlay show={showHowToPlay} onClose={() => setShowHowToPlay(false)} />
-      <OptionsModal show={showOptions} onClose={() => setShowOptions(false)} />
+      <OptionsModal
+        show={showOptions}
+        onClose={() => setShowOptions(false)}
+        onOpenProfile={() => setShowProfile(true)}
+      />
+      <ProfileModal show={showProfile} onClose={() => setShowProfile(false)} />
       <DeckSelectModal
         show={showDeckSelect}
         starterPathway={selectedPathway}

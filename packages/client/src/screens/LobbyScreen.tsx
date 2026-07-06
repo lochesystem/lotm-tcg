@@ -10,6 +10,7 @@ import {
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { useCollectionStore } from '../stores/collectionStore';
+import { useAuthStore } from '../stores/authStore';
 import {
   clearMultiplayerSession,
   createMultiplayerRoom,
@@ -50,6 +51,7 @@ function resolveDeckForPathway(pathway: Pathway, savedDeck: Deck | null): Deck {
 export function LobbyScreen({ onNavigate }: Props) {
   const { t } = useTranslation();
   const { selectedPathway, setPathway, deck: savedDeck } = useGameStore();
+  const profile = useAuthStore((s) => s.profile);
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
 
   const [phase, setPhase] = useState<LobbyPhase>('menu');
@@ -163,7 +165,7 @@ export function LobbyScreen({ onNavigate }: Props) {
     setShowDeckSelect(false);
     setPendingDeck(choice.deck);
     setError('');
-    submitMultiplayerDeck(choice.deck);
+    submitMultiplayerDeck(choice.deck, profile?.username);
     setDeckSubmitted(true);
     if (!opponentJoined) {
       setStatus(t('lobby.statusDeckConfirmedWaiting'));

@@ -115,6 +115,7 @@ interface GameStore {
   activeDeckId: string | null;
   isOnline: boolean;
   roomCode: string | null;
+  opponentDisplayName: string | null;
   npcTier: number;
   isStoryMode: boolean;
   storyOpponentPathway: Pathway | null;
@@ -134,7 +135,7 @@ interface GameStore {
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
   startStoryBattle: (bossPathway?: Pathway, playerDeckOverride?: Deck) => void;
-  enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null) => void;
+  enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null, opponentDisplayName: string) => void;
   syncOnlineState: (state: GameState) => void;
   applyDeferredOnlineState: () => boolean;
   shiftRemoteOpponentAnim: () => void;
@@ -543,6 +544,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   activeDeckId: null,
   isOnline: false,
   roomCode: null,
+  opponentDisplayName: null,
   npcTier: 1,
   isStoryMode: false,
   storyOpponentPathway: null,
@@ -646,13 +648,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  enterOnlineBattle: (state, role, roomCode) => {
+  enterOnlineBattle: (state, role, roomCode, opponentDisplayName) => {
     set({
       gameState: state,
       playerId: role,
       opponentId: role === 'host' ? 'guest' : 'host',
       isOnline: true,
       roomCode,
+      opponentDisplayName,
       isStoryMode: false,
       storyOpponentPathway: null,
       storyAdvancesOnWin: false,
@@ -845,6 +848,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       opponentId: 'npc-1',
       isOnline: false,
       roomCode: null,
+      opponentDisplayName: null,
       isStoryMode: false,
       storyOpponentPathway: null,
       storyAdvancesOnWin: false,

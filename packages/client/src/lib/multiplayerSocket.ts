@@ -12,7 +12,7 @@ export interface RoomUpdatePayload {
   guestReady?: boolean;
 }
 
-type GameStartListener = (state: GameState, role: OnlineRole) => void;
+type GameStartListener = (state: GameState, role: OnlineRole, opponentDisplayName: string) => void;
 type GameStateListener = (state: GameState) => void;
 type RoomUpdateListener = (data: RoomUpdatePayload) => void;
 type ConnectionListener = (connected: boolean) => void;
@@ -42,9 +42,26 @@ function ensureSocket(): Socket {
   socket.on('disconnect', () => emitConnection(false));
 
   socket.on('game-start', (raw: unknown) => {
-    const state = deserializeState(raw);
     const role = onlineRole ?? 'host';
-    for (const listener of gameStartListeners) listener(state, role);
+    let state: GameState;
+    let hostDisplayName = 'Host';
+    let guestDisplayName = 'Guest';
+
+    if (raw && typeof raw === 'object' && raw !== null && 'state' in raw) {
+      const payload = raw as {
+        state: unknown;
+        hostDisplayName?: string;
+        guestDisplayName?: string;
+      };
+      state = deserializeState(payload.state);
+      hostDisplayName = payload.hostDisplayName ?? hostDisplayName;
+      guestDisplayName = payload.guestDisplayName ?? guestDisplayName;
+    } else {
+      state = deserializeState(raw);
+    }
+
+    const opponentDisplayName = role === 'host' ? guestDisplayName : hostDisplayName;
+    for (const listener of gameStartListeners) listener(state, role, opponentDisplayName);
   });
 
   socket.on('game-state', (raw: unknown) => {
@@ -157,8 +174,8 @@ export function joinMultiplayerRoom(code: string): Promise<boolean> {
   });
 }
 
-export function submitMultiplayerDeck(deck: Deck): void {
-  connectMultiplayer().emit('select-deck', deck);
+export function submitMultiplayerDeck(deck: Deck, displayName?: string): void {
+  connectMultiplayer().emit('select-deck', { deck, displayName });
 }
 
 export function sendMultiplayerAction(action: GameAction): Promise<boolean> {

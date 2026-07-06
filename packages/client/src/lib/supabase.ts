@@ -61,9 +61,13 @@ export type DbMatchHistory = {
   id: string;
   player_id: string;
   opponent_type: 'npc' | 'pvp';
+  match_mode: 'story' | 'npc' | 'pvp' | null;
+  opponent_label: string | null;
   npc_tier: number | null;
   won: boolean;
   is_draw: boolean;
   duration_turns: number;
   played_at: string;
 };
+
+export type MatchMode = 'story' | 'npc' | 'pvp';

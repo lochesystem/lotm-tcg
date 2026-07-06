@@ -1,14 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { getCurrentUserId } from '../lib/sessionContext';
 
 interface Props {
   show: boolean;
   onClose: () => void;
+  onOpenProfile?: () => void;
 }
 
-export function OptionsModal({ show, onClose }: Props) {
+export function OptionsModal({ show, onClose, onOpenProfile }: Props) {
   const { t } = useTranslation();
+  const canShowProfile = Boolean(onOpenProfile);
 
   return (
     <AnimatePresence>
@@ -39,7 +43,25 @@ export function OptionsModal({ show, onClose }: Props) {
               </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-4">
+              {canShowProfile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenProfile?.();
+                  }}
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium border border-void-600 bg-void-800/60 text-void-200 hover:border-purple-500/50 hover:bg-void-800 transition-colors text-left"
+                >
+                  {t('options.profileLink')}
+                  {!isSupabaseConfigured || !getCurrentUserId() ? (
+                    <span className="block text-[10px] text-void-500 mt-0.5 font-normal">
+                      {t('profile.loginHint')}
+                    </span>
+                  ) : null}
+                </button>
+              )}
+
               <div>
                 <p className="text-xs font-semibold text-void-300 uppercase tracking-wider mb-1">
                   {t('options.language')}

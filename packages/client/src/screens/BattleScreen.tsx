@@ -73,7 +73,7 @@ const PLAYER_ATTACK_TIMING = {
 export function BattleScreen({ onNavigate }: Props) {
   const { t, locale } = useTranslation();
   const { cardDescription, cardType, rarity, pathwayPowerDescription, noEffect } = useLocalizedCardText();
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -159,20 +159,49 @@ export function BattleScreen({ onNavigate }: Props) {
     setHoveredKeyword(null);
   }, [gameState?.id]);
 
-  // Grant booster pack reward after local NPC victory
+  // Record match outcome + rewards when game ends
   useEffect(() => {
-    if (!gameState || gameState.phase !== 'ended' || rewardGrantedRef.current || isOnline) return;
-
-    const isNpcMatch = opponentId === 'npc-1' || gameState.players.some((p) => p.id === 'npc-1');
-    if (!isNpcMatch) return;
+    if (!gameState || gameState.phase !== 'ended' || rewardGrantedRef.current) return;
 
     rewardGrantedRef.current = true;
 
     const finishMatch = async () => {
       const userId = getCurrentUserId();
       const turns = gameState.turn;
+      const won = gameState.winner === playerId;
+      const lost = Boolean(gameState.winner && gameState.winner !== playerId);
+      const isDraw = gameState.winner === null;
 
-      if (gameState.winner === playerId) {
+      if (isOnline) {
+        if (won) {
+          await recordNpcWin();
+        } else if (lost) {
+          await recordNpcLoss();
+        }
+
+        if (userId) {
+          await recordMatch(userId, {
+            opponentType: 'pvp',
+            matchMode: 'pvp',
+            opponentLabel: opponentDisplayName ?? 'Player',
+            won,
+            isDraw,
+            durationTurns: turns,
+          });
+        }
+        return;
+      }
+
+      const isNpcMatch = opponentId === 'npc-1' || gameState.players.some((p) => p.id === 'npc-1');
+      if (!isNpcMatch) return;
+
+      const opponentLabel =
+        isStoryMode && storyOpponentPathway
+          ? PATHWAYS[storyOpponentPathway].name
+          : 'NPC';
+      const matchMode = isStoryMode ? 'story' : 'npc';
+
+      if (won) {
         let streak: number;
         if (isStoryMode) {
           if (storyAdvancesOnWin) {
@@ -192,24 +221,30 @@ export function BattleScreen({ onNavigate }: Props) {
         if (userId) {
           await recordMatch(userId, {
             opponentType: 'npc',
+            matchMode,
+            opponentLabel,
             npcTier,
             won: true,
             durationTurns: turns,
           });
         }
-      } else if (gameState.winner && gameState.winner !== playerId) {
+      } else if (lost) {
         await recordNpcLoss();
         if (userId) {
           await recordMatch(userId, {
             opponentType: 'npc',
+            matchMode,
+            opponentLabel,
             npcTier,
             won: false,
             durationTurns: turns,
           });
         }
-      } else if (gameState.winner === null && userId) {
+      } else if (isDraw && userId) {
         await recordMatch(userId, {
           opponentType: 'npc',
+          matchMode,
+          opponentLabel,
           npcTier,
           won: false,
           isDraw: true,
@@ -219,7 +254,23 @@ export function BattleScreen({ onNavigate }: Props) {
     };
 
     void finishMatch();
-  }, [gameState, gameState?.phase, gameState?.winner, gameState?.turn, playerId, opponentId, isOnline, isStoryMode, storyAdvancesOnWin, npcTier, recordNpcWin, recordStoryWin, recordNpcLoss]);
+  }, [
+    gameState,
+    gameState?.phase,
+    gameState?.winner,
+    gameState?.turn,
+    playerId,
+    opponentId,
+    isOnline,
+    isStoryMode,
+    storyAdvancesOnWin,
+    storyOpponentPathway,
+    npcTier,
+    opponentDisplayName,
+    recordNpcWin,
+    recordStoryWin,
+    recordNpcLoss,
+  ]);
 
   // Sync enemy attack animation phases (NPC or online opponent — both use pendingAttack)
   const activeEnemyAttack = pendingAttack?.isNpc ? pendingAttack : null;

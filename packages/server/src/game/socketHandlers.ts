@@ -46,8 +46,13 @@ export function setupSocketHandlers(
     callback({ success: true });
   });
 
-  socket.on('select-deck', (deck: Deck) => {
-    roomManager.setDeck(socket.id, deck);
+  socket.on('select-deck', (payload: Deck | { deck: Deck; displayName?: string }) => {
+    const deck = payload && typeof payload === 'object' && 'deck' in payload ? payload.deck : payload;
+    const displayName =
+      payload && typeof payload === 'object' && 'displayName' in payload
+        ? payload.displayName
+        : undefined;
+    roomManager.setDeck(socket.id, deck, displayName);
     const room = roomManager.getRoomBySocket(socket.id);
     if (!room) return;
 
@@ -170,5 +175,9 @@ function startGame(io: Server, roomCode: string, roomManager: RoomManager): void
   gameState = applyAction(gameState, 'guest', { type: 'mulligan', indices: [] });
 
   roomManager.setGameState(roomCode, gameState);
-  io.to(roomCode).emit('game-start', serializeState(gameState));
+  io.to(roomCode).emit('game-start', {
+    state: serializeState(gameState),
+    hostDisplayName: room.hostDisplayName ?? 'Host',
+    guestDisplayName: room.guestDisplayName ?? 'Guest',
+  });
 }

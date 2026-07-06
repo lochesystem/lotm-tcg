@@ -1,4 +1,4 @@
-import { getSupabase, isSupabaseConfigured, resetSupabaseClient, type DbDeck, type DbPlayerProgress, type DbProfile } from '../lib/supabase';
+import { getSupabase, isSupabaseConfigured, resetSupabaseClient, type DbDeck, type DbPlayerProgress, type DbProfile, type DbMatchHistory, type MatchMode } from '../lib/supabase';
 import { createStarterDeck, getStoryWinUnlock, type Pathway } from 'game-engine';
 
 const LOCAL_COLLECTION_KEY = 'lotm-tcg-collection';
@@ -176,6 +176,8 @@ export async function recordMatch(
   userId: string,
   opts: {
     opponentType: 'npc' | 'pvp';
+    matchMode: MatchMode;
+    opponentLabel: string;
     npcTier?: number;
     won: boolean;
     isDraw?: boolean;
@@ -188,12 +190,32 @@ export async function recordMatch(
   const { error } = await sb.from('match_history').insert({
     player_id: userId,
     opponent_type: opts.opponentType,
+    match_mode: opts.matchMode,
+    opponent_label: opts.opponentLabel,
     npc_tier: opts.npcTier ?? null,
     won: opts.won,
     is_draw: opts.isDraw ?? false,
     duration_turns: opts.durationTurns,
   });
   if (error) throw error;
+}
+
+export async function fetchMatchHistory(
+  userId: string,
+  limit = 5
+): Promise<DbMatchHistory[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('match_history')
+    .select('*')
+    .eq('player_id', userId)
+    .order('played_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as DbMatchHistory[];
 }
 
 export async function fetchDecks(userId: string): Promise<DbDeck[]> {

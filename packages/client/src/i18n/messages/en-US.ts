@@ -63,6 +63,27 @@ export const enUS = {
       'pt-BR': 'Português (Brasil)',
       'en-US': 'English (US)',
     },
+    profileLink: 'View profile & match history',
+  },
+
+  profile: {
+    title: 'Profile',
+    wins: 'Wins',
+    losses: 'Losses',
+    winStreak: 'Win streak',
+    recentMatches: 'Recent matches',
+    noMatches: 'No matches recorded yet.',
+    loginHint: 'Sign in to sync wins and match history to the cloud.',
+    localStatsHint: 'Local stats — sign in to save to the cloud.',
+    vs: 'vs {opponent}',
+    resultWin: 'Victory',
+    resultLoss: 'Defeat',
+    resultDraw: 'Draw',
+    turns: '{n} turns',
+    modeStory: 'Story',
+    modeNpc: 'NPC',
+    modePvp: 'Multiplayer',
+    unknownOpponent: 'Opponent',
   },
 
   collection: {

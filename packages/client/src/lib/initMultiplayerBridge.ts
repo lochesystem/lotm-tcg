@@ -13,8 +13,8 @@ export function initMultiplayerBridge(onEnterBattle: () => void): () => void {
 
   useGameStore.getState().setOnlineSendAction(sendMultiplayerAction);
 
-  const offStart = subscribeGameStart((state, role: OnlineRole) => {
-    useGameStore.getState().enterOnlineBattle(state, role, getOnlineRoomCode());
+  const offStart = subscribeGameStart((state, role: OnlineRole, opponentDisplayName) => {
+    useGameStore.getState().enterOnlineBattle(state, role, getOnlineRoomCode(), opponentDisplayName);
     onEnterBattle();
   });
 

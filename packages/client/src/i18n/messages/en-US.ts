@@ -1,4 +1,9 @@
 export const enUS = {
+  orientation: {
+    rotateTitle: 'Rotate your device',
+    rotateHint: 'This game only works in portrait mode.',
+  },
+
   common: {
     back: '← Back',
     cancel: 'Cancel',

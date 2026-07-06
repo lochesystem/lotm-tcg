@@ -1,4 +1,9 @@
 export const ptBR = {
+  orientation: {
+    rotateTitle: 'Gire o dispositivo',
+    rotateHint: 'Este jogo funciona apenas no modo retrato.',
+  },
+
   common: {
     back: '← Voltar',
     cancel: 'Cancelar',

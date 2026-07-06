@@ -9,6 +9,7 @@ import { useAuthStore } from './stores/authStore';
 import { isSupabaseConfigured } from './lib/supabase';
 import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
 import { BgmController } from './components/BgmController';
+import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { useTranslation } from './i18n';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
@@ -34,6 +35,7 @@ export default function App() {
 
   return (
     <>
+      <PortraitLockOverlay />
       <BgmController screen={bgmScreen} enabled />
 
       {isBooting ? (

@@ -38,7 +38,7 @@ import {
 import { getLocalizedKeywordInfo } from '../components/KeywordTooltip';
 import type { Keyword } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
-import { getBattlefieldUrl } from '../utils/battlefieldArt';
+import { getBattlefieldUrl, getBattlefieldVideoUrl } from '../utils/battlefieldArt';
 import { BattlefieldBackground } from '../components/BattlefieldBackground';
 import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
@@ -461,6 +461,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const opponent = gameState.players[1 - playerIdx];
   const battlefieldPathway = isStoryMode && storyOpponentPathway ? storyOpponentPathway : opponent.pathway;
   const battlefieldUrl = getBattlefieldUrl(battlefieldPathway);
+  const battlefieldVideoUrl = getBattlefieldVideoUrl(battlefieldPathway);
   const isMyTurn = gameState.currentPlayerIndex === playerIdx;
   const isGameOver = gameState.phase === 'ended';
   const playerConceded = gameState.log.some((e) => e.type === 'concede' && e.playerId === playerId);
@@ -1012,7 +1013,9 @@ export function BattleScreen({ onNavigate }: Props) {
       {!showBattlefield && (
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
       )}
-      {showBattlefield && battlefieldUrl && <BattlefieldBackground url={battlefieldUrl} />}
+      {showBattlefield && battlefieldUrl && (
+        <BattlefieldBackground imageUrl={battlefieldUrl} videoUrl={battlefieldVideoUrl} />
+      )}
       <div
         className={`absolute inset-0 z-[1] pointer-events-none ${
           showBattlefield

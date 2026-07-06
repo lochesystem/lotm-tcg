@@ -4,6 +4,16 @@ Trading card game inspirado em *Lord of the Mysteries*. Monorepo com client Reac
 
 **Jogar online:** https://lochesystem.github.io/lotm-tcg/
 
+- **Android (APK):** [Baixar na aba Releases](https://github.com/lochesystem/lotm-tcg/releases/latest)
+
+O APK é gerado automaticamente via GitHub Actions. Ele abre o jogo em WebView fullscreen (sempre carrega a versão mais recente do GitHub Pages).
+
+### Instalação do APK
+
+1. Baixe o `app-release.apk` na página de Releases
+2. No Android, permita instalar de fontes desconhecidas
+3. Abra o APK — o jogo roda em retrato, fullscreen imersivo
+
 **Documentação completa (deploy, multiplayer, troubleshooting, roadmap):** [docs/GUIA-PROJETO.md](docs/GUIA-PROJETO.md)
 
 ---
@@ -78,7 +88,8 @@ lotm-tcg/
 ├── packages/game-engine/  # Regras, cartas, batalha (TypeScript puro)
 ├── packages/server/       # Express + Socket.IO (salas PvP)
 ├── docs/                  # Guia do projeto
-└── .github/workflows/     # Deploy automático → GitHub Pages
+├── android/               # WebView wrapper → APK Android
+└── .github/workflows/     # Deploy Pages + build APK
 ```
 
 | Pacote | Papel |
@@ -114,6 +125,7 @@ Detalhes, arquivos e limitações: [seção 7 do guia](docs/GUIA-PROJETO.md#7-mu
 ### Client → GitHub Pages
 
 - Workflow: `.github/workflows/deploy-pages.yml` (push em `master`)
+- APK Android: `.github/workflows/build-apk.yml` (push em `android/` ou manual)
 - **Settings → Pages → Source:** GitHub Actions
 - Secrets: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - `VITE_SERVER_URL` já aponta para Render no workflow

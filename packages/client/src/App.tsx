@@ -8,6 +8,7 @@ import { AuthScreen } from './screens/AuthScreen';
 import { useAuthStore } from './stores/authStore';
 import { isSupabaseConfigured } from './lib/supabase';
 import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
+import { BgmAuthWarmup, BgmController } from './components/BgmController';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
 
@@ -36,6 +37,7 @@ export default function App() {
   if (isSupabaseConfigured && status === 'unauthenticated') {
     return (
       <div className="h-screen w-screen overflow-hidden bg-void-950">
+        <BgmAuthWarmup />
         <AuthScreen />
       </div>
     );
@@ -43,6 +45,7 @@ export default function App() {
 
   return (
     <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
+      <BgmController screen={screen} enabled />
       {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
       {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
       {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}

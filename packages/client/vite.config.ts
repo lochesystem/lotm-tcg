@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['battlefields/*.png'],
+      includeAssets: ['battlefields/*.png', 'audio/bgm/**/*.mp3'],
       workbox: {
         runtimeCaching: [
           {
@@ -18,6 +18,14 @@ export default defineConfig({
             options: {
               cacheName: 'battlefield-images',
               expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: /\/audio\/bgm\/.*\.mp3$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bgm-audio',
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

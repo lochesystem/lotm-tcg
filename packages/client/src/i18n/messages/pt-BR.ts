@@ -51,6 +51,18 @@ export const ptBR = {
     deckSelectTitle: 'Modo História — escolha seu deck',
     locked: 'BLOQUEADO',
     current: '• atual',
+    optionsButton: 'Opções',
+  },
+
+  options: {
+    title: 'Opções',
+    language: 'Idioma',
+    languageHint:
+      'A interface muda de idioma. Nomes de cartas e pathways permanecem em inglês.',
+    languages: {
+      'pt-BR': 'Português (Brasil)',
+      'en-US': 'English (US)',
+    },
   },
 
   collection: {

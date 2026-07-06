@@ -15,7 +15,7 @@ import {
 } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
-import { LocaleSwitcher } from '../components/LocaleSwitcher';
+import { OptionsModal } from '../components/OptionsModal';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useTranslation } from '../i18n';
 import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
@@ -42,6 +42,7 @@ export function HomeScreen({ onNavigate }: Props) {
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showDeckSelect, setShowDeckSelect] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
 
   const nextBoss = getCurrentStoryBoss(storyProgress);
   const storyDone = isStoryComplete(storyProgress);
@@ -81,19 +82,27 @@ export function HomeScreen({ onNavigate }: Props) {
   return (
     <div className="flex-1 min-h-0 screen-scroll safe-bottom">
       <div className="relative flex flex-col items-center p-4 sm:p-6 py-6 pb-10">
-      <LocaleSwitcher className="absolute top-4 right-4 z-20" />
+      <button
+        type="button"
+        onClick={() => setShowOptions(true)}
+        className="absolute top-4 right-4 z-20 w-9 h-9 flex items-center justify-center rounded-xl border border-void-600 bg-void-900/80 text-void-400 hover:text-void-100 hover:border-void-500 transition-colors"
+        aria-label={t('home.optionsButton')}
+        title={t('home.optionsButton')}
+      >
+        ⚙️
+      </button>
       <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950 pointer-events-none" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center gap-5 sm:gap-6 max-w-lg w-full min-w-0 pb-4">
         <motion.div
-          className="text-center"
+          className="text-center w-full"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-gold-400 to-purple-200 mb-1">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-gold-400 to-purple-200 mb-1 leading-tight">
             Beyond the Veil
           </h1>
           <p className="text-void-300 text-xs tracking-[0.25em] uppercase font-medium">
@@ -305,6 +314,7 @@ export function HomeScreen({ onNavigate }: Props) {
       </div>
 
       <HowToPlay show={showHowToPlay} onClose={() => setShowHowToPlay(false)} />
+      <OptionsModal show={showOptions} onClose={() => setShowOptions(false)} />
       <DeckSelectModal
         show={showDeckSelect}
         starterPathway={selectedPathway}

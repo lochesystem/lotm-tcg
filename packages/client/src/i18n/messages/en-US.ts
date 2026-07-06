@@ -51,6 +51,18 @@ export const enUS = {
     deckSelectTitle: 'Story Mode — choose your deck',
     locked: 'LOCKED',
     current: '• current',
+    optionsButton: 'Options',
+  },
+
+  options: {
+    title: 'Options',
+    language: 'Language',
+    languageHint:
+      'Changes the interface language. Card and pathway names stay in English.',
+    languages: {
+      'pt-BR': 'Português (Brasil)',
+      'en-US': 'English (US)',
+    },
   },
 
   collection: {

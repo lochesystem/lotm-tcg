@@ -8,7 +8,7 @@ import { AuthScreen } from './screens/AuthScreen';
 import { useAuthStore } from './stores/authStore';
 import { isSupabaseConfigured } from './lib/supabase';
 import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
-import { BgmAuthWarmup, BgmController } from './components/BgmController';
+import { BgmController } from './components/BgmController';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
 
@@ -26,31 +26,31 @@ export default function App() {
     return initMultiplayerBridge(() => navigateRef.current('battle'));
   }, []);
 
-  if (isSupabaseConfigured && status === 'loading') {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-void-950 text-void-400 text-sm">
-        Carregando...
-      </div>
-    );
-  }
-
-  if (isSupabaseConfigured && status === 'unauthenticated') {
-    return (
-      <div className="h-screen w-screen overflow-hidden bg-void-950">
-        <BgmAuthWarmup />
-        <AuthScreen />
-      </div>
-    );
-  }
+  const isBooting = isSupabaseConfigured && status === 'loading';
+  const showAuth = isSupabaseConfigured && status === 'unauthenticated';
+  const bgmScreen: Screen = showAuth || isBooting ? 'home' : screen;
 
   return (
-    <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
-      <BgmController screen={screen} enabled />
-      {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
-      {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
-      {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
-      {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
-      {screen === 'lobby' && <LobbyScreen onNavigate={setScreen} />}
-    </div>
+    <>
+      <BgmController screen={bgmScreen} enabled />
+
+      {isBooting ? (
+        <div className="h-screen w-screen flex items-center justify-center bg-void-950 text-void-400 text-sm">
+          Carregando...
+        </div>
+      ) : showAuth ? (
+        <div className="h-screen w-screen overflow-hidden bg-void-950">
+          <AuthScreen />
+        </div>
+      ) : (
+        <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
+          {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
+          {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
+          {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
+          {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
+          {screen === 'lobby' && <LobbyScreen onNavigate={setScreen} />}
+        </div>
+      )}
+    </>
   );
 }

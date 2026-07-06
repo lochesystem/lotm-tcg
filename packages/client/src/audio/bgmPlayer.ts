@@ -16,6 +16,14 @@ class BgmPlayer {
     return this.unlocked;
   }
 
+  isPlaying(): boolean {
+    return this.currentUrl !== null && !this.audio.paused;
+  }
+
+  isPlayingUrl(url: string): boolean {
+    return this.currentUrl === url && !this.audio.paused;
+  }
+
   unlock(): void {
     if (this.unlocked) return;
     this.unlocked = true;
@@ -63,29 +71,35 @@ class BgmPlayer {
     }, 32);
   }
 
-  play(url: string): void {
-    if (!this.unlocked) return;
-    if (this.currentUrl === url && !this.audio.paused) return;
+  async play(url: string): Promise<boolean> {
+    if (!this.unlocked) return false;
+    if (this.isPlayingUrl(url)) return true;
 
-    const startNew = () => {
+    const startNew = async (): Promise<boolean> => {
       this.currentUrl = url;
       this.audio.src = url;
       this.audio.volume = 0;
-      void this.audio.play().catch(() => {
+      try {
+        await this.audio.play();
+        this.fadeTo(TARGET_VOLUME);
+        return true;
+      } catch {
+        this.audio.pause();
         this.currentUrl = null;
-      });
-      this.fadeTo(TARGET_VOLUME);
+        return false;
+      }
     };
 
-    if (this.currentUrl && !this.audio.paused) {
-      this.fadeTo(0, () => {
-        this.audio.pause();
-        startNew();
+    if (this.isPlaying()) {
+      return new Promise((resolve) => {
+        this.fadeTo(0, () => {
+          this.audio.pause();
+          void startNew().then(resolve);
+        });
       });
-      return;
     }
 
-    startNew();
+    return startNew();
   }
 
   pause(): void {

@@ -2,29 +2,60 @@ import { useEffect, useCallback } from 'react';
 import type { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { bgmPlayer } from '../audio/bgmPlayer';
-import { getHubBgmUrl, getScreenBgmUrl, resolveBattleBgmUrl } from '../audio/bgmPaths';
+import { getScreenBgmUrl, resolveBattleBgmUrl } from '../audio/bgmPaths';
 
 interface Props {
   screen: Screen;
   enabled: boolean;
 }
 
-/** Browsers may block autoplay even when unlock was restored from a prior session. */
-function useGestureBgmPlay(play: () => void) {
+const GESTURE_OPTS = { capture: true } as const;
+
+/**
+ * Mobile browsers block autoplay on cold start even with a stored unlock flag.
+ * Keep listening for real user input until playback actually starts.
+ */
+function useGestureBgmPlay(play: () => Promise<void>) {
   useEffect(() => {
-    play();
+    let disposed = false;
 
-    const onGesture = () => play();
-    const opts = { once: true, capture: true } as const;
+    const removeListeners = () => {
+      window.removeEventListener('pointerdown', onGesture, GESTURE_OPTS);
+      window.removeEventListener('touchstart', onGesture);
+      window.removeEventListener('click', onGesture, GESTURE_OPTS);
+      window.removeEventListener('keydown', onGesture);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
 
-    window.addEventListener('pointerdown', onGesture, opts);
-    window.addEventListener('touchstart', onGesture, { ...opts, passive: true });
-    window.addEventListener('keydown', onGesture, opts);
+    const attempt = async () => {
+      if (disposed) return;
+      await play();
+      if (!disposed && bgmPlayer.isPlaying()) {
+        removeListeners();
+      }
+    };
+
+    const onGesture = () => {
+      void attempt();
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void attempt();
+      }
+    };
+
+    window.addEventListener('pointerdown', onGesture, GESTURE_OPTS);
+    window.addEventListener('touchstart', onGesture, { ...GESTURE_OPTS, passive: true });
+    window.addEventListener('click', onGesture, GESTURE_OPTS);
+    window.addEventListener('keydown', onGesture);
+    document.addEventListener('visibilitychange', onVisible);
+
+    void attempt();
 
     return () => {
-      window.removeEventListener('pointerdown', onGesture, opts);
-      window.removeEventListener('touchstart', onGesture);
-      window.removeEventListener('keydown', onGesture, opts);
+      disposed = true;
+      removeListeners();
     };
   }, [play]);
 }
@@ -50,27 +81,11 @@ export function BgmController({ screen, enabled }: Props) {
         })
       : getScreenBgmUrl(screen);
 
-  const play = useCallback(() => {
+  const play = useCallback(async () => {
     if (!enabled) return;
     bgmPlayer.unlock();
-    bgmPlayer.play(url);
+    await bgmPlayer.play(url);
   }, [enabled, url]);
-
-  useGestureBgmPlay(play);
-
-  return null;
-}
-
-/** Auth screen — hub theme after first tap. */
-export function BgmAuthWarmup() {
-  useEffect(() => {
-    bgmPlayer.restoreUnlock();
-  }, []);
-
-  const play = useCallback(() => {
-    bgmPlayer.unlock();
-    bgmPlayer.play(getHubBgmUrl());
-  }, []);
 
   useGestureBgmPlay(play);
 

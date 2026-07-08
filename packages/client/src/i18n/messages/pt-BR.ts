@@ -273,6 +273,7 @@ export const ptBR = {
     combat: {
       provoke: 'Provoke: ataque {names} primeiro (🛡️)',
       stealth: 'Não pode atacar minion com Stealth',
+      frenzyNoHero: 'Frenesi: neste turno só pode atacar lacaios, não o herói',
       cannotAttack: 'Este minion não pode atacar agora',
     },
     events: {

@@ -1,4 +1,4 @@
-import { MinionInstance, PlayerState } from 'game-engine';
+import { MinionInstance, PlayerState, canMinionAttackHero } from 'game-engine';
 import type { Locale } from '../i18n/types';
 import { translate } from '../i18n/useTranslation';
 
@@ -9,7 +9,10 @@ export interface AttackTargetInfo {
   provokeNames: string[];
 }
 
-export function getAttackTargets(opponent: PlayerState): AttackTargetInfo {
+export function getAttackTargets(
+  opponent: PlayerState,
+  attacker?: MinionInstance | null,
+): AttackTargetInfo {
   const provokeMinions = opponent.board.filter((m) => m.keywords.has('provoke'));
   const hasProvoke = provokeMinions.length > 0;
 
@@ -19,8 +22,10 @@ export function getAttackTargets(opponent: PlayerState): AttackTargetInfo {
     return true;
   });
 
+  const heroValid = !hasProvoke && (!attacker || canMinionAttackHero(attacker));
+
   return {
-    heroValid: !hasProvoke,
+    heroValid,
     validMinionIds: new Set(validMinions.map((m) => m.instanceId)),
     hasProvoke,
     provokeNames: provokeMinions.map((m) => m.card.name),
@@ -41,6 +46,9 @@ export function formatAttackError(
     return translate(locale, 'battle.combat.provoke', { names });
   }
   if (error.includes('stealth')) return translate(locale, 'battle.combat.stealth');
+  if (error.includes('Frenzy cannot attack hero')) {
+    return translate(locale, 'battle.combat.frenzyNoHero');
+  }
   if (error === 'Cannot attack') return translate(locale, 'battle.combat.cannotAttack');
   return error;
 }

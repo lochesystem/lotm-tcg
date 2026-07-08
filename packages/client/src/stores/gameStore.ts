@@ -10,6 +10,7 @@ import {
   applyAction,
   createStarterDeck,
   MinionInstance,
+  canMinionAttackHero,
   PATHWAYS,
   getCurrentStoryBoss,
   isPathwayUnlocked,
@@ -216,7 +217,16 @@ function getNextNpcAction(state: GameState, npcId: string): GameAction {
         targetInstanceId: weakTarget.instanceId,
       };
     }
-    return { type: 'attack-hero', attackerInstanceId: minion.instanceId };
+    if (canMinionAttackHero(minion)) {
+      return { type: 'attack-hero', attackerInstanceId: minion.instanceId };
+    }
+    if (weakTarget) {
+      return {
+        type: 'attack',
+        attackerInstanceId: minion.instanceId,
+        targetInstanceId: weakTarget.instanceId,
+      };
+    }
   }
 
   if (!npc.heroPowerUsed && npc.spirituality >= 2) {

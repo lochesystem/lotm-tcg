@@ -107,6 +107,7 @@ export function startTurn(state: GameState): GameState {
     minion.canAttack = true;
     minion.attacksThisTurn = 0;
     minion.exhausted = false;
+    minion.summonedThisTurn = false;
   }
 
   // Remove temporary buffs
@@ -305,6 +306,7 @@ function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard,
     keywords: new Set(card.keywords || []),
     buffs: [],
     exhausted: true,
+    summonedThisTurn: true,
   };
 
   if (instance.keywords.has('haste')) {
@@ -357,6 +359,13 @@ function playMysticalItem(state: GameState, playerIndex: number, card: Card): vo
 }
 
 // ─── Attack ──────────────────────────────────────────────────────────────────
+
+/** Frenzy = rush minions only; Haste = charge (any target) on the turn they are played. */
+export function canMinionAttackHero(minion: MinionInstance): boolean {
+  if (minion.keywords.has('haste')) return true;
+  if (minion.keywords.has('frenzy') && minion.summonedThisTurn) return false;
+  return true;
+}
 
 function attackMinion(
   state: GameState,
@@ -419,6 +428,10 @@ function attackHero(state: GameState, playerIndex: number, attackerInstanceId: s
   // Provoke check
   const hasProvoke = opponent.board.some((m) => m.keywords.has('provoke'));
   if (hasProvoke) throw new Error('Must attack a minion with Provoke');
+
+  if (!canMinionAttackHero(attacker)) {
+    throw new Error('Frenzy cannot attack hero on its first turn');
+  }
 
   const damage = attacker.currentAttack;
   const defenderIndex = 1 - playerIndex;
@@ -1054,6 +1067,7 @@ export function validateAction(state: GameState, playerId: string, action: GameA
         if (!attacker.canAttack || attacker.exhausted) return 'Cannot attack';
         const hasProvoke = opponent.board.some((m) => m.keywords.has('provoke'));
         if (hasProvoke) return 'Must attack a minion with Provoke';
+        if (!canMinionAttackHero(attacker)) return 'Frenzy cannot attack hero on its first turn';
         return null;
       }
       case 'hero-power': {
@@ -1115,6 +1129,7 @@ export function deserializeState(raw: unknown): GameState {
   for (const player of state.players) {
     player.secrets ??= [];
     for (const minion of player.board) {
+      minion.summonedThisTurn ??= false;
       minion.keywords = new Set(minion.keywords as unknown as Keyword[]);
     }
   }

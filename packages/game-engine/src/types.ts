@@ -134,6 +134,8 @@ export interface MinionInstance {
   keywords: Set<Keyword>;
   buffs: Buff[];
   exhausted: boolean;
+  /** True if this minion entered play during the current turn (for Frenzy vs Haste). */
+  summonedThisTurn: boolean;
 }
 
 export interface WeaponInstance {

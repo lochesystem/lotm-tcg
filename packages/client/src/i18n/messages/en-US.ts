@@ -273,6 +273,7 @@ export const enUS = {
     combat: {
       provoke: 'Provoke: attack {names} first (🛡️)',
       stealth: 'Cannot attack a minion with Stealth',
+      frenzyNoHero: 'Frenzy: this turn you can only attack minions, not the hero',
       cannotAttack: 'This minion cannot attack right now',
     },
     events: {

@@ -520,7 +520,9 @@ export function BattleScreen({ onNavigate }: Props) {
 
   const pathwayInfo = PATHWAYS[player.pathway];
   const opponentPathwayInfo = PATHWAYS[opponent.pathway];
-  const attackTargets = selectedAttacker ? getAttackTargets(opponent) : null;
+  const attackTargets = selectedAttacker
+    ? getAttackTargets(opponent, player.board.find((m) => m.instanceId === selectedAttacker))
+    : null;
   const weaponTargets = weaponAttackMode ? getAttackTargets(opponent) : null;
   const heroPowerMode = targetingHeroPower ? getHeroPowerTargetMode(player.pathway) : null;
   const targetingCard = targetingHandIndex !== null ? player.hand[targetingHandIndex] : null;

@@ -65,7 +65,7 @@ export function HomeScreen({ onNavigate }: Props) {
 
   useEffect(() => {
     if (!isPathwayUnlocked(selectedPathway)) {
-      setPathway('red-priest');
+      setPathway('fool');
     }
   }, [selectedPathway, isPathwayUnlocked, setPathway]);
 

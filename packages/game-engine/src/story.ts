@@ -1,9 +1,9 @@
 import type { Pathway } from './types.js';
 
-/** Only pathway selectable when storyProgress is 0 */
-export const INITIAL_PATHWAY: Pathway = 'red-priest';
+/** Only pathway available before any story progress */
+export const INITIAL_PATHWAY: Pathway = 'fool';
 
-/** Story bosses in order — beat each chapter to unlock the next pathway starter */
+/** Story bosses in order — beating each chapter unlocks that pathway's starter deck */
 export const STORY_BOSS_ORDER: Pathway[] = ['red-priest', 'tyrant', 'sun', 'door', 'demoness'];
 
 export const ALL_PATHWAYS: Pathway[] = ['fool', ...STORY_BOSS_ORDER];
@@ -35,9 +35,8 @@ export function isStoryComplete(storyProgress: number): boolean {
 }
 
 /**
- * Pathway starter availability:
- * - Fool + Red Priest: from the start (Fool is the exception — never gated by story)
- * - Tyrant → Demoness: each unlocks after beating the previous story chapter
+ * - Fool: always unlocked (only free starter)
+ * - Each story pathway: unlocks after beating its chapter boss once
  */
 export function isPathwayUnlocked(pathway: Pathway, storyProgress: number): boolean {
   if (pathway === 'fool') return true;
@@ -45,27 +44,20 @@ export function isPathwayUnlocked(pathway: Pathway, storyProgress: number): bool
   const bossIndex = STORY_BOSS_ORDER.indexOf(pathway);
   if (bossIndex === -1) return false;
 
-  return storyProgress >= bossIndex;
+  return storyProgress > bossIndex;
 }
 
 export function getUnlockedPathways(storyProgress: number): Pathway[] {
   return ALL_PATHWAYS.filter((p) => isPathwayUnlocked(p, storyProgress));
 }
 
-/** Pathway whose starter unlocks when the current story chapter is cleared (Fool is always free). */
+/** Pathway starter unlocked by clearing the chapter at storyProgressBeforeWin */
 export function getStoryWinUnlock(storyProgressBeforeWin: number): Pathway | null {
-  const nextIndex = storyProgressBeforeWin + 1;
-  if (nextIndex < STORY_BOSS_ORDER.length) {
-    return STORY_BOSS_ORDER[nextIndex];
-  }
-  return null;
+  return STORY_BOSS_ORDER[storyProgressBeforeWin] ?? null;
 }
 
-export function getDefaultPathway(storyProgress: number): Pathway {
-  const unlocked = getUnlockedPathways(storyProgress).filter(
-    (p) => p !== 'fool' && STORY_BOSS_ORDER.includes(p),
-  );
-  return unlocked[unlocked.length - 1] ?? INITIAL_PATHWAY;
+export function getDefaultPathway(_storyProgress: number): Pathway {
+  return INITIAL_PATHWAY;
 }
 
 export function getStoryChapterLabel(pathway: Pathway): string {

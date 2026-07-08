@@ -31,7 +31,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [deckCards, setDeckCards] = useState<Card[]>([]);
   const [deckName, setDeckName] = useState(() => t('deck.defaultName'));
-  const [deckHeroPathway, setDeckHeroPathway] = useState<Pathway>('red-priest');
+  const [deckHeroPathway, setDeckHeroPathway] = useState<Pathway>('fool');
   const [collectionPathwayFilter, setCollectionPathwayFilter] = useState<'all' | Pathway>('all');
   const [filterType, setFilterType] = useState<'all' | 'beyonder' | 'ritual' | 'sealed-artifact' | 'mystical-item'>('all');
   const [saving, setSaving] = useState(false);

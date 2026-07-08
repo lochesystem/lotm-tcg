@@ -3,6 +3,7 @@ import { AttackArrow } from './AttackArrow';
 interface Props {
   attackerId?: string | null;
   attackerHero?: 'player' | 'opponent' | null;
+  attackerHandIndex?: number | null;
   targetMinionIds: Set<string>;
   showHero?: boolean;
   /** Which hero is the attack target when showHero is true */
@@ -14,12 +15,13 @@ interface Props {
 export function AttackTargetArrows({
   attackerId,
   attackerHero,
+  attackerHandIndex,
   targetMinionIds,
   showHero = false,
   targetHero = 'opponent',
   isPlayerAttacking = true,
 }: Props) {
-  if (!attackerId && !attackerHero) return null;
+  if (!attackerId && !attackerHero && attackerHandIndex == null) return null;
 
   return (
     <>
@@ -28,6 +30,7 @@ export function AttackTargetArrows({
           key={id}
           attackerId={attackerId}
           attackerHero={attackerHero}
+          attackerHandIndex={attackerHandIndex}
           targetId={id}
           isPlayerAttacking={isPlayerAttacking}
           phase="preview"
@@ -37,6 +40,7 @@ export function AttackTargetArrows({
         <AttackArrow
           attackerId={attackerId}
           attackerHero={attackerHero}
+          attackerHandIndex={attackerHandIndex}
           targetHero={targetHero}
           isPlayerAttacking={isPlayerAttacking}
           phase="preview"

@@ -25,6 +25,11 @@ import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { updatePreferredPathway } from '../sync/player-sync';
+import {
+  defenderHasTrigger,
+  parseSecretTriggersFromLog,
+  type ParsedSecretTrigger,
+} from '../utils/secretAnimation';
 import { isSupabaseConfigured } from '../lib/supabase';
 
 function snapshotGameState(state: GameState): GameState {
@@ -73,6 +78,15 @@ export interface NpcPlayReveal {
   cardName: string;
 }
 
+export interface PendingSecret {
+  secretName: string;
+  secretId: string;
+  ownerIsPlayer: boolean;
+  targetMinionId: string | null;
+  targetHero: 'player' | 'opponent' | null;
+  phase: 'reveal' | 'effect' | 'impact';
+}
+
 export type RemoteOpponentAnim =
   | {
       kind: 'attack';
@@ -104,6 +118,10 @@ const NPC_TIMING = {
   ritualCharge: 950,
   ritualImpact: 850,
   ritualPost: 500,
+  minionSettle: 1000,
+  secretReveal: 900,
+  secretEffect: 850,
+  secretImpact: 750,
   betweenActions: 700,
 } as const;
 
@@ -130,6 +148,7 @@ interface GameStore {
   pendingAttack: PendingAttack | null;
   pendingHeroPower: PendingHeroPower | null;
   pendingRitual: PendingRitual | null;
+  pendingSecret: PendingSecret | null;
   npcPlayReveal: NpcPlayReveal | null;
   onlineSendAction: ((action: GameAction) => Promise<boolean>) | null;
   deferredOnlineStates: GameState[];
@@ -411,6 +430,130 @@ async function runNpcAttackSequence(
   await wait(NPC_TIMING.attackPost);
 }
 
+function toPendingSecret(
+  trigger: ParsedSecretTrigger,
+  playerId: string,
+  phase: PendingSecret['phase'],
+): PendingSecret {
+  return {
+    secretName: trigger.secretName,
+    secretId: trigger.secretId,
+    ownerIsPlayer: trigger.ownerPlayerId === playerId,
+    targetMinionId: trigger.targetMinionId,
+    targetHero: trigger.targetHero,
+    phase,
+  };
+}
+
+async function runSecretEffectSequence(
+  triggers: ParsedSecretTrigger[],
+  playerId: string,
+  set: (partial: Partial<GameStore>) => void,
+  wait: (ms: number) => Promise<void>,
+): Promise<void> {
+  if (triggers.length === 0) {
+    set({ pendingSecret: null });
+    return;
+  }
+
+  for (const trigger of triggers) {
+    const base = toPendingSecret(trigger, playerId, 'effect');
+    set({ pendingSecret: base });
+    await wait(NPC_TIMING.secretEffect);
+
+    set({ pendingSecret: { ...base, phase: 'impact' } });
+    await wait(NPC_TIMING.secretImpact);
+  }
+
+  set({ pendingSecret: null });
+}
+
+async function runNpcMinionPlaySequence(
+  action: GameAction & { type: 'play-card' },
+  card: Card,
+  opponentId: string,
+  playerId: string,
+  get: () => GameStore,
+  set: (partial: Partial<GameStore>) => void,
+  wait: (ms: number) => Promise<void>,
+): Promise<void> {
+  const cardName = card.name ?? 'Carta';
+  const npcIdx = get().gameState?.players.findIndex((p) => p.id === opponentId) ?? -1;
+  if (npcIdx === -1) return;
+
+  const mayDeferSecrets =
+    card.type === 'beyonder' &&
+    defenderHasTrigger(get().gameState!, playerId, 'on-minion-played');
+
+  set({ npcPlayReveal: { cardName } });
+  await wait(NPC_TIMING.playCardIntent);
+
+  try {
+    const { gameState: beforePlay } = get();
+    if (!beforePlay || beforePlay.phase === 'ended') {
+      set({ npcPlayReveal: null });
+      return;
+    }
+
+    const logBefore = beforePlay.log.length;
+    const boardBefore = new Set(beforePlay.players[npcIdx].board.map((m) => m.instanceId));
+
+    const played = applyAction(beforePlay, opponentId, {
+      ...action,
+      skipSecrets: mayDeferSecrets,
+    });
+    set({ gameState: snapshotGameState(played) });
+
+    await wait(NPC_TIMING.minionSettle);
+
+    if (mayDeferSecrets) {
+      const newMinion = played.players[npcIdx].board.find((m) => !boardBefore.has(m.instanceId));
+      const hiddenReveal: PendingSecret = {
+        secretName: '???',
+        secretId: '',
+        ownerIsPlayer: true,
+        targetMinionId: newMinion?.instanceId ?? null,
+        targetHero: null,
+        phase: 'reveal',
+      };
+      set({ pendingSecret: hiddenReveal });
+      await wait(NPC_TIMING.secretReveal);
+
+      const { gameState: current } = get();
+      if (current && current.phase !== 'ended') {
+        const resolved = applyAction(current, opponentId, {
+          type: 'resolve-secrets',
+          trigger: 'on-minion-played',
+          context: {
+            playedMinionInstanceId: newMinion?.instanceId,
+            playedMinionPlayerIndex: npcIdx,
+          },
+        });
+        const secretEvents = resolved.log.slice(logBefore);
+        const triggers = parseSecretTriggersFromLog(
+          secretEvents,
+          playerId,
+          opponentId,
+          newMinion?.instanceId,
+        );
+        set({ gameState: snapshotGameState(resolved) });
+        await runSecretEffectSequence(triggers, playerId, set, wait);
+
+        const hadDeaths = secretEvents.some((e) => e.type === 'minion-death');
+        if (hadDeaths) await wait(NPC_TIMING.deathAnim);
+      } else {
+        set({ pendingSecret: null });
+      }
+    }
+  } catch {
+    set({ npcPlayReveal: null, pendingSecret: null });
+    return;
+  }
+
+  await wait(NPC_TIMING.playCard);
+  set({ npcPlayReveal: null });
+}
+
 function resolveHeroPowerTarget(
   state: GameState,
   casterId: string,
@@ -559,6 +702,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingAttack: null,
   pendingHeroPower: null,
   pendingRitual: null,
+  pendingSecret: null,
   npcPlayReveal: null,
   onlineSendAction: null,
   deferredOnlineStates: [],
@@ -669,6 +813,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingAttack: null,
       pendingHeroPower: null,
       pendingRitual: null,
+      pendingSecret: null,
       npcPlayReveal: null,
       deferredOnlineStates: [],
       remoteOpponentAnimQueue: [],
@@ -802,6 +947,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 continue;
               }
 
+              if (card?.type === 'beyonder') {
+                await runNpcMinionPlaySequence(nextAction, card, opponentId, playerId, get, set, wait);
+                await wait(NPC_TIMING.betweenActions);
+                continue;
+              }
+
               const cardName = card?.name ?? 'Carta';
 
               set({ npcPlayReveal: { cardName } });
@@ -837,7 +988,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             }
           }
 
-          set({ npcThinking: false, pendingAttack: null, pendingHeroPower: null, pendingRitual: null, npcPlayReveal: null });
+          set({ npcThinking: false, pendingAttack: null, pendingHeroPower: null, pendingRitual: null, pendingSecret: null, npcPlayReveal: null });
         };
 
         executeNpcActions();
@@ -862,6 +1013,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pendingAttack: null,
       pendingHeroPower: null,
       pendingRitual: null,
+      pendingSecret: null,
       npcPlayReveal: null,
       deferredOnlineStates: [],
       remoteOpponentAnimQueue: [],

@@ -165,7 +165,9 @@ export function applyAction(state: GameState, playerId: string, action: GameActi
 
   switch (action.type) {
     case 'play-card':
-      return playCard(state, playerIndex, action.handIndex, action.target, action.boardPosition);
+      return playCard(state, playerIndex, action.handIndex, action.target, action.boardPosition, action.skipSecrets);
+    case 'resolve-secrets':
+      return resolveDeferredSecrets(state, playerIndex, action.trigger, action.context);
     case 'attack':
       return attackMinion(state, playerIndex, action.attackerInstanceId, action.targetInstanceId);
     case 'attack-hero':
@@ -236,7 +238,8 @@ function playCard(
   playerIndex: number,
   handIndex: number,
   target?: string,
-  boardPosition?: number
+  boardPosition?: number,
+  skipSecrets = false,
 ): GameState {
   const player = state.players[playerIndex];
   const opponent = state.players[1 - playerIndex];
@@ -260,10 +263,12 @@ function playCard(
   switch (card.type) {
     case 'beyonder': {
       const minionId = playBeyonder(state, playerIndex, card as BeyonderCard, boardPosition);
-      checkTriggerSecrets(state, 1 - playerIndex, 'on-minion-played', {
-        playedMinionInstanceId: minionId,
-        playedMinionPlayerIndex: playerIndex,
-      });
+      if (!skipSecrets) {
+        checkTriggerSecrets(state, 1 - playerIndex, 'on-minion-played', {
+          playedMinionInstanceId: minionId,
+          playedMinionPlayerIndex: playerIndex,
+        });
+      }
       break;
     }
     case 'sealed-artifact':
@@ -271,9 +276,11 @@ function playCard(
       break;
     case 'ritual':
       playRitual(state, playerIndex, card, target);
-      checkTriggerSecrets(state, 1 - playerIndex, 'on-spell-cast', {
-        playedMinionPlayerIndex: playerIndex,
-      });
+      if (!skipSecrets) {
+        checkTriggerSecrets(state, 1 - playerIndex, 'on-spell-cast', {
+          playedMinionPlayerIndex: playerIndex,
+        });
+      }
       break;
     case 'mystical-item':
       playMysticalItem(state, playerIndex, card);
@@ -796,6 +803,17 @@ function applyEffect(
 
 // ─── Secrets ─────────────────────────────────────────────────────────────────
 
+function resolveDeferredSecrets(
+  state: GameState,
+  triggeringPlayerIndex: number,
+  trigger: import('./types.js').SecretTrigger,
+  context: SecretContext,
+): GameState {
+  checkTriggerSecrets(state, 1 - triggeringPlayerIndex, trigger, context);
+  checkGameOver(state);
+  return state;
+}
+
 function shouldTriggerDeathSecret(
   secretCardId: string,
   secretOwnerIndex: number,
@@ -1073,6 +1091,8 @@ export function validateAction(state: GameState, playerId: string, action: GameA
         if (!player.hasFateCoin) return 'No Fate Coin';
         return null;
       }
+      case 'resolve-secrets':
+        return null;
       default:
         return 'Unknown action';
     }

@@ -236,6 +236,12 @@ export const ptBR = {
     secrets: '{count} segredo',
     secretsPlural: '{count} segredos',
     yourSecretsTitle: 'Seus segredos ativos',
+    secretReveal: {
+      yours: 'Seu segredo',
+      enemy: 'Segredo inimigo',
+      revealed: 'Segredo revelado!',
+      triggered: 'Efeito ativado!',
+    },
     durability: '{n} dur',
     storyIntro: 'Modo História — {chapter}',
     winPathwayUnlocked: 'Pathway {name} desbloqueado!',

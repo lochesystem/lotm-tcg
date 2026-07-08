@@ -1,5 +1,5 @@
 import { Screen } from '../App';
-import { useGameStore, type PendingAttack, type PendingRitual } from '../stores/gameStore';
+import { useGameStore, type PendingAttack, type PendingHeroPower, type PendingRitual } from '../stores/gameStore';
 import { CardComponent } from '../components/Card';
 import { AnimatedBoard } from '../components/AnimatedBoard';
 import { HeroPortrait } from '../components/HeroPortrait';
@@ -13,6 +13,7 @@ import { HeroPowerBeam } from '../components/HeroPowerBeam';
 import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
+import { SecretReveal } from '../components/SecretReveal';
 import { PackOpening } from '../components/PackOpening';
 import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, type Pathway } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
@@ -44,6 +45,7 @@ import { useCollectionStore } from '../stores/collectionStore';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { recordMatch } from '../sync/player-sync';
 import { useTranslation } from '../i18n';
+import { defenderHasTrigger, parseSecretTriggersFromLog } from '../utils/secretAnimation';
 import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
 interface Props {
@@ -70,10 +72,22 @@ const PLAYER_ATTACK_TIMING = {
   post: 450,
 } as const;
 
+const PLAYER_HERO_POWER_TIMING = {
+  preview: 700,
+  charge: 550,
+  impact: 700,
+  post: 400,
+} as const;
+
+const PLAYER_MINION_SETTLE_MS = 1000;
+const SECRET_TIMING_MS = { reveal: 900, effect: 850, impact: 750 } as const;
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export function BattleScreen({ onNavigate }: Props) {
   const { t, locale } = useTranslation();
   const { cardDescription, cardType, rarity, pathwayPowerDescription, noEffect } = useLocalizedCardText();
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, pendingSecret, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -83,6 +97,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
   const [showRitualAnim, setShowRitualAnim] = useState(false);
   const [playerRitual, setPlayerRitual] = useState<PendingRitual | null>(null);
+  const [playerHeroPower, setPlayerHeroPower] = useState<PendingHeroPower | null>(null);
   const ritualTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [ritualTargetIds, setRitualTargetIds] = useState<Set<string> | null>(null);
   const [ritualDamagedIds, setRitualDamagedIds] = useState<Set<string> | null>(null);
@@ -313,12 +328,14 @@ export function BattleScreen({ onNavigate }: Props) {
     return () => clearTimeout(timer);
   }, [activeEnemyAttack]);
 
-  // Sync NPC hero power animation phases from store
-  useEffect(() => {
-    if (!pendingHeroPower?.isNpc) return;
+  // Sync hero power animation phases (NPC + player Purify)
+  const activeHeroPower = pendingHeroPower ?? playerHeroPower;
 
-    const { phase, targetId, targetHero } = pendingHeroPower;
-    const sourceHero = pendingHeroPower.isNpc ? 'opponent' : 'player';
+  useEffect(() => {
+    if (!activeHeroPower) return;
+
+    const { phase, targetId, targetHero } = activeHeroPower;
+    const sourceHero = activeHeroPower.isNpc ? 'opponent' : 'player';
 
     if (phase === 'preview') {
       setCastingHero(sourceHero);
@@ -338,7 +355,6 @@ export function BattleScreen({ onNavigate }: Props) {
       return;
     }
 
-    // impact
     setCastingHero(sourceHero);
     if (targetId) {
       setDamagedMinion(targetId);
@@ -351,7 +367,26 @@ export function BattleScreen({ onNavigate }: Props) {
     setShowHeroPowerAnim(true);
     const timer = setTimeout(() => setShowHeroPowerAnim(false), 550);
     return () => clearTimeout(timer);
-  }, [pendingHeroPower]);
+  }, [activeHeroPower]);
+
+  // Secret trap impact flash on affected minion
+  useEffect(() => {
+    if (!pendingSecret || pendingSecret.phase !== 'impact') return;
+
+    if (pendingSecret.targetMinionId) {
+      setDamagedMinion(pendingSecret.targetMinionId);
+      setDamagedHero(null);
+    } else if (pendingSecret.targetHero) {
+      setDamagedMinion(null);
+      setDamagedHero(pendingSecret.targetHero);
+    }
+
+    const timer = setTimeout(() => {
+      setDamagedMinion(null);
+      setDamagedHero(null);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [pendingSecret]);
 
   // Sync NPC ritual animation phases from store
   useEffect(() => {
@@ -533,6 +568,14 @@ export function BattleScreen({ onNavigate }: Props) {
       addLog(err, 'system');
       return;
     }
+
+    if (player.pathway === 'red-priest') {
+      void playPurifyAnimation(target);
+      setTargetingHeroPower(false);
+      setWeaponAttackMode(false);
+      return;
+    }
+
     const buffedMinion = target ? player.board.find((m) => m.instanceId === target) : null;
     performAction(action);
     if (player.pathway === 'tyrant' && buffedMinion) {
@@ -542,6 +585,118 @@ export function BattleScreen({ onNavigate }: Props) {
     }
     setTargetingHeroPower(false);
     setWeaponAttackMode(false);
+  };
+
+  const playPurifyAnimation = async (target?: string) => {
+    const onEnemyBoard = target
+      ? opponent.board.find((m) => m.instanceId === target)
+      : null;
+    const targetId = onEnemyBoard ? target! : null;
+    const targetHero = targetId ? null : ('opponent' as const);
+
+    const powerBase: PendingHeroPower = {
+      pathway: player.pathway,
+      powerName: pathwayInfo.powerName,
+      targetId,
+      targetHero,
+      isNpc: false,
+      phase: 'preview',
+    };
+
+    setPlayerHeroPower(powerBase);
+    await sleep(PLAYER_HERO_POWER_TIMING.preview);
+    setPlayerHeroPower({ ...powerBase, phase: 'strike' });
+    await sleep(PLAYER_HERO_POWER_TIMING.charge);
+    setPlayerHeroPower({ ...powerBase, phase: 'impact' });
+    await sleep(PLAYER_HERO_POWER_TIMING.impact);
+
+    performAction({ type: 'hero-power', target });
+    addLog(t('battle.actions.usedPower', { power: pathwayInfo.powerName }), 'action');
+
+    await sleep(PLAYER_HERO_POWER_TIMING.post);
+    setPlayerHeroPower(null);
+  };
+
+  const runPlayerSecretEffectSequence = async (
+    logBefore: number,
+    playedMinionId: string | null,
+  ) => {
+    const state = useGameStore.getState().gameState;
+    if (!state) return;
+
+    const triggers = parseSecretTriggersFromLog(
+      state.log.slice(logBefore),
+      playerId,
+      opponentId,
+      playedMinionId,
+    );
+
+    for (const trigger of triggers) {
+      const base = {
+        secretName: trigger.secretName,
+        secretId: trigger.secretId,
+        ownerIsPlayer: trigger.ownerPlayerId === playerId,
+        targetMinionId: trigger.targetMinionId,
+        targetHero: trigger.targetHero,
+        phase: 'effect' as const,
+      };
+      useGameStore.setState({ pendingSecret: base });
+      await sleep(SECRET_TIMING_MS.effect);
+      useGameStore.setState({ pendingSecret: { ...base, phase: 'impact' } });
+      await sleep(SECRET_TIMING_MS.impact);
+    }
+
+    useGameStore.setState({ pendingSecret: null });
+  };
+
+  const playBeyonderWithSecretCadence = async (handIndex: number, target?: string) => {
+    const boardBefore = new Set(player.board.map((m) => m.instanceId));
+    const logBefore = gameState.log.length;
+    const deferSecrets = defenderHasTrigger(gameState, opponentId, 'on-minion-played');
+
+    performAction({
+      type: 'play-card',
+      handIndex,
+      target,
+      skipSecrets: deferSecrets,
+    });
+
+    clearCardSelection();
+    setSelectedAttacker(null);
+    clearArrowPreview();
+
+    await sleep(PLAYER_MINION_SETTLE_MS);
+
+    if (!deferSecrets) return;
+
+    const afterPlay = useGameStore.getState().gameState;
+    if (!afterPlay) return;
+
+    const playedMinionId =
+      afterPlay.players[playerIdx].board.find((m) => !boardBefore.has(m.instanceId))?.instanceId ?? null;
+
+    useGameStore.setState({
+      pendingSecret: {
+        secretName: '???',
+        secretId: '',
+        ownerIsPlayer: false,
+        targetMinionId: playedMinionId,
+        targetHero: null,
+        phase: 'reveal',
+      },
+    });
+    await sleep(SECRET_TIMING_MS.reveal);
+
+    performAction({
+      type: 'resolve-secrets',
+      trigger: 'on-minion-played',
+      context: {
+        playedMinionInstanceId: playedMinionId ?? undefined,
+        playedMinionPlayerIndex: playerIdx,
+      },
+    });
+
+    await runPlayerSecretEffectSequence(logBefore, playedMinionId);
   };
 
   const handlePlayCard = (handIndex: number) => {
@@ -645,6 +800,11 @@ export function BattleScreen({ onNavigate }: Props) {
 
     if (card && isDamagingRitual(card)) {
       playRitualAnimation(handIndex, target, cardName);
+      return;
+    }
+
+    if (card?.type === 'beyonder' && defenderHasTrigger(gameState, opponentId, 'on-minion-played')) {
+      void playBeyonderWithSecretCadence(handIndex, target);
       return;
     }
 
@@ -990,8 +1150,8 @@ export function BattleScreen({ onNavigate }: Props) {
   );
 
   const activeHeroPowerImpact = heroPowerImpactTarget ?? (
-    pendingHeroPower?.phase === 'impact'
-      ? { targetId: pendingHeroPower.targetId, targetHero: pendingHeroPower.targetHero }
+    activeHeroPower?.phase === 'impact'
+      ? { targetId: activeHeroPower.targetId, targetHero: activeHeroPower.targetHero }
       : null
   );
 
@@ -1085,6 +1245,7 @@ export function BattleScreen({ onNavigate }: Props) {
       </AnimatePresence>
 
       <NpcPlayReveal cardName={npcPlayReveal?.cardName ?? null} />
+      <SecretReveal pending={pendingSecret} />
 
       {/* Slash impact on the target card or hero */}
       <AttackImpact
@@ -1094,21 +1255,21 @@ export function BattleScreen({ onNavigate }: Props) {
       />
 
       {/* Hero power beam + holy impact (Purify etc.) */}
-      {pendingHeroPower && (
+      {activeHeroPower && (
         <HeroPowerBeam
-          sourceHero={pendingHeroPower.isNpc ? 'opponent' : 'player'}
-          targetId={pendingHeroPower.targetId}
-          targetHero={pendingHeroPower.targetHero}
-          pathway={pendingHeroPower.pathway}
-          phase={pendingHeroPower.phase}
-          powerName={pendingHeroPower.isNpc ? t('battle.enemyPowerPrefix', { power: pendingHeroPower.powerName }) : pendingHeroPower.powerName}
+          sourceHero={activeHeroPower.isNpc ? 'opponent' : 'player'}
+          targetId={activeHeroPower.targetId}
+          targetHero={activeHeroPower.targetHero}
+          pathway={activeHeroPower.pathway}
+          phase={activeHeroPower.phase}
+          powerName={activeHeroPower.isNpc ? t('battle.enemyPowerPrefix', { power: activeHeroPower.powerName }) : activeHeroPower.powerName}
         />
       )}
       <HeroPowerImpact
         show={showHeroPowerAnim}
         targetId={activeHeroPowerImpact?.targetId ?? null}
         targetHero={activeHeroPowerImpact?.targetHero ?? null}
-        pathway={pendingHeroPower?.pathway ?? opponent.pathway}
+        pathway={activeHeroPower?.pathway ?? opponent.pathway}
       />
 
       {(pendingRitual ?? playerRitual) && (
@@ -1141,6 +1302,44 @@ export function BattleScreen({ onNavigate }: Props) {
           targetMinionIds={weaponTargets.validMinionIds}
           showHero={weaponTargets.heroValid}
           targetHero="opponent"
+          isPlayerAttacking
+        />
+      )}
+      {targetingHandIndex !== null && playTargets && (
+        <AttackTargetArrows
+          attackerHandIndex={targetingHandIndex}
+          targetMinionIds={playTargets.enemyMinionIds}
+          showHero={playTargets.allowEnemyHero}
+          targetHero="opponent"
+          isPlayerAttacking
+        />
+      )}
+      {targetingHandIndex !== null && playTargets && playTargets.friendlyMinionIds.size > 0 && (
+        <AttackTargetArrows
+          attackerHandIndex={targetingHandIndex}
+          targetMinionIds={playTargets.friendlyMinionIds}
+          showHero={playTargets.allowFriendlyHero}
+          targetHero="player"
+          isPlayerAttacking
+        />
+      )}
+      {targetingHeroPower && heroPowerMode && (
+        <AttackTargetArrows
+          attackerHero="player"
+          targetMinionIds={
+            getHeroPowerEnemyMinionTargets(heroPowerMode, opponent) ?? new Set<string>()
+          }
+          showHero={heroPowerAllowsEnemyHero(heroPowerMode, opponent)}
+          targetHero="opponent"
+          isPlayerAttacking
+        />
+      )}
+      {targetingHeroPower && heroPowerMode === 'friendly-minion-or-hero' && (
+        <AttackTargetArrows
+          attackerHero="player"
+          targetMinionIds={new Set(player.board.map((m) => m.instanceId))}
+          showHero
+          targetHero="player"
           isPlayerAttacking
         />
       )}
@@ -1685,6 +1884,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   return (
                     <motion.div
                       key={`${card.id}-${index}`}
+                      data-hand-index={index}
                       layout
                       initial={{ scale: 0.5, y: 60, opacity: 0, rotate: -5 }}
                       animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}

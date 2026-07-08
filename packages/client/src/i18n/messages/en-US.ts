@@ -236,6 +236,12 @@ export const enUS = {
     secrets: '{count} secret',
     secretsPlural: '{count} secrets',
     yourSecretsTitle: 'Your active secrets',
+    secretReveal: {
+      yours: 'Your secret',
+      enemy: 'Enemy secret',
+      revealed: 'Secret revealed!',
+      triggered: 'Effect triggered!',
+    },
     durability: '{n} dur',
     storyIntro: 'Story Mode — {chapter}',
     winPathwayUnlocked: 'Pathway {name} unlocked!',

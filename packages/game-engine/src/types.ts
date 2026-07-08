@@ -169,7 +169,8 @@ export type GamePhase = 'mulligan' | 'playing' | 'ended';
 // ─── Actions ────────────────────────────────────────────────────────────────
 
 export type GameAction =
-  | { type: 'play-card'; handIndex: number; target?: string; boardPosition?: number }
+  | { type: 'play-card'; handIndex: number; target?: string; boardPosition?: number; skipSecrets?: boolean }
+  | { type: 'resolve-secrets'; trigger: SecretTrigger; context: SecretContext }
   | { type: 'attack'; attackerInstanceId: string; targetInstanceId: string }
   | { type: 'attack-hero'; attackerInstanceId: string }
   | { type: 'hero-power'; target?: string }

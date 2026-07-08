@@ -5,6 +5,7 @@ import type { CombatPhase } from '../stores/gameStore';
 interface Props {
   attackerId?: string | null;
   attackerHero?: 'player' | 'opponent' | null;
+  attackerHandIndex?: number | null;
   targetId?: string | null;
   targetHero?: 'player' | 'opponent' | null;
   isPlayerAttacking?: boolean;
@@ -22,9 +23,11 @@ function resolveHeroSelector(
 
 function resolveAttackerSelector(
   attackerId: string | null | undefined,
-  attackerHero: 'player' | 'opponent' | null | undefined
+  attackerHero: 'player' | 'opponent' | null | undefined,
+  attackerHandIndex?: number | null,
 ): string | null {
   if (attackerId) return `[data-minion-id="${attackerId}"]`;
+  if (attackerHandIndex != null) return `[data-hand-index="${attackerHandIndex}"]`;
   if (attackerHero === 'player') return '[data-hero-player]';
   if (attackerHero === 'opponent') return '[data-hero-enemy]';
   return null;
@@ -33,6 +36,7 @@ function resolveAttackerSelector(
 export function AttackArrow({
   attackerId,
   attackerHero,
+  attackerHandIndex,
   targetId,
   targetHero,
   isPlayerAttacking,
@@ -43,7 +47,7 @@ export function AttackArrow({
   const isStriking = phase === 'strike' || phase === 'impact';
   const color = isPlayerAttacking ? '#4ade80' : '#f87171';
   const glowColor = isPlayerAttacking ? '#86efac' : '#fca5a5';
-  const hasAttacker = !!(attackerId || attackerHero);
+  const hasAttacker = !!(attackerId || attackerHero || attackerHandIndex != null);
   const hasTarget = !!(targetId || targetHero);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function AttackArrow({
         return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       };
 
-      const attackerSelector = resolveAttackerSelector(attackerId, attackerHero);
+      const attackerSelector = resolveAttackerSelector(attackerId, attackerHero, attackerHandIndex);
       const attackerEl = attackerSelector
         ? (document.querySelector(attackerSelector) as HTMLElement)
         : null;
@@ -82,7 +86,7 @@ export function AttackArrow({
       window.removeEventListener('resize', updateCoords);
       clearInterval(interval);
     };
-  }, [attackerId, attackerHero, targetId, targetHero, isPlayerAttacking, phase, hasAttacker, hasTarget]);
+  }, [attackerId, attackerHero, attackerHandIndex, targetId, targetHero, isPlayerAttacking, phase, hasAttacker, hasTarget]);
 
   const show = hasAttacker && hasTarget && !!coords;
   const markerId = `arrowhead-${uid}`;

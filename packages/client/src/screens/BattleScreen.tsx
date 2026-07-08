@@ -459,6 +459,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const playerIdx = gameState.players.findIndex((p) => p.id === playerId);
   const player = gameState.players[playerIdx];
   const opponent = gameState.players[1 - playerIdx];
+  const playerSecrets = player.secrets ?? [];
+  const opponentSecrets = opponent.secrets ?? [];
   const battlefieldPathway = isStoryMode && storyOpponentPathway ? storyOpponentPathway : opponent.pathway;
   const battlefieldUrl = getBattlefieldUrl(battlefieldPathway);
   const battlefieldVideoUrl = getBattlefieldVideoUrl(battlefieldPathway);
@@ -649,7 +651,7 @@ export function BattleScreen({ onNavigate }: Props) {
     performAction(action);
     if (card?.type === 'sealed-artifact') {
       addLog(t('battle.actions.equippedWeapon', { name: cardName }), 'action');
-    } else {
+    } else if (card?.type !== 'mystical-item') {
       addLog(t('battle.actions.playedCard', { name: cardName }), 'action');
     }
     clearCardSelection();
@@ -692,7 +694,7 @@ export function BattleScreen({ onNavigate }: Props) {
       addLog(t('battle.boardFull'), 'system');
       return;
     }
-    if (card.type === 'mystical-item' && player.secrets.length >= 3) {
+    if (card.type === 'mystical-item' && playerSecrets.length >= 3) {
       addLog(t('battle.maxSecrets'), 'system');
       return;
     }
@@ -1336,13 +1338,13 @@ export function BattleScreen({ onNavigate }: Props) {
                 ))}
               </div>
             </div>
-            {opponent.secrets.length > 0 && (
+            {opponentSecrets.length > 0 && (
               <div className="flex items-center gap-1 px-2 py-1 bg-gold-400/10 border border-gold-400/30 rounded-lg">
                 <span className="text-xs">❓</span>
                 <span className="text-[10px] text-gold-400 font-medium">
-                  {opponent.secrets.length === 1
-                    ? t('battle.secrets', { count: opponent.secrets.length })
-                    : t('battle.secretsPlural', { count: opponent.secrets.length })}
+                  {opponentSecrets.length === 1
+                    ? t('battle.secrets', { count: opponentSecrets.length })
+                    : t('battle.secretsPlural', { count: opponentSecrets.length })}
                 </span>
               </div>
             )}
@@ -1449,18 +1451,18 @@ export function BattleScreen({ onNavigate }: Props) {
           onMinionClick={handleMinionClick}
         />
 
-        {player.secrets.length > 0 && (
+        {playerSecrets.length > 0 && (
           <div className="flex-none px-2 pb-1">
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <span className="text-[9px] uppercase tracking-wider text-purple-300/80">
+            <div className="mx-auto flex max-w-md flex-wrap items-center justify-center gap-1.5 rounded-xl border border-purple-400/50 bg-purple-950/70 px-3 py-1.5 shadow-lg shadow-purple-900/40">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-200">
                 {t('battle.yourSecretsTitle')}
               </span>
-              {player.secrets.map((secret) => (
+              {playerSecrets.map((secret) => (
                 <motion.div
                   key={secret.instanceId}
                   initial={{ scale: 0.85, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-900/50 border border-purple-400/40 text-[10px] text-purple-100 shadow-sm shadow-purple-900/30"
+                  className="flex items-center gap-1 rounded-lg border border-purple-300/50 bg-purple-800/60 px-2.5 py-1 text-[11px] font-medium text-purple-50"
                 >
                   <span aria-hidden>✧</span>
                   <span>{secret.card.name}</span>

@@ -2,7 +2,7 @@ import { getAllCards } from 'game-engine';
 import { getCardArtUrl } from './cardArt';
 
 /** Bump when new card art ships so clients re-warm the cache. */
-const CACHE_VERSION = '2';
+const CACHE_VERSION = '3';
 
 const CACHE_WARMED_KEY = `lotm-card-art-warmed-${CACHE_VERSION}`;
 

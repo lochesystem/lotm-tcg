@@ -1093,6 +1093,7 @@ export function serializeState(state: GameState): unknown {
 export function deserializeState(raw: unknown): GameState {
   const state = raw as GameState;
   for (const player of state.players) {
+    player.secrets ??= [];
     for (const minion of player.board) {
       minion.keywords = new Set(minion.keywords as unknown as Keyword[]);
     }

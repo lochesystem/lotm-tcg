@@ -18,12 +18,18 @@ import {
   isStoryProgressionBoss,
   getStoryBossTier,
   getCardById,
+  serializeState,
+  deserializeState,
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { updatePreferredPathway } from '../sync/player-sync';
 import { isSupabaseConfigured } from '../lib/supabase';
+
+function snapshotGameState(state: GameState): GameState {
+  return deserializeState(serializeState(state));
+}
 import {
   isDamagingRitual,
   isAoERitual,
@@ -393,7 +399,7 @@ async function runNpcAttackSequence(
       const logBefore = strikeState.log.length;
       const next = applyAction(strikeState, opponentId, action);
       const hadDeaths = next.log.slice(logBefore).some((e) => e.type === 'minion-death');
-      set({ gameState: { ...next }, pendingAttack: null });
+      set({ gameState: snapshotGameState(next), pendingAttack: null });
       if (hadDeaths) await wait(NPC_TIMING.deathAnim);
     } else {
       set({ pendingAttack: null });
@@ -442,7 +448,7 @@ async function runNpcHeroPowerSequence(
       const logBefore = gameState.log.length;
       const powered = applyAction(gameState, opponentId, action);
       const hadDeaths = powered.log.slice(logBefore).some((e) => e.type === 'minion-death');
-      set({ gameState: { ...powered } });
+      set({ gameState: snapshotGameState(powered) });
       await wait(NPC_TIMING.heroPower);
       if (hadDeaths) await wait(NPC_TIMING.deathAnim);
     } catch { /* skip */ }
@@ -474,7 +480,7 @@ async function runNpcHeroPowerSequence(
       const logBefore = chargeState.log.length;
       const powered = applyAction(chargeState, opponentId, action);
       const hadDeaths = powered.log.slice(logBefore).some((e) => e.type === 'minion-death');
-      set({ gameState: { ...powered }, pendingHeroPower: null });
+      set({ gameState: snapshotGameState(powered), pendingHeroPower: null });
       if (hadDeaths) await wait(NPC_TIMING.deathAnim);
     } else {
       set({ pendingHeroPower: null });
@@ -523,7 +529,7 @@ async function runNpcRitualSequence(
       const logBefore = chargeState.log.length;
       const played = applyAction(chargeState, opponentId, action);
       const hadDeaths = played.log.slice(logBefore).some((e) => e.type === 'minion-death');
-      set({ gameState: { ...played }, pendingRitual: null });
+      set({ gameState: snapshotGameState(played), pendingRitual: null });
       if (hadDeaths) await wait(NPC_TIMING.deathAnim);
     } else {
       set({ pendingRitual: null });
@@ -752,7 +758,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const newState = applyAction(gameState, playerId, action);
       const ended = newState.phase === 'ended';
       set({
-        gameState: { ...newState },
+        gameState: snapshotGameState(newState),
         ...(ended
           ? {
               npcThinking: false,
@@ -782,7 +788,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             if (nextAction.type === 'end-turn') {
               try {
                 const ended = applyAction(latest, opponentId, { type: 'end-turn' });
-                set({ gameState: { ...ended } });
+                set({ gameState: snapshotGameState(ended) });
               } catch { /* already ended */ }
               break;
             }
@@ -805,7 +811,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 const { gameState: beforePlay } = get();
                 if (beforePlay && beforePlay.phase !== 'ended') {
                   const played = applyAction(beforePlay, opponentId, nextAction);
-                  set({ gameState: { ...played } });
+                  set({ gameState: snapshotGameState(played) });
                 }
               } catch {
                 set({ npcPlayReveal: null });

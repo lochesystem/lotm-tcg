@@ -11,6 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['battlefields/*.png', 'battlefields/*.mp4', 'audio/bgm/**/*.mp3', 'cards/*.png'],
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /\/cards\/[^/]+\.png$/i,

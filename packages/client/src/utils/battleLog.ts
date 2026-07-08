@@ -127,13 +127,32 @@ export function formatGameEvent(
   const isEnemy = event.playerId === opponentId;
 
   switch (event.type) {
-    case 'play-card':
+    case 'play-card': {
+      if (event.data.cardType === 'mystical-item') {
+        return {
+          text: t(locale, 'battle.events.secretSet', {
+            actor,
+            secret: String(event.data.cardName ?? t(locale, 'battle.events.secret')),
+          }),
+          type: isEnemy ? 'enemy' : 'system',
+        };
+      }
       return {
         text: t(locale, 'battle.events.playedCard', {
           actor,
           card: String(event.data.cardName ?? t(locale, 'battle.events.aCard')),
         }),
         type: isEnemy ? 'enemy' : 'action',
+      };
+    }
+
+    case 'secret-set':
+      return {
+        text: t(locale, 'battle.events.secretSet', {
+          actor,
+          secret: String(event.data.cardName ?? t(locale, 'battle.events.secret')),
+        }),
+        type: isEnemy ? 'enemy' : 'system',
       };
 
     case 'attack': {
@@ -202,7 +221,7 @@ export function formatGameEvent(
         ? t(locale, 'battle.events.enemy')
         : t(locale, 'battle.events.you');
       return {
-        text: t(locale, 'battle.events.revealedSecret', {
+        text: t(locale, 'battle.events.secretTriggered', {
           actor: secretActor,
           secret: String(event.data.secretName ?? '???'),
         }),

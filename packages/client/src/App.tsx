@@ -11,6 +11,7 @@ import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
 import { BgmController } from './components/BgmController';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { useTranslation } from './i18n';
+import { warmCardArtCache } from './utils/cardArtCache';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby';
 
@@ -31,6 +32,12 @@ export default function App() {
 
   const isBooting = isSupabaseConfigured && status === 'loading';
   const showAuth = isSupabaseConfigured && status === 'unauthenticated';
+
+  useEffect(() => {
+    if (isBooting || showAuth) return;
+    void warmCardArtCache();
+  }, [isBooting, showAuth]);
+
   const bgmScreen: Screen = showAuth || isBooting ? 'home' : screen;
 
   return (

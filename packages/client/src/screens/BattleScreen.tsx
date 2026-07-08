@@ -1449,6 +1449,27 @@ export function BattleScreen({ onNavigate }: Props) {
           onMinionClick={handleMinionClick}
         />
 
+        {player.secrets.length > 0 && (
+          <div className="flex-none px-2 pb-1">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <span className="text-[9px] uppercase tracking-wider text-purple-300/80">
+                {t('battle.yourSecretsTitle')}
+              </span>
+              {player.secrets.map((secret) => (
+                <motion.div
+                  key={secret.instanceId}
+                  initial={{ scale: 0.85, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-900/50 border border-purple-400/40 text-[10px] text-purple-100 shadow-sm shadow-purple-900/30"
+                >
+                  <span aria-hidden>✧</span>
+                  <span>{secret.card.name}</span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ─── Player area ───────────────────────────────────────────────── */}
         <div className="flex-none p-2 pt-1">
           <div className="flex items-center gap-3">

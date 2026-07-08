@@ -298,7 +298,7 @@ export const DEMONESS_CARDS: Card[] = [
     type: 'mystical-item',
     rarity: 'rare',
     pathway: 'demoness',
-    description: 'When enemy plays a minion, give it -2 Attack.',
+    description: 'When an enemy plays a minion, give that minion -2 Attack.',
     trigger: 'on-minion-played',
     effect: { type: 'debuff', target: 'random-enemy', buffAttack: -2, buffHealth: 0 },
   },

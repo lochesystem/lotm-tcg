@@ -9,9 +9,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['battlefields/*.png', 'battlefields/*.mp4', 'audio/bgm/**/*.mp3'],
+      includeAssets: ['battlefields/*.png', 'battlefields/*.mp4', 'audio/bgm/**/*.mp3', 'cards/*.png'],
       workbox: {
         runtimeCaching: [
+          {
+            urlPattern: /\/cards\/[^/]+\.png$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'card-art',
+              expiration: { maxEntries: 256, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /\/battlefields\/[^/]+\.png$/i,
             handler: 'CacheFirst',

@@ -315,7 +315,7 @@ export const FOOL_CARDS: Card[] = [
     type: 'mystical-item',
     rarity: 'epic',
     pathway: 'fool',
-    description: 'When your opponent plays a minion, return it to their hand.',
+    description: 'When an enemy plays a minion, return that minion to their hand.',
     trigger: 'on-minion-played',
     effect: { type: 'return', target: 'enemy' },
   },

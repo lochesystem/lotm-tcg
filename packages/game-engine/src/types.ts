@@ -89,6 +89,19 @@ export type SecretTrigger =
   | 'on-minion-death'
   | 'on-turn-start';
 
+/** Context passed when resolving mystical item (secret) triggers. */
+export interface SecretContext {
+  /** Minion that just attacked the defending hero. */
+  attackerInstanceId?: string;
+  attackerPlayerIndex?: number;
+  /** Minion that was just played (triggers opponent secrets). */
+  playedMinionInstanceId?: string;
+  playedMinionPlayerIndex?: number;
+  /** Minion that just died. */
+  deadMinionInstanceId?: string;
+  deadMinionPlayerIndex?: number;
+}
+
 // ─── Game State ─────────────────────────────────────────────────────────────
 
 export interface PlayerState {

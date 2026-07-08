@@ -10,6 +10,8 @@ import {
   Deck,
   GameEvent,
   Keyword,
+  SecretContext,
+  SpellEffect,
 } from './types.js';
 import { getCardById, getAllCards as getAllCardsFn } from './cards/index.js';
 import { PATHWAYS } from './pathways.js';
@@ -251,17 +253,27 @@ function playCard(
   player.spirituality -= card.cost;
   player.hand.splice(handIndex, 1);
 
-  addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name, cardType: card.type });
+  if (card.type !== 'mystical-item') {
+    addEvent(state, player.id, 'play-card', { cardId: card.id, cardName: card.name, cardType: card.type });
+  }
 
   switch (card.type) {
-    case 'beyonder':
-      playBeyonder(state, playerIndex, card as BeyonderCard, boardPosition);
+    case 'beyonder': {
+      const minionId = playBeyonder(state, playerIndex, card as BeyonderCard, boardPosition);
+      checkTriggerSecrets(state, 1 - playerIndex, 'on-minion-played', {
+        playedMinionInstanceId: minionId,
+        playedMinionPlayerIndex: playerIndex,
+      });
       break;
+    }
     case 'sealed-artifact':
       playSealedArtifact(state, playerIndex, card);
       break;
     case 'ritual':
       playRitual(state, playerIndex, card, target);
+      checkTriggerSecrets(state, 1 - playerIndex, 'on-spell-cast', {
+        playedMinionPlayerIndex: playerIndex,
+      });
       break;
     case 'mystical-item':
       playMysticalItem(state, playerIndex, card);
@@ -271,7 +283,7 @@ function playCard(
   return state;
 }
 
-function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard, position?: number): void {
+function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard, position?: number): string {
   const player = state.players[playerIndex];
   if (player.board.length >= 7) throw new Error('Board is full');
 
@@ -306,6 +318,8 @@ function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard,
     }
     addEvent(state, player.id, 'battlecry', { cardId: card.id, cardName: card.name });
   }
+
+  return instance.instanceId;
 }
 
 function playSealedArtifact(state: GameState, playerIndex: number, card: Card): void {
@@ -332,6 +346,7 @@ function playMysticalItem(state: GameState, playerIndex: number, card: Card): vo
     instanceId: nextInstanceId(),
     card: mystical,
   });
+  addEvent(state, player.id, 'secret-set', { cardId: mystical.id, cardName: mystical.name });
 }
 
 // ─── Attack ──────────────────────────────────────────────────────────────────
@@ -398,17 +413,26 @@ function attackHero(state: GameState, playerIndex: number, attackerInstanceId: s
   const hasProvoke = opponent.board.some((m) => m.keywords.has('provoke'));
   if (hasProvoke) throw new Error('Must attack a minion with Provoke');
 
-  opponent.health -= attacker.currentAttack;
+  const damage = attacker.currentAttack;
+  const defenderIndex = 1 - playerIndex;
+  const { negateDamage } = resolveOnHeroAttackedSecrets(state, defenderIndex, {
+    attackerInstanceId,
+    attackerPlayerIndex: playerIndex,
+  });
+
+  if (!negateDamage) {
+    opponent.health -= damage;
+  }
+
   attacker.keywords.delete('stealth');
   attacker.attacksThisTurn++;
   attacker.canAttack = false;
 
   addEvent(state, player.id, 'attack-hero', {
     attacker: attackerInstanceId,
-    damage: attacker.currentAttack,
+    damage: negateDamage ? 0 : damage,
   });
 
-  checkTriggerSecrets(state, 1 - playerIndex, 'on-hero-attacked');
   checkGameOver(state);
   return state;
 }
@@ -432,7 +456,14 @@ function heroAttack(state: GameState, playerIndex: number, targetInstanceId?: st
   } else {
     const hasProvoke = opponent.board.some((m) => m.keywords.has('provoke'));
     if (hasProvoke) throw new Error('Must attack Provoke minion');
-    opponent.health -= player.weapon.currentAttack;
+    const defenderIndex = 1 - playerIndex;
+    const weaponDamage = player.weapon.currentAttack;
+    const { negateDamage } = resolveOnHeroAttackedSecrets(state, defenderIndex, {
+      attackerPlayerIndex: playerIndex,
+    });
+    if (!negateDamage) {
+      opponent.health -= weaponDamage;
+    }
   }
 
   player.weapon.durability--;
@@ -541,11 +572,61 @@ function useFateCoin(state: GameState, playerIndex: number): GameState {
 
 // ─── Effect Resolution ───────────────────────────────────────────────────────
 
-function resolveBattlecry(state: GameState, playerIndex: number, effect: import('./types.js').SpellEffect): void {
+function resolveBattlecry(state: GameState, playerIndex: number, effect: SpellEffect): void {
   applyEffect(state, playerIndex, effect);
 }
 
-function applyEffect(state: GameState, playerIndex: number, effect: import('./types.js').SpellEffect, target?: string): void {
+function findMinionById(
+  state: GameState,
+  instanceId: string,
+): { minion: MinionInstance; ownerIndex: number } | null {
+  for (let i = 0; i < 2; i++) {
+    const minion = state.players[i].board.find((m) => m.instanceId === instanceId);
+    if (minion) return { minion, ownerIndex: i };
+  }
+  return null;
+}
+
+function resolveEffectMinionTarget(
+  state: GameState,
+  playerIndex: number,
+  effect: SpellEffect,
+  target?: string,
+  secretContext?: SecretContext,
+): { minion: MinionInstance; ownerIndex: number } | null {
+  const opponent = state.players[1 - playerIndex];
+
+  if (target) {
+    return findMinionById(state, target);
+  }
+
+  if (secretContext?.attackerInstanceId && effect.target === 'random-enemy') {
+    return findMinionById(state, secretContext.attackerInstanceId);
+  }
+
+  if (secretContext?.playedMinionInstanceId && (effect.target === 'enemy' || effect.target === 'random-enemy')) {
+    return findMinionById(state, secretContext.playedMinionInstanceId);
+  }
+
+  if (effect.target === 'random-enemy' && opponent.board.length > 0) {
+    const idx = Math.floor(Math.random() * opponent.board.length);
+    return { minion: opponent.board[idx], ownerIndex: 1 - playerIndex };
+  }
+
+  if (effect.target === 'enemy' && opponent.board.length > 0) {
+    return { minion: opponent.board[opponent.board.length - 1], ownerIndex: 1 - playerIndex };
+  }
+
+  return null;
+}
+
+function applyEffect(
+  state: GameState,
+  playerIndex: number,
+  effect: SpellEffect,
+  target?: string,
+  secretContext?: SecretContext,
+): void {
   const player = state.players[playerIndex];
   const opponent = state.players[1 - playerIndex];
 
@@ -579,6 +660,12 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
         }
         removeDead(state, 0);
         removeDead(state, 1);
+      } else if (effect.target === 'random-enemy') {
+        const resolved = resolveEffectMinionTarget(state, playerIndex, effect, target, secretContext);
+        if (resolved) {
+          dealDamageToMinion(resolved.minion, value, state);
+          removeDead(state, resolved.ownerIndex);
+        }
       } else if (target) {
         const resolved = resolveTarget(state, playerIndex, target);
         if (resolved.type === 'minion') {
@@ -586,6 +673,12 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
           removeDead(state, resolved.ownerIndex);
         } else {
           resolved.player.health -= value;
+        }
+      } else if (effect.target === 'enemy') {
+        const resolved = resolveEffectMinionTarget(state, playerIndex, effect, target, secretContext);
+        if (resolved) {
+          dealDamageToMinion(resolved.minion, value, state);
+          removeDead(state, resolved.ownerIndex);
         }
       }
       break;
@@ -610,7 +703,22 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
       break;
     }
     case 'buff': {
-      if (target) {
+      if (effect.target === 'all-friendlies') {
+        for (const m of player.board) {
+          if (effect.buffAttack) {
+            m.buffs.push({
+              source: 'secret',
+              attackMod: effect.buffAttack,
+              healthMod: effect.buffHealth ?? 0,
+              temporary: false,
+            });
+            recalculateStats(m);
+          }
+          if (effect.buffHealth && effect.buffHealth > 0) {
+            m.currentHealth += effect.buffHealth;
+          }
+        }
+      } else if (target) {
         const minion = player.board.find((m) => m.instanceId === target) ??
                        opponent.board.find((m) => m.instanceId === target);
         if (minion) {
@@ -625,6 +733,32 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
             minion.currentHealth += effect.buffHealth;
           }
         }
+      }
+      break;
+    }
+    case 'debuff': {
+      const resolved = resolveEffectMinionTarget(state, playerIndex, effect, target, secretContext);
+      if (resolved) {
+        resolved.minion.buffs.push({
+          source: 'secret',
+          attackMod: effect.buffAttack ?? 0,
+          healthMod: effect.buffHealth ?? 0,
+          temporary: false,
+        });
+        recalculateStats(resolved.minion);
+      }
+      break;
+    }
+    case 'return': {
+      const resolved = resolveEffectMinionTarget(state, playerIndex, effect, target, secretContext);
+      if (resolved) {
+        const owner = state.players[resolved.ownerIndex];
+        owner.hand.push(resolved.minion.card);
+        owner.board = owner.board.filter((m) => m.instanceId !== resolved.minion.instanceId);
+        addEvent(state, owner.id, 'minion-returned', {
+          instanceId: resolved.minion.instanceId,
+          cardName: resolved.minion.card.name,
+        });
       }
       break;
     }
@@ -662,23 +796,92 @@ function applyEffect(state: GameState, playerIndex: number, effect: import('./ty
 
 // ─── Secrets ─────────────────────────────────────────────────────────────────
 
-function checkTriggerSecrets(state: GameState, defenderIndex: number, trigger: import('./types.js').SecretTrigger): void {
+function shouldTriggerDeathSecret(
+  secretCardId: string,
+  secretOwnerIndex: number,
+  context: SecretContext,
+): boolean {
+  if (secretCardId === 's-sanctuary-ward') {
+    return context.deadMinionPlayerIndex === secretOwnerIndex;
+  }
+  return true;
+}
+
+function resolveOnHeroAttackedSecrets(
+  state: GameState,
+  defenderIndex: number,
+  context: SecretContext,
+): { negateDamage: boolean } {
   const defender = state.players[defenderIndex];
   const toRemove: number[] = [];
+  let negateDamage = false;
 
   for (let i = 0; i < defender.secrets.length; i++) {
-    if (defender.secrets[i].card.trigger === trigger) {
-      applyEffect(state, defenderIndex, defender.secrets[i].card.effect);
-      toRemove.push(i);
-      addEvent(state, defender.id, 'secret-triggered', {
-        secretName: defender.secrets[i].card.name,
-      });
+    const secret = defender.secrets[i];
+    if (secret.card.trigger !== 'on-hero-attacked') continue;
+
+    if (secret.card.id === 'f-gray-fog-barrier') {
+      negateDamage = true;
+      for (const m of defender.board) {
+        m.keywords.add('stealth');
+      }
+    } else {
+      applyEffect(state, defenderIndex, secret.card.effect, undefined, context);
     }
+
+    toRemove.push(i);
+    addEvent(state, defender.id, 'secret-triggered', {
+      secretName: secret.card.name,
+      secretId: secret.card.id,
+    });
   }
 
   for (const idx of toRemove.reverse()) {
     defender.graveyard.push(defender.secrets[idx].card);
     defender.secrets.splice(idx, 1);
+  }
+
+  if (context.attackerInstanceId != null && context.attackerPlayerIndex != null) {
+    removeDead(state, context.attackerPlayerIndex);
+  }
+
+  return { negateDamage };
+}
+
+function checkTriggerSecrets(
+  state: GameState,
+  defenderIndex: number,
+  trigger: import('./types.js').SecretTrigger,
+  context: SecretContext = {},
+): void {
+  const defender = state.players[defenderIndex];
+  const toRemove: number[] = [];
+
+  for (let i = 0; i < defender.secrets.length; i++) {
+    const secret = defender.secrets[i];
+    if (secret.card.trigger !== trigger) continue;
+    if (trigger === 'on-minion-death' && !shouldTriggerDeathSecret(secret.card.id, defenderIndex, context)) {
+      continue;
+    }
+
+    applyEffect(state, defenderIndex, secret.card.effect, undefined, context);
+    toRemove.push(i);
+    addEvent(state, defender.id, 'secret-triggered', {
+      secretName: secret.card.name,
+      secretId: secret.card.id,
+    });
+  }
+
+  for (const idx of toRemove.reverse()) {
+    defender.graveyard.push(defender.secrets[idx].card);
+    defender.secrets.splice(idx, 1);
+  }
+
+  if (trigger === 'on-minion-played' && context.playedMinionPlayerIndex != null) {
+    removeDead(state, context.playedMinionPlayerIndex);
+  }
+  if (trigger === 'on-minion-death' && context.deadMinionPlayerIndex != null) {
+    removeDead(state, context.deadMinionPlayerIndex);
   }
 }
 
@@ -721,7 +924,12 @@ function removeDead(state: GameState, playerIndex: number): void {
   for (const m of dead) {
     player.graveyard.push(m.card);
     addEvent(state, player.id, 'minion-death', { instanceId: m.instanceId, cardName: m.card.name });
-    checkTriggerSecrets(state, 1 - playerIndex, 'on-minion-death');
+    const deathContext: SecretContext = {
+      deadMinionInstanceId: m.instanceId,
+      deadMinionPlayerIndex: playerIndex,
+    };
+    checkTriggerSecrets(state, 0, 'on-minion-death', deathContext);
+    checkTriggerSecrets(state, 1, 'on-minion-death', deathContext);
   }
 }
 

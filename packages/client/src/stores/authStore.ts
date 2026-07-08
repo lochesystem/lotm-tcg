@@ -6,7 +6,7 @@ import { useCollectionStore } from './collectionStore';
 import { useGameStore } from './gameStore';
 import { setCurrentUserId } from '../lib/sessionContext';
 import type { Pathway } from 'game-engine';
-import { isPathwayUnlocked } from 'game-engine';
+import { isPathwayUnlocked, INITIAL_PATHWAY, getDefaultPathway } from 'game-engine';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -28,9 +28,9 @@ async function hydratePlayerData(userId: string, profile: DbProfile): Promise<vo
   const progress = await fetchProgress(userId);
   useCollectionStore.getState().hydrateFromCloud(progress);
 
-  let pathway = (profile.preferred_pathway ?? 'fool') as Pathway;
+  let pathway = (profile.preferred_pathway ?? INITIAL_PATHWAY) as Pathway;
   if (!isPathwayUnlocked(pathway, progress.storyProgress)) {
-    pathway = 'fool';
+    pathway = getDefaultPathway(progress.storyProgress);
   }
   useGameStore.getState().setPathway(pathway);
 

@@ -9,6 +9,7 @@ import {
   PathwayDefinition,
   getCurrentStoryBoss,
   getSelectableStoryBosses,
+  getStoryWinUnlock,
   isStoryComplete,
   isStoryProgressionBoss,
   type Pathway,
@@ -64,7 +65,7 @@ export function HomeScreen({ onNavigate }: Props) {
 
   useEffect(() => {
     if (!isPathwayUnlocked(selectedPathway)) {
-      setPathway('fool');
+      setPathway('red-priest');
     }
   }, [selectedPathway, isPathwayUnlocked, setPathway]);
 
@@ -208,12 +209,16 @@ export function HomeScreen({ onNavigate }: Props) {
             <>
               <p className="text-xs text-void-200">{storyChapter(nextBoss)}</p>
               <p className="text-[10px] text-void-500 mt-1">
-                {nextBoss === 'sun' || nextBoss === 'door' || nextBoss === 'demoness'
-                  ? t('home.defeatBossUnlock', {
+                {(() => {
+                  const unlockOnWin = getStoryWinUnlock(storyProgress);
+                  if (unlockOnWin) {
+                    return t('home.defeatBossUnlock', {
                       name: PATHWAYS[nextBoss].name,
-                      unlockName: PATHWAYS[nextBoss].name,
-                    })
-                  : t('home.defeatBoss', { name: PATHWAYS[nextBoss].name })}
+                      unlockName: PATHWAYS[unlockOnWin].name,
+                    });
+                  }
+                  return t('home.defeatBoss', { name: PATHWAYS[nextBoss].name });
+                })()}
               </p>
             </>
           ) : null}

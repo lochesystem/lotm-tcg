@@ -698,7 +698,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   playerId: 'player-1',
   opponentId: 'npc-1',
-  selectedPathway: 'fool',
+  selectedPathway: 'red-priest',
   deck: null,
   activeDeckId: null,
   isOnline: false,

@@ -42,6 +42,7 @@ import { formatGameEvent } from '../utils/battleLog';
 import { getBattlefieldUrl, getBattlefieldVideoUrl } from '../utils/battlefieldArt';
 import { BattlefieldBackground } from '../components/BattlefieldBackground';
 import { useCollectionStore } from '../stores/collectionStore';
+import { useRoguelikeStore } from '../stores/roguelikeStore';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { recordMatch } from '../sync/player-sync';
 import { useTranslation } from '../i18n';
@@ -87,7 +88,8 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export function BattleScreen({ onNavigate }: Props) {
   const { t, locale } = useTranslation();
   const { cardDescription, cardType, rarity, pathwayPowerDescription, noEffect } = useLocalizedCardText();
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, pendingSecret, npcPlayReveal, npcTier, isOnline, isStoryMode, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, pendingSecret, npcPlayReveal, npcTier, isOnline, isStoryMode, isRoguelikeMode, roguelikeOpponentName, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
+  const completeBattle = useRoguelikeStore((s) => s.completeBattle);
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
@@ -210,6 +212,29 @@ export function BattleScreen({ onNavigate }: Props) {
       const isNpcMatch = opponentId === 'npc-1' || gameState.players.some((p) => p.id === 'npc-1');
       if (!isNpcMatch) return;
 
+      if (isRoguelikeMode) {
+        const won = gameState.winner === playerId;
+        const lost = Boolean(gameState.winner && gameState.winner !== playerId);
+        const playerHealth = gameState.players.find((p) => p.id === playerId)?.health ?? 0;
+
+        if (won || lost) {
+          completeBattle(won, playerHealth);
+        }
+
+        if (userId) {
+          await recordMatch(userId, {
+            opponentType: 'npc',
+            matchMode: 'npc',
+            opponentLabel: roguelikeOpponentName ?? 'Roguelike',
+            npcTier,
+            won,
+            isDraw,
+            durationTurns: turns,
+          });
+        }
+        return;
+      }
+
       const opponentLabel =
         isStoryMode && storyOpponentPathway
           ? PATHWAYS[storyOpponentPathway].name
@@ -278,13 +303,15 @@ export function BattleScreen({ onNavigate }: Props) {
     opponentId,
     isOnline,
     isStoryMode,
+    isRoguelikeMode,
+    roguelikeOpponentName,
     storyAdvancesOnWin,
     storyOpponentPathway,
     npcTier,
     opponentDisplayName,
     recordNpcWin,
     recordStoryWin,
-    recordNpcLoss,
+    completeBattle,
   ]);
 
   // Sync enemy attack animation phases (NPC or online opponent — both use pendingAttack)
@@ -1435,13 +1462,16 @@ export function BattleScreen({ onNavigate }: Props) {
                 </motion.p>
               )}
               <motion.button
-                onClick={() => { reset(); onNavigate('home'); }}
+                onClick={() => {
+                  reset();
+                  onNavigate(isRoguelikeMode ? 'roguelike' : 'home');
+                }}
                 className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold transition-all shadow-lg"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
-                {t('battle.backToMenu')}
+                {isRoguelikeMode ? t('roguelike.backToTrail') : t('battle.backToMenu')}
               </motion.button>
             </motion.div>
           </motion.div>

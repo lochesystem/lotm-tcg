@@ -21,6 +21,10 @@ import {
   getCardById,
   serializeState,
   deserializeState,
+  buildOpponent,
+  runDeckToDeck,
+  type NodeType,
+  type RunState,
 } from 'game-engine';
 import { useCollectionStore } from './collectionStore';
 import { waitForTurnBannerOrTimeout } from '../constants/turnBanner';
@@ -143,6 +147,9 @@ interface GameStore {
   opponentDisplayName: string | null;
   npcTier: number;
   isStoryMode: boolean;
+  isRoguelikeMode: boolean;
+  roguelikeNodeType: NodeType | null;
+  roguelikeOpponentName: string | null;
   storyOpponentPathway: Pathway | null;
   storyAdvancesOnWin: boolean;
   npcThinking: boolean;
@@ -161,6 +168,7 @@ interface GameStore {
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
   startLocalGame: () => void;
   startStoryBattle: (bossPathway?: Pathway, playerDeckOverride?: Deck) => void;
+  startRoguelikeBattle: (run: RunState, nodeType: NodeType) => void;
   enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null, opponentDisplayName: string) => void;
   syncOnlineState: (state: GameState) => void;
   applyDeferredOnlineState: () => boolean;
@@ -706,6 +714,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   opponentDisplayName: null,
   npcTier: 1,
   isStoryMode: false,
+  isRoguelikeMode: false,
+  roguelikeNodeType: null,
+  roguelikeOpponentName: null,
   storyOpponentPathway: null,
   storyAdvancesOnWin: false,
   npcThinking: false,
@@ -802,9 +813,53 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameState: finalState,
       deck: playerDeck,
       isStoryMode: true,
+      isRoguelikeMode: false,
+      roguelikeNodeType: null,
+      roguelikeOpponentName: null,
       storyOpponentPathway: resolvedBoss,
       storyAdvancesOnWin: advances,
       npcTier: tier,
+    });
+  },
+
+  startRoguelikeBattle: (run, nodeType) => {
+    const { playerId, opponentId } = get();
+    const node = run.map.nodes.find((n) => n.id === run.currentNodeId);
+    const floor = node?.floor ?? 1;
+
+    const combatType =
+      nodeType === 'boss' ? 'boss' : nodeType === 'elite' ? 'elite' : 'combat';
+
+    const opponent = buildOpponent(floor, combatType, run.act, run.ascension, run.seed);
+    const playerDeck = runDeckToDeck(run.deck);
+
+    const state = createGame(
+      `roguelike-${Date.now()}`,
+      { id: playerId, deck: playerDeck },
+      { id: opponentId, deck: opponent.deck },
+      run.seed + floor,
+      {
+        player1Health: run.heroHealth,
+        player1MaxHealth: run.heroMaxHealth,
+        runRelics: run.relics,
+        runCardUpgrades: run.deck.upgrades,
+        runPlayerIndex: 0,
+      }
+    );
+
+    const stateAfterMulligan = applyAction(state, playerId, { type: 'mulligan', indices: [] });
+    const finalState = applyAction(stateAfterMulligan, opponentId, { type: 'mulligan', indices: [] });
+
+    set({
+      gameState: finalState,
+      deck: playerDeck,
+      isStoryMode: false,
+      isRoguelikeMode: true,
+      roguelikeNodeType: nodeType,
+      roguelikeOpponentName: opponent.name,
+      storyOpponentPathway: opponent.pathway,
+      storyAdvancesOnWin: false,
+      npcTier: opponent.tier,
     });
   },
 
@@ -817,6 +872,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode,
       opponentDisplayName,
       isStoryMode: false,
+      isRoguelikeMode: false,
+      roguelikeNodeType: null,
+      roguelikeOpponentName: null,
       storyOpponentPathway: null,
       storyAdvancesOnWin: false,
       npcThinking: false,
@@ -1017,6 +1075,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       roomCode: null,
       opponentDisplayName: null,
       isStoryMode: false,
+      isRoguelikeMode: false,
+      roguelikeNodeType: null,
+      roguelikeOpponentName: null,
       storyOpponentPathway: null,
       storyAdvancesOnWin: false,
       npcThinking: false,

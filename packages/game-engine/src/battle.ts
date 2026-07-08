@@ -12,9 +12,13 @@ import {
   Keyword,
   SecretContext,
   SpellEffect,
+  RunBattleContext,
+  RunCardUpgradeRuntime,
 } from './types.js';
 import { getCardById, getAllCards as getAllCardsFn } from './cards/index.js';
 import { PATHWAYS } from './pathways.js';
+import { applyUpgradesToDeckCards } from './roguelike/deck-runtime.js';
+import type { RelicId } from './roguelike/types.js';
 
 let instanceCounter = 0;
 function nextInstanceId(): string {
@@ -35,26 +39,51 @@ function mulberry32(seed: number): () => number {
 
 // ─── Game Creation ───────────────────────────────────────────────────────────
 
+export interface CreateGameOptions {
+  player1Health?: number;
+  player1MaxHealth?: number;
+  runRelics?: RelicId[];
+  runCardUpgrades?: RunCardUpgradeRuntime[];
+  runPlayerIndex?: number;
+}
+
 export function createGame(
   gameId: string,
   player1: { id: string; deck: Deck },
   player2: { id: string; deck: Deck },
-  seed?: number
+  seed?: number,
+  options?: CreateGameOptions
 ): GameState {
   instanceCounter = 0;
   const rng = mulberry32(seed ?? Date.now());
+  const runPlayerIndex = options?.runPlayerIndex ?? 0;
+  const runRelics = options?.runRelics ?? [];
+  const runUpgrades = options?.runCardUpgrades ?? [];
 
-  const buildPlayer = (p: { id: string; deck: Deck }, goesFirst: boolean): PlayerState => {
-    const cards = p.deck.cards.map((id) => getCardById(id)).filter(Boolean) as Card[];
+  const buildPlayer = (
+    p: { id: string; deck: Deck },
+    goesFirst: boolean,
+    playerIndex: number
+  ): PlayerState => {
+    let cards = p.deck.cards.map((id) => getCardById(id)).filter(Boolean) as Card[];
+    if (playerIndex === runPlayerIndex && runUpgrades.length > 0) {
+      cards = applyUpgradesToDeckCards(cards, runUpgrades);
+    }
     const shuffled = shuffleArray(cards, rng);
     const handSize = goesFirst ? 3 : 4;
     const hand = shuffled.splice(0, handSize);
 
+    const isRunPlayer = playerIndex === runPlayerIndex;
+    const maxHealth =
+      isRunPlayer && options?.player1MaxHealth != null ? options.player1MaxHealth : 30;
+    const health =
+      isRunPlayer && options?.player1Health != null ? options.player1Health : maxHealth;
+
     return {
       id: p.id,
       pathway: p.deck.pathway,
-      health: 30,
-      maxHealth: 30,
+      health,
+      maxHealth,
       spirituality: 0,
       maxSpirituality: 0,
       spiritualityThisTurn: 0,
@@ -73,17 +102,41 @@ export function createGame(
   const firstPlayerIdx = rng() < 0.5 ? 0 : 1;
   const p1GoesFirst = firstPlayerIdx === 0;
 
+  const runContext: RunBattleContext | undefined =
+    runRelics.length > 0 || runUpgrades.length > 0
+      ? {
+          relics: runRelics,
+          cardUpgrades: runUpgrades,
+          tornPageUsed: false,
+          crimsonFlameUsedThisTurn: false,
+          tyrantSealUsedThisTurn: false,
+          nightJarGranted: false,
+          playerRunIndex: runPlayerIndex,
+        }
+      : options?.player1Health != null
+        ? {
+            relics: [],
+            cardUpgrades: runUpgrades,
+            tornPageUsed: false,
+            crimsonFlameUsedThisTurn: false,
+            tyrantSealUsedThisTurn: false,
+            nightJarGranted: false,
+            playerRunIndex: runPlayerIndex,
+          }
+        : undefined;
+
   return {
     id: gameId,
     players: [
-      buildPlayer(player1, p1GoesFirst),
-      buildPlayer(player2, !p1GoesFirst),
+      buildPlayer(player1, p1GoesFirst, 0),
+      buildPlayer(player2, !p1GoesFirst, 1),
     ],
     currentPlayerIndex: 0,
     turn: 1,
     phase: 'mulligan',
     winner: null,
     log: [],
+    runContext,
   };
 }
 
@@ -117,6 +170,21 @@ export function startTurn(state: GameState): GameState {
   }
 
   addEvent(state, player.id, 'turn-start', { turn: state.turn });
+
+  // Roguelike: Pote da Noite — extra draw on first turn
+  if (state.runContext && state.currentPlayerIndex === state.runContext.playerRunIndex) {
+    if (
+      state.runContext.relics.includes('night-jar') &&
+      !state.runContext.nightJarGranted &&
+      state.turn === 1
+    ) {
+      drawCard(state, state.currentPlayerIndex);
+      state.runContext.nightJarGranted = true;
+    }
+    state.runContext.crimsonFlameUsedThisTurn = false;
+    state.runContext.tyrantSealUsedThisTurn = false;
+  }
+
   return state;
 }
 
@@ -250,11 +318,23 @@ function playCard(
   }
 
   const card = player.hand[handIndex];
-  if (card.cost > player.spirituality) {
+  let effectiveCost = card.cost;
+  if (state.runContext && playerIndex === state.runContext.playerRunIndex) {
+    if (
+      card.type === 'ritual' &&
+      state.runContext.relics.includes('crimson-flame') &&
+      !state.runContext.crimsonFlameUsedThisTurn
+    ) {
+      effectiveCost = Math.max(0, effectiveCost - 1);
+      state.runContext.crimsonFlameUsedThisTurn = true;
+    }
+  }
+
+  if (effectiveCost > player.spirituality) {
     throw new Error('Not enough Spirituality');
   }
 
-  player.spirituality -= card.cost;
+  player.spirituality -= effectiveCost;
   player.hand.splice(handIndex, 1);
 
   if (card.type !== 'mystical-item') {
@@ -319,6 +399,16 @@ function playBeyonder(state: GameState, playerIndex: number, card: BeyonderCard,
 
   const pos = position ?? player.board.length;
   player.board.splice(pos, 0, instance);
+
+  if (
+    state.runContext &&
+    playerIndex === state.runContext.playerRunIndex &&
+    state.runContext.relics.includes('tyrant-seal') &&
+    !state.runContext.tyrantSealUsedThisTurn
+  ) {
+    instance.currentAttack += 1;
+    state.runContext.tyrantSealUsedThisTurn = true;
+  }
 
   if (card.battlecry) {
     const effects = Array.isArray(card.battlecry) ? card.battlecry : [card.battlecry];
@@ -441,7 +531,7 @@ function attackHero(state: GameState, playerIndex: number, attackerInstanceId: s
   });
 
   if (!negateDamage) {
-    opponent.health -= damage;
+    applyDamageToHero(state, defenderIndex, damage);
   }
 
   attacker.keywords.delete('stealth');
@@ -482,7 +572,7 @@ function heroAttack(state: GameState, playerIndex: number, targetInstanceId?: st
       attackerPlayerIndex: playerIndex,
     });
     if (!negateDamage) {
-      opponent.health -= weaponDamage;
+      applyDamageToHero(state, defenderIndex, weaponDamage);
     }
   }
 
@@ -654,7 +744,7 @@ function applyEffect(
     case 'damage': {
       const value = effect.value ?? 0;
       if (effect.target === 'all-enemies') {
-        opponent.health -= value;
+        applyDamageToHero(state, 1 - playerIndex, value);
         for (const m of [...opponent.board]) {
           dealDamageToMinion(m, value, state);
         }
@@ -665,7 +755,7 @@ function applyEffect(
         }
         removeDead(state, 1 - playerIndex);
       } else if (effect.target === 'enemy-hero') {
-        opponent.health -= value;
+        applyDamageToHero(state, 1 - playerIndex, value);
       } else if (effect.target === 'all') {
         for (const m of [...player.board, ...opponent.board]) {
           dealDamageToMinion(m, value, state);
@@ -673,8 +763,8 @@ function applyEffect(
         removeDead(state, 0);
         removeDead(state, 1);
       } else if (effect.target === 'all-characters') {
-        player.health -= value;
-        opponent.health -= value;
+        applyDamageToHero(state, playerIndex, value);
+        applyDamageToHero(state, 1 - playerIndex, value);
         for (const m of [...player.board, ...opponent.board]) {
           dealDamageToMinion(m, value, state);
         }
@@ -917,6 +1007,26 @@ function checkTriggerSecrets(
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function applyDamageToHero(state: GameState, playerIndex: number, damage: number): number {
+  if (damage <= 0) return 0;
+  const player = state.players[playerIndex];
+  let actual = damage;
+
+  if (state.runContext && playerIndex === state.runContext.playerRunIndex) {
+    if (
+      state.runContext.relics.includes('torn-page') &&
+      !state.runContext.tornPageUsed &&
+      damage >= 5
+    ) {
+      actual = 0;
+      state.runContext.tornPageUsed = true;
+    }
+  }
+
+  player.health -= actual;
+  return actual;
+}
 
 function drawCard(state: GameState, playerIndex: number): void {
   const player = state.players[playerIndex];

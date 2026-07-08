@@ -7,27 +7,7 @@ import {
   createStarterDeck,
   MinionInstance,
 } from 'game-engine';
-
-interface NpcProfile {
-  name: string;
-  pathway: Pathway;
-  tier: number;
-}
-
-const NPC_PROFILES: NpcProfile[] = [
-  { name: 'Street Mystic', pathway: 'fool', tier: 1 },
-  { name: 'Dock Preacher', pathway: 'red-priest', tier: 1 },
-  { name: 'Harvest Church Acolyte', pathway: 'sun', tier: 1 },
-  { name: 'Storm Sailor', pathway: 'tyrant', tier: 2 },
-  { name: 'Night Witch', pathway: 'demoness', tier: 2 },
-  { name: 'Wandering Magician', pathway: 'door', tier: 2 },
-  { name: 'Sequence 7 Seer', pathway: 'fool', tier: 3 },
-  { name: 'Crimson Zealot', pathway: 'red-priest', tier: 3 },
-  { name: 'Thunder Lord', pathway: 'tyrant', tier: 4 },
-  { name: 'Abyss Walker', pathway: 'demoness', tier: 4 },
-  { name: 'Angel of the Church', pathway: 'sun', tier: 5 },
-  { name: 'Planar Sovereign', pathway: 'door', tier: 5 },
-];
+import { NPC_PROFILES } from 'game-engine';
 
 export class NpcEngine {
   static getDeckForTier(tier: number): Deck {

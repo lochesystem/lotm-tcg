@@ -8,6 +8,8 @@ import {
   recordNpcLossCloud,
   recordStoryWinCloud,
   saveProgress,
+  addEssenceToCloud,
+  spendEssenceCloud,
 } from '../sync/player-sync';
 import { getCurrentUserId } from '../lib/sessionContext';
 import { isSupabaseConfigured } from '../lib/supabase';
@@ -18,12 +20,15 @@ interface CollectionStore {
   wins: number;
   losses: number;
   storyProgress: number;
+  essenceBalance: number;
   totalOwned: () => number;
   ownsCard: (cardId: string) => boolean;
   getQuantity: (cardId: string) => number;
   isPathwayUnlocked: (pathway: Pathway) => boolean;
   hydrateFromCloud: (progress: PlayerProgress) => void;
   addCards: (cardIds: string[]) => Promise<void>;
+  addEssence: (amount: number) => Promise<void>;
+  spendEssence: (amount: number) => Promise<boolean>;
   recordNpcWin: () => Promise<number>;
   recordStoryWin: () => Promise<{ streak: number; unlockedPathway: Pathway | null }>;
   recordNpcLoss: () => Promise<void>;
@@ -38,6 +43,7 @@ function applyProgress(set: (p: Partial<CollectionStore>) => void, progress: Pla
     wins: progress.wins,
     losses: progress.losses,
     storyProgress: progress.storyProgress,
+    essenceBalance: progress.essenceBalance,
   });
 }
 
@@ -49,6 +55,7 @@ export const useCollectionStore = create<CollectionStore>()(
       wins: 0,
       losses: 0,
       storyProgress: 0,
+      essenceBalance: 0,
 
       totalOwned: () => Object.values(get().ownedCardIds).reduce((sum, qty) => sum + qty, 0),
 
@@ -72,7 +79,32 @@ export const useCollectionStore = create<CollectionStore>()(
           wins: state.wins,
           losses: state.losses,
           storyProgress: state.storyProgress,
+          essenceBalance: state.essenceBalance,
         });
+      },
+
+      addEssence: async (amount) => {
+        const userId = getCurrentUserId();
+        if (userId && isSupabaseConfigured) {
+          const progress = await addEssenceToCloud(userId, amount);
+          applyProgress(set, progress);
+          return;
+        }
+        set({ essenceBalance: get().essenceBalance + amount });
+      },
+
+      spendEssence: async (amount) => {
+        const userId = getCurrentUserId();
+        if (userId && isSupabaseConfigured) {
+          const progress = await spendEssenceCloud(userId, amount);
+          if (!progress) return false;
+          applyProgress(set, progress);
+          return true;
+        }
+        const current = get().essenceBalance;
+        if (current < amount) return false;
+        set({ essenceBalance: current - amount });
+        return true;
       },
 
       addCards: async (cardIds) => {
@@ -149,6 +181,7 @@ export const useCollectionStore = create<CollectionStore>()(
         wins: state.wins,
         losses: state.losses,
         storyProgress: state.storyProgress,
+        essenceBalance: state.essenceBalance,
       }),
     }
   )

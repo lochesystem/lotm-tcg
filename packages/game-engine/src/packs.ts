@@ -1,5 +1,5 @@
-import { Card, Rarity } from './types.js';
-import { getAllCards } from './cards/index.js';
+import { Card, Rarity, Pathway } from './types.js';
+import { getAllCards, getCardsForPathway } from './cards/index.js';
 
 export type PackType = 'ordinary' | 'beyonder' | 'sealed';
 
@@ -53,6 +53,40 @@ export function openPack(packType: PackType, seed?: number): PackResult {
     const pool = allCards.filter((c) => c.rarity === rarity);
     if (pool.length > 0) {
       cards.push(pool[Math.floor(rng() * pool.length)]);
+    }
+  }
+
+  return { packType, cards };
+}
+
+export function openPathwayPack(
+  pathway: Pathway,
+  packType: PackType,
+  seed?: number,
+  includeNeutrals = true
+): PackResult {
+  const rng = seed ? mulberry32(seed) : () => Math.random();
+  const pathwayCards = getCardsForPathway(pathway);
+  const neutralCards = includeNeutrals ? getCardsForPathway('neutral') : [];
+  const allCards = [...pathwayCards, ...neutralCards];
+  const size = PACK_SIZES[packType];
+  const weights = RARITY_WEIGHTS[packType];
+  const guaranteed = GUARANTEED_RARITY[packType];
+
+  const cards: Card[] = [];
+
+  const guaranteedPool = allCards.filter((c) => rarityValue(c.rarity) >= rarityValue(guaranteed));
+  if (guaranteedPool.length > 0) {
+    cards.push(guaranteedPool[Math.floor(rng() * guaranteedPool.length)]);
+  }
+
+  while (cards.length < size) {
+    const rarity = rollRarity(weights, rng);
+    const pool = allCards.filter((c) => c.rarity === rarity);
+    if (pool.length > 0) {
+      cards.push(pool[Math.floor(rng() * pool.length)]);
+    } else if (allCards.length > 0) {
+      cards.push(allCards[Math.floor(rng() * allCards.length)]);
     }
   }
 

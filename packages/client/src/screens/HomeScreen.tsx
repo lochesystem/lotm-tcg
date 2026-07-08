@@ -41,6 +41,7 @@ export function HomeScreen({ onNavigate }: Props) {
   const { selectedPathway, setPathway, startStoryBattle } = useGameStore();
   const { profile, signOut } = useAuthStore();
   const storyProgress = useCollectionStore((s) => s.storyProgress);
+  const essenceBalance = useCollectionStore((s) => s.essenceBalance);
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showDeckSelect, setShowDeckSelect] = useState(false);
@@ -282,6 +283,25 @@ export function HomeScreen({ onNavigate }: Props) {
                 {isReplay && ` ${t('home.replay')}`}
               </span>
             )}
+          </motion.button>
+          <motion.button
+            onClick={() => onNavigate('roguelike')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3.5 bg-gradient-to-r from-indigo-800 to-purple-900 hover:from-indigo-700 hover:to-purple-800 rounded-xl font-semibold transition-all border border-indigo-500/30"
+          >
+            {t('home.roguelikeButton')}
+          </motion.button>
+          <motion.button
+            onClick={() => onNavigate('shop')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3 bg-void-800/80 border border-amber-700/40 hover:border-amber-500/60 rounded-xl font-medium transition-all text-amber-100"
+          >
+            {t('home.shopButton')}
+            <span className="block text-[10px] text-amber-400/80 mt-0.5">
+              {t('home.essenceBalance', { amount: essenceBalance })}
+            </span>
           </motion.button>
           <motion.button
             onClick={() => onNavigate('lobby')}

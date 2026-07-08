@@ -164,6 +164,27 @@ export interface GameState {
   phase: GamePhase;
   winner: string | null;
   log: GameEvent[];
+  /** Roguelike run battle modifiers (player index 0 = human) */
+  runContext?: RunBattleContext;
+}
+
+export interface RunCardUpgradeRuntime {
+  cardId: string;
+  type: 'plus-stats' | 'minus-cost' | 'add-keyword';
+  attackBonus?: number;
+  healthBonus?: number;
+  costReduction?: number;
+  keyword?: string;
+}
+
+export interface RunBattleContext {
+  relics: string[];
+  cardUpgrades: RunCardUpgradeRuntime[];
+  tornPageUsed: boolean;
+  crimsonFlameUsedThisTurn: boolean;
+  tyrantSealUsedThisTurn: boolean;
+  nightJarGranted: boolean;
+  playerRunIndex: number;
 }
 
 export type GamePhase = 'mulligan' | 'playing' | 'ended';

@@ -13,10 +13,11 @@ export interface PlayerProgress {
   wins: number;
   losses: number;
   storyProgress: number;
+  essenceBalance: number;
 }
 
 function emptyProgress(): PlayerProgress {
-  return { ownedCards: {}, winStreak: 0, wins: 0, losses: 0, storyProgress: 0 };
+  return { ownedCards: {}, winStreak: 0, wins: 0, losses: 0, storyProgress: 0, essenceBalance: 0 };
 }
 
 function fromDb(row: DbPlayerProgress): PlayerProgress {
@@ -26,6 +27,7 @@ function fromDb(row: DbPlayerProgress): PlayerProgress {
     wins: row.wins ?? 0,
     losses: row.losses ?? 0,
     storyProgress: row.story_progress ?? 0,
+    essenceBalance: row.essence_balance ?? 0,
   };
 }
 
@@ -117,6 +119,7 @@ export async function saveProgress(userId: string, progress: PlayerProgress): Pr
     wins: progress.wins,
     losses: progress.losses,
     story_progress: progress.storyProgress,
+    essence_balance: progress.essenceBalance,
     updated_at: new Date().toISOString(),
   };
 
@@ -167,6 +170,27 @@ export async function recordNpcLossCloud(userId: string): Promise<PlayerProgress
     ...current,
     winStreak: 0,
     losses: current.losses + 1,
+  };
+  await saveProgress(userId, next);
+  return next;
+}
+
+export async function addEssenceToCloud(userId: string, amount: number): Promise<PlayerProgress> {
+  const current = await fetchProgress(userId);
+  const next: PlayerProgress = {
+    ...current,
+    essenceBalance: current.essenceBalance + amount,
+  };
+  await saveProgress(userId, next);
+  return next;
+}
+
+export async function spendEssenceCloud(userId: string, amount: number): Promise<PlayerProgress | null> {
+  const current = await fetchProgress(userId);
+  if (current.essenceBalance < amount) return null;
+  const next: PlayerProgress = {
+    ...current,
+    essenceBalance: current.essenceBalance - amount,
   };
   await saveProgress(userId, next);
   return next;

@@ -64,6 +64,7 @@ export function BgmController({ screen, enabled }: Props) {
   const gameState = useGameStore((s) => s.gameState);
   const isOnline = useGameStore((s) => s.isOnline);
   const isStoryMode = useGameStore((s) => s.isStoryMode);
+  const isRoguelikeMode = useGameStore((s) => s.isRoguelikeMode);
   const storyOpponentPathway = useGameStore((s) => s.storyOpponentPathway);
   const opponentId = useGameStore((s) => s.opponentId);
 
@@ -75,7 +76,7 @@ export function BgmController({ screen, enabled }: Props) {
     screen === 'battle' && gameState
       ? resolveBattleBgmUrl({
           isOnline,
-          isStoryMode,
+          isStoryMode: isStoryMode || isRoguelikeMode,
           storyOpponentPathway,
           opponentPathway: gameState.players.find((p) => p.id === opponentId)?.pathway,
         })

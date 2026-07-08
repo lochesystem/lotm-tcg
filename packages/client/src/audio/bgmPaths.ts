@@ -31,9 +31,16 @@ export function getBattleBgmUrl(pathway: Pathway): string {
   return assetUrl(`audio/bgm/battle/${id}.mp3`);
 }
 
+export function getRoguelikeMapBgmUrl(): string {
+  return assetUrl('audio/bgm/future/roguelike-map.mp3');
+}
+
 /** Hub screens without a dedicated track yet reuse the menu theme. */
 export function getScreenBgmUrl(screen: Screen): string {
   switch (screen) {
+    case 'roguelike':
+      return getRoguelikeMapBgmUrl();
+    case 'shop':
     case 'home':
     case 'lobby':
     case 'collection':

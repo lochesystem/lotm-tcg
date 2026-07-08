@@ -42,6 +42,7 @@ export type DbPlayerProgress = {
   wins: number;
   losses: number;
   story_progress: number;
+  essence_balance: number;
   updated_at: string;
 };
 

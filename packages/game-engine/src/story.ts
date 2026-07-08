@@ -36,14 +36,11 @@ export function isStoryComplete(storyProgress: number): boolean {
 
 /**
  * Pathway starter availability:
- * - Red Priest: from the start (storyProgress 0)
- * - Each next pathway in STORY_BOSS_ORDER: after beating the previous chapter
- * - Fool: only after the full story (never a chapter reward)
+ * - Fool + Red Priest: from the start (Fool is the exception — never gated by story)
+ * - Tyrant → Demoness: each unlocks after beating the previous story chapter
  */
 export function isPathwayUnlocked(pathway: Pathway, storyProgress: number): boolean {
-  if (pathway === 'fool') {
-    return isStoryComplete(storyProgress);
-  }
+  if (pathway === 'fool') return true;
 
   const bossIndex = STORY_BOSS_ORDER.indexOf(pathway);
   if (bossIndex === -1) return false;
@@ -55,20 +52,19 @@ export function getUnlockedPathways(storyProgress: number): Pathway[] {
   return ALL_PATHWAYS.filter((p) => isPathwayUnlocked(p, storyProgress));
 }
 
-/** Pathway whose starter unlocks when the current story chapter is cleared */
+/** Pathway whose starter unlocks when the current story chapter is cleared (Fool is always free). */
 export function getStoryWinUnlock(storyProgressBeforeWin: number): Pathway | null {
   const nextIndex = storyProgressBeforeWin + 1;
   if (nextIndex < STORY_BOSS_ORDER.length) {
     return STORY_BOSS_ORDER[nextIndex];
   }
-  if (nextIndex === STORY_BOSS_ORDER.length) {
-    return 'fool';
-  }
   return null;
 }
 
 export function getDefaultPathway(storyProgress: number): Pathway {
-  const unlocked = getUnlockedPathways(storyProgress).filter((p) => p !== 'fool');
+  const unlocked = getUnlockedPathways(storyProgress).filter(
+    (p) => p !== 'fool' && STORY_BOSS_ORDER.includes(p),
+  );
   return unlocked[unlocked.length - 1] ?? INITIAL_PATHWAY;
 }
 

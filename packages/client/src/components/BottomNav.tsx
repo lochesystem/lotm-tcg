@@ -86,14 +86,14 @@ function NavItem({
       type="button"
       onClick={onClick}
       whileTap={{ scale: 0.96 }}
-      className={`relative flex flex-col items-center justify-end gap-1 py-2 pb-1 px-0.5 min-h-[3.5rem] ${
+      className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-0.5 min-h-[3.5rem] -translate-y-0.5 ${
         active ? 'text-purple-200' : 'text-void-500 hover:text-void-300'
       }`}
     >
       {active && <NavHighlight />}
 
       <motion.span
-        className="relative z-10 flex items-center justify-center w-9 h-9"
+        className="relative z-10 flex items-center justify-center w-9 h-8"
         animate={
           active
             ? { scale: [1, 1.1, 1], y: [0, -1, 0] }
@@ -139,8 +139,6 @@ function HomeNavItem({
         active ? 'text-purple-200' : 'text-void-500 hover:text-void-300'
       }`}
     >
-      {active && <NavHighlight />}
-
       <div className="relative z-10 flex items-center justify-center -mt-3 mb-0.5">
         {active && (
           <>

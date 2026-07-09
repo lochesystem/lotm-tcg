@@ -20,7 +20,7 @@ interface Props {
 
 export function PathwayHeroCard({ selectedPathway, onSelectPathway, isPathwayUnlocked }: Props) {
   const { t } = useTranslation();
-  const { pathwayIdentity, pathwayPowerDescription } = useLocalizedCardText();
+  const { pathwayPowerDescription } = useLocalizedCardText();
   const pw = PATHWAYS[selectedPathway];
 
   return (
@@ -36,9 +36,6 @@ export function PathwayHeroCard({ selectedPathway, onSelectPathway, isPathwayUnl
           </p>
           <h2 className="text-base font-bold text-void-50 truncate">
             {pw.name}
-            <span className="text-void-400 font-normal text-sm ml-1.5">
-              ({pathwayIdentity(selectedPathway)})
-            </span>
           </h2>
           <p className="text-[11px] text-void-300 mt-1 line-clamp-2">
             <span className="text-purple-300 font-semibold">{t('home.pathwayPower')}</span>{' '}

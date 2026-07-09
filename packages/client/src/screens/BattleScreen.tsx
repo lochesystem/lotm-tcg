@@ -43,6 +43,7 @@ import { BattlefieldBackground } from '../components/BattlefieldBackground';
 import { useCollectionStore } from '../stores/collectionStore';
 import { useRoguelikeStore } from '../stores/roguelikeStore';
 import { getCurrentUserId } from '../lib/sessionContext';
+import { formatPlayerHandle } from '../lib/playerDisplay';
 import { recordMatch } from '../sync/player-sync';
 import { useTranslation } from '../i18n';
 import { defenderHasTrigger, parseSecretTriggersFromLog } from '../utils/secretAnimation';
@@ -215,7 +216,7 @@ export function BattleScreen({ onNavigate }: Props) {
             await recordMatch(userId, {
               opponentType: 'pvp',
               matchMode: 'ranked',
-              opponentLabel: opponentDisplayName ?? 'Player',
+              opponentLabel: formatPlayerHandle(opponentDisplayName),
               won,
               isDraw,
               durationTurns: turns,
@@ -601,6 +602,10 @@ export function BattleScreen({ onNavigate }: Props) {
 
   const pathwayInfo = PATHWAYS[player.pathway];
   const opponentPathwayInfo = PATHWAYS[opponent.pathway];
+  const opponentHeaderLabel =
+    isRankedMode && opponentDisplayName
+      ? formatPlayerHandle(opponentDisplayName)
+      : opponentPathwayInfo.name;
   const attackTargets = selectedAttacker
     ? getAttackTargets(opponent, player.board.find((m) => m.instanceId === selectedAttacker))
     : null;
@@ -1618,7 +1623,7 @@ export function BattleScreen({ onNavigate }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-void-200 truncate">
-                {opponentPathwayInfo.name}
+                {opponentHeaderLabel}
               </div>
               <div className="text-[10px] text-void-500 flex items-center gap-2">
                 <span className={opponent.deck.length <= 5 ? 'text-red-400' : ''}>📚 {opponent.deck.length}</span>

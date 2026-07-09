@@ -22,6 +22,7 @@ import {
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
 import { fetchRankedLeaderboard, type RankedLeaderboardEntry } from '../sync/player-sync';
 import { getCurrentUserId } from '../lib/sessionContext';
+import { formatPlayerHandle } from '../lib/playerDisplay';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { useTranslation } from '../i18n';
 
@@ -97,7 +98,7 @@ export function RankedScreen({ onNavigate }: Props) {
     };
   }, []);
 
-  const displayName = profile?.display_name || profile?.username || 'Player';
+  const playerHandle = formatPlayerHandle(profile?.username);
 
   const handleFindMatch = () => {
     if (!isSupabaseConfigured || !getCurrentUserId()) {
@@ -116,7 +117,7 @@ export function RankedScreen({ onNavigate }: Props) {
 
     try {
       await waitForConnection();
-      const result = await joinRankedQueue(choice.deck, displayName, getCurrentUserId() ?? undefined);
+      const result = await joinRankedQueue(choice.deck, playerHandle, getCurrentUserId() ?? undefined);
       if (!result.success) {
         setPhase('menu');
         setError(result.error ?? t('ranked.queueError'));

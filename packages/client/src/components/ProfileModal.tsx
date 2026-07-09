@@ -7,6 +7,7 @@ import { fetchMatchHistory } from '../sync/player-sync';
 import { isSupabaseConfigured } from '../lib/supabase';
 import type { DbMatchHistory } from '../lib/supabase';
 import { getCurrentUserId } from '../lib/sessionContext';
+import { formatPlayerHandle } from '../lib/playerDisplay';
 
 interface Props {
   show: boolean;
@@ -25,6 +26,16 @@ function formatPlayedAt(iso: string, locale: string): string {
   } catch {
     return iso;
   }
+}
+
+function opponentLabelForMatch(
+  match: DbMatchHistory,
+  t: (key: string) => string
+): string {
+  const raw = match.opponent_label ?? t('profile.unknownOpponent');
+  const mode = match.match_mode ?? (match.opponent_type === 'pvp' ? 'pvp' : 'npc');
+  if (mode === 'ranked') return formatPlayerHandle(raw);
+  return raw;
 }
 
 function matchModeLabel(
@@ -168,8 +179,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                 {!loading && matches.length > 0 && (
                   <ul className="space-y-2">
                     {matches.map((match) => {
-                      const opponent =
-                        match.opponent_label ?? t('profile.unknownOpponent');
+                      const opponent = opponentLabelForMatch(match, t);
                       const result = resultLabel(match, t);
                       const resultClass = match.is_draw
                         ? 'text-void-300'

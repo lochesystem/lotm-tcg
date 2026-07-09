@@ -36,6 +36,7 @@ export function MiniCard({ card, className = '' }: MiniCardProps) {
       <CardArt
         cardId={card.id}
         opacityClass="opacity-70"
+        loading="eager"
         onLoaded={() => setShowName(false)}
         onMissing={() => setShowName(true)}
       />
@@ -78,7 +79,7 @@ export function LockedMiniCard({ card }: { card: Card }) {
     <div
       className={`relative w-full aspect-[2/3] rounded-lg border-2 overflow-hidden bg-gradient-to-b ${PATHWAY_GRADIENT[card.pathway]} border-void-600 ${RARITY_BORDER[card.rarity]} opacity-90`}
     >
-      <CardArt cardId={card.id} opacityClass="opacity-40 saturate-50" />
+      <CardArt cardId={card.id} opacityClass="opacity-40 saturate-50" loading="eager" />
       <div className="absolute inset-0 bg-void-950/55 z-10" />
 
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">

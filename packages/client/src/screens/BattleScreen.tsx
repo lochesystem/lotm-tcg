@@ -15,7 +15,7 @@ import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { SecretReveal } from '../components/SecretReveal';
 import { PackOpening } from '../components/PackOpening';
-import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, type Pathway } from 'game-engine';
+import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, calculateStoryWinEssence, type Pathway, type StoryEssenceReward } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
@@ -128,6 +128,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
   const [heroPowerHover, setHeroPowerHover] = useState(false);
   const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
+  const [storyEssenceReward, setStoryEssenceReward] = useState<StoryEssenceReward | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [battlefieldReady, setBattlefieldReady] = useState(false);
@@ -136,6 +137,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
   const recordStoryWin = useCollectionStore((s) => s.recordStoryWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
+  const addEssence = useCollectionStore((s) => s.addEssence);
 
   // Sync battle log from game engine events (player + NPC)
   useEffect(() => {
@@ -167,6 +169,7 @@ export function BattleScreen({ onNavigate }: Props) {
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
     setRewardPack(null);
+    setStoryEssenceReward(null);
     setUnlockedPathway(null);
     setTargetingHeroPower(false);
     setWeaponAttackMode(false);
@@ -244,20 +247,47 @@ export function BattleScreen({ onNavigate }: Props) {
       if (won) {
         let streak: number;
         if (isStoryMode) {
+          const storyProgressBefore = useCollectionStore.getState().storyProgress;
+          const playerState = gameState.players.find((p) => p.id === playerId);
+          const remainingHealth = playerState?.health ?? 0;
+          const maxHealth = playerState?.maxHealth ?? 30;
+
           if (storyAdvancesOnWin) {
             const storyResult = await recordStoryWin();
             streak = storyResult.streak;
             if (storyResult.unlockedPathway) {
               setUnlockedPathway(storyResult.unlockedPathway);
             }
+            const reward = calculateStoryWinEssence(
+              storyProgressBefore,
+              true,
+              turns,
+              remainingHealth,
+              maxHealth
+            );
+            if (reward.total > 0) {
+              await addEssence(reward.total);
+              setStoryEssenceReward(reward);
+            }
           } else {
             streak = await recordNpcWin();
+            const reward = calculateStoryWinEssence(
+              storyProgressBefore,
+              false,
+              turns,
+              remainingHealth,
+              maxHealth
+            );
+            if (reward.total > 0) {
+              await addEssence(reward.total);
+              setStoryEssenceReward(reward);
+            }
           }
         } else {
           streak = await recordNpcWin();
+          const packType = getPackTypeForReward(npcTier, streak);
+          setRewardPack(openPack(packType, Date.now()));
         }
-        const packType = getPackTypeForReward(npcTier, streak);
-        setRewardPack(openPack(packType, Date.now()));
         if (userId) {
           await recordMatch(userId, {
             opponentType: 'npc',
@@ -311,6 +341,7 @@ export function BattleScreen({ onNavigate }: Props) {
     opponentDisplayName,
     recordNpcWin,
     recordStoryWin,
+    addEssence,
     completeBattle,
   ]);
 
@@ -1432,9 +1463,19 @@ export function BattleScreen({ onNavigate }: Props) {
                 {gameState.winner === playerId
                   ? unlockedPathway
                     ? t('battle.winPathwayUnlocked', { name: PATHWAYS[unlockedPathway].name })
-                    : rewardPack
-                      ? t('battle.winPackReward')
-                      : t('battle.winOpponentDefeated')
+                    : storyEssenceReward
+                      ? storyEssenceReward.isReplay
+                        ? t('battle.winStoryReplayEssence', { amount: storyEssenceReward.total })
+                        : storyEssenceReward.completionBonus > 0
+                          ? t('battle.winStoryEssenceComplete', {
+                              chapter: storyEssenceReward.chapterEssence,
+                              bonus: storyEssenceReward.completionBonus,
+                              total: storyEssenceReward.total,
+                            })
+                          : t('battle.winStoryEssenceChapter', { amount: storyEssenceReward.total })
+                      : rewardPack
+                        ? t('battle.winPackReward')
+                        : t('battle.winOpponentDefeated')
                   : gameState.winner === null
                   ? t('battle.drawBothFallen')
                   : playerConceded
@@ -1451,7 +1492,33 @@ export function BattleScreen({ onNavigate }: Props) {
                   {t('battle.unlockPathwayHint', { name: PATHWAYS[unlockedPathway].name })}
                 </motion.p>
               )}
-              {gameState.winner === playerId && rewardPack && (
+              {gameState.winner === playerId && storyEssenceReward && storyEssenceReward.total > 0 && unlockedPathway && (
+                <motion.p
+                  className="text-xs text-amber-400 mb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.62 }}
+                >
+                  {storyEssenceReward.completionBonus > 0
+                    ? t('battle.winStoryEssenceComplete', {
+                        chapter: storyEssenceReward.chapterEssence,
+                        bonus: storyEssenceReward.completionBonus,
+                        total: storyEssenceReward.total,
+                      })
+                    : t('battle.winStoryEssenceChapter', { amount: storyEssenceReward.total })}
+                </motion.p>
+              )}
+              {gameState.winner === playerId && storyEssenceReward && storyEssenceReward.total > 0 && (
+                <motion.p
+                  className="text-xs text-void-500 mb-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.65 }}
+                >
+                  {t('battle.storyEssenceHint')}
+                </motion.p>
+              )}
+              {gameState.winner === playerId && rewardPack && !isStoryMode && (
                 <motion.p
                   className="text-xs text-gold-400 mb-4"
                   initial={{ opacity: 0 }}
@@ -1478,7 +1545,7 @@ export function BattleScreen({ onNavigate }: Props) {
         )}
       </AnimatePresence>
 
-      {rewardPack && (
+      {rewardPack && !isStoryMode && (
         <PackOpening
           pack={rewardPack}
           onClose={() => setRewardPack(null)}

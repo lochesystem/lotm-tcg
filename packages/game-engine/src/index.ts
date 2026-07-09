@@ -4,6 +4,7 @@ export * from './battle.js';
 export * from './deck.js';
 export * from './packs.js';
 export * from './story.js';
+export * from './story-rewards.js';
 export * from './roguelike/index.js';
 export { getCardById, getAllCards, getCardsForPathway, getStarterCards } from './cards/index.js';
 export { NEUTRAL_CARDS } from './cards/neutral.js';

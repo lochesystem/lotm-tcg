@@ -15,6 +15,7 @@ import { BgmController } from './components/BgmController';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { BottomNav, isNavScreen } from './components/BottomNav';
 import { ProfileModal } from './components/ProfileModal';
+import { OptionsModal } from './components/OptionsModal';
 import { useTranslation } from './i18n';
 import { warmCardArtCache } from './utils/cardArtCache';
 
@@ -24,6 +25,7 @@ export default function App() {
   const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>('home');
   const [showProfile, setShowProfile] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const { status, bootstrap } = useAuthStore();
   const navigateRef = useRef(setScreen);
   navigateRef.current = setScreen;
@@ -47,6 +49,10 @@ export default function App() {
 
   const bgmScreen: Screen = showAuth || isBooting ? 'home' : screen;
   const openProfile = () => setShowProfile(true);
+  const openOptionsFromProfile = () => {
+    setShowProfile(false);
+    setShowOptions(true);
+  };
 
   return (
     <>
@@ -64,7 +70,7 @@ export default function App() {
       ) : (
         <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            {screen === 'home' && <HomeScreen onNavigate={setScreen} onOpenProfile={openProfile} />}
+            {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
             {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
             {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
             {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
@@ -84,7 +90,12 @@ export default function App() {
         </div>
       )}
 
-      <ProfileModal show={showProfile} onClose={() => setShowProfile(false)} />
+      <ProfileModal
+        show={showProfile}
+        onClose={() => setShowProfile(false)}
+        onOpenOptions={openOptionsFromProfile}
+      />
+      <OptionsModal show={showOptions} onClose={() => setShowOptions(false)} />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import type { Screen } from '../App';
 import { useTranslation } from '../i18n';
-import { PlayIcon } from './PlayIcon';
+import { HomeIcon } from './HomeIcon';
 
 export type NavScreen = 'home' | 'collection' | 'deck-builder' | 'shop';
 
@@ -61,10 +61,10 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
                   ? 'border-purple-200 bg-gradient-to-br from-purple-400 to-purple-800 text-white'
                   : 'border-purple-500/60 bg-gradient-to-br from-purple-700 to-purple-950 text-purple-100'
               }`}
-              aria-label={t('nav.play')}
-              title={t('nav.play')}
+              aria-label={t('nav.home')}
+              title={t('nav.home')}
             >
-              <PlayIcon className="w-[1.125rem] h-[1.125rem]" opticalCenter />
+              <HomeIcon className="w-[1.125rem] h-[1.125rem]" />
             </motion.button>
           </div>
           <span
@@ -72,7 +72,7 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
               active === 'home' ? 'text-purple-200 nav-label-active' : 'text-void-500'
             }`}
           >
-            {t('nav.play')}
+            {t('nav.home')}
           </span>
         </div>
 

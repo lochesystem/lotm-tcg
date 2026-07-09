@@ -8,6 +8,7 @@ import {
 import { useTranslation } from '../i18n';
 import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 import { StoryPathMiniMap } from './StoryPathMiniMap';
+import { EssenceBadge } from './EssenceBadge';
 
 export type GameModeTab = 'story' | 'pvp' | 'trail';
 
@@ -151,11 +152,6 @@ export function GameModesPanel({
               </div>
             )}
 
-            <div className="flex items-center justify-between text-[10px] text-void-500 pt-1">
-              <span>{t('home.storyStatus', { progress: storyProgress })}</span>
-              <span>{t('home.essenceBalance', { amount: essenceBalance })}</span>
-            </div>
-
             <button
               type="button"
               onClick={onContinueStory}
@@ -244,6 +240,30 @@ export function GameModesPanel({
             </button>
           </motion.div>
         )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 border-t border-void-800/80 bg-void-900/30">
+        {activeTab === 'story' ? (
+          <div className="min-w-0">
+            <p className="text-[9px] uppercase tracking-wider text-void-500">{t('home.storyProgressLabel')}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex gap-0.5 flex-1 max-w-[7rem]">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full ${i < storyProgress ? 'bg-purple-500' : 'bg-void-700'}`}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] font-medium text-void-400 tabular-nums">
+                {storyProgress}/5
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="min-w-0" />
+        )}
+        <EssenceBadge amount={essenceBalance} />
       </div>
     </div>
   );

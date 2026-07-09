@@ -52,6 +52,7 @@ export const ptBR = {
     continueStory: 'Continuar História',
     continueStoryReplay: 'Escolher capítulo',
     storyStatus: 'Progresso: {progress}/5',
+    storyProgressLabel: 'Progresso',
     pvpModeHint: 'Ranqueado dá Essência e entra no placar. Amigos é casual, sem recompensa.',
     friendsSubtitle: 'Sala por código · casual',
     trailModeHint: 'Roguelike com mapa, relíquias e recompensas de Essência no fim da run.',
@@ -84,6 +85,7 @@ export const ptBR = {
   nav: {
     ariaLabel: 'Navegação principal',
     play: 'Jogar',
+    home: 'Início',
     collection: 'Coleção',
     deck: 'Deck',
     shop: 'Loja',

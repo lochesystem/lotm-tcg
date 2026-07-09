@@ -52,6 +52,7 @@ export const enUS = {
     continueStory: 'Continue Story',
     continueStoryReplay: 'Pick chapter',
     storyStatus: 'Progress: {progress}/5',
+    storyProgressLabel: 'Progress',
     pvpModeHint: 'Ranked grants Essence and leaderboard wins. Friends is casual with no rewards.',
     friendsSubtitle: 'Room code · casual',
     trailModeHint: 'Roguelike with map, relics, and Essence rewards at the end of a run.',
@@ -84,6 +85,7 @@ export const enUS = {
   nav: {
     ariaLabel: 'Main navigation',
     play: 'Play',
+    home: 'Home',
     collection: 'Collection',
     deck: 'Deck',
     shop: 'Shop',

@@ -11,6 +11,7 @@ import { getCurrentUserId } from '../lib/sessionContext';
 interface Props {
   show: boolean;
   onClose: () => void;
+  onOpenOptions?: () => void;
 }
 
 function formatPlayedAt(iso: string, locale: string): string {
@@ -42,7 +43,7 @@ function resultLabel(match: DbMatchHistory, t: (key: string) => string): string 
   return match.won ? t('profile.resultWin') : t('profile.resultLoss');
 }
 
-export function ProfileModal({ show, onClose }: Props) {
+export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
   const { t, locale } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
@@ -100,14 +101,27 @@ export function ProfileModal({ show, onClose }: Props) {
           >
             <div className="flex items-center justify-between p-4 border-b border-void-700 shrink-0">
               <h2 className="text-lg font-display font-bold">{t('profile.title')}</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-white hover:bg-void-800"
-                aria-label={t('common.close')}
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-1">
+                {onOpenOptions && (
+                  <button
+                    type="button"
+                    onClick={onOpenOptions}
+                    className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-white hover:bg-void-800"
+                    aria-label={t('home.optionsButton')}
+                    title={t('home.optionsButton')}
+                  >
+                    ⚙️
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-white hover:bg-void-800"
+                  aria-label={t('common.close')}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">

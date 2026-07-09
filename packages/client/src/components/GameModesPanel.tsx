@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import {
   PATHWAYS,
   getStoryWinUnlock,
-  isStoryComplete,
   isStoryProgressionBoss,
   type Pathway,
 } from 'game-engine';
@@ -71,8 +70,8 @@ export function GameModesPanel({
   const unlockOnWin = nextBoss ? getStoryWinUnlock(storyProgress) : null;
 
   return (
-    <div className="w-full rounded-2xl border border-purple-900/50 bg-void-950/70 overflow-hidden shadow-xl shadow-black/20">
-      <div className="flex border-b border-void-800/80">
+    <div className="w-full rounded-2xl border border-purple-800/60 bg-void-950/80 overflow-hidden shadow-xl shadow-purple-950/25 hub-panel-glow">
+      <div className="flex gap-1 p-1.5 bg-void-900/60 border-b border-void-800/80">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -80,17 +79,12 @@ export function GameModesPanel({
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className={`flex-1 py-2.5 text-[11px] font-semibold uppercase tracking-wider transition-colors relative ${
-                active ? 'text-purple-100' : 'text-void-500 hover:text-void-300'
+              className={`flex-1 py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all ${
+                active
+                  ? 'bg-gradient-to-b from-purple-600/90 to-purple-800/90 text-purple-50 shadow-md shadow-purple-900/40 border border-purple-400/30'
+                  : 'text-void-500 hover:text-void-300 hover:bg-void-800/40'
               }`}
             >
-              {active && (
-                <motion.div
-                  layoutId="mode-tab"
-                  className="absolute inset-x-2 bottom-0 h-0.5 bg-purple-400 rounded-full"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
               {t(tab.labelKey)}
             </button>
           );

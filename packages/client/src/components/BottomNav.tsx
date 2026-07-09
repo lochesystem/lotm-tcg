@@ -15,7 +15,7 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
 
   return (
     <nav
-      className="flex-none border-t border-purple-900/40 bg-void-950/95 backdrop-blur-md safe-bottom-nav"
+      className="flex-none border-t border-purple-800/50 bg-void-950/98 backdrop-blur-lg safe-bottom-nav shadow-[0_-8px_32px_rgba(88,28,135,0.15)]"
       aria-label={t('nav.ariaLabel')}
     >
       <div className="grid grid-cols-5 max-w-lg mx-auto items-end px-1">
@@ -33,15 +33,17 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
           onClick={() => onNavigate('deck-builder')}
         />
 
-        <div className="flex flex-col items-center -mt-3 pb-0.5">
+        <div className="flex flex-col items-center -mt-4 pb-0.5">
           <motion.button
             type="button"
             onClick={() => onNavigate('home')}
             whileTap={{ scale: 0.94 }}
-            className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-display font-bold border-2 shadow-lg transition-all ${
+            animate={active === 'home' ? { boxShadow: ['0 0 20px rgba(168,85,247,0.4)', '0 0 28px rgba(168,85,247,0.55)', '0 0 20px rgba(168,85,247,0.4)'] } : {}}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            className={`w-13 h-13 w-[3.25rem] h-[3.25rem] rounded-full flex items-center justify-center text-base font-display font-bold border-2 transition-colors play-nav-btn ${
               active === 'home'
-                ? 'border-purple-300 bg-gradient-to-br from-purple-500 to-purple-800 text-white shadow-purple-900/50'
-                : 'border-purple-500/50 bg-gradient-to-br from-purple-700 to-purple-950 text-purple-100 shadow-black/40'
+                ? 'border-purple-200 bg-gradient-to-br from-purple-400 to-purple-800 text-white'
+                : 'border-purple-500/60 bg-gradient-to-br from-purple-700 to-purple-950 text-purple-100'
             }`}
             aria-label={t('nav.play')}
             title={t('nav.play')}

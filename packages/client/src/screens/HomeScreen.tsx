@@ -14,6 +14,7 @@ import { HowToPlay } from '../components/HowToPlay';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
 import { OptionsModal } from '../components/OptionsModal';
 import { PathwayHeroCard } from '../components/PathwayHeroCard';
+import { HubBackground } from '../components/HubBackground';
 import {
   GameModesPanel,
   type GameModeTab,
@@ -95,11 +96,9 @@ export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
         : t('home.playTrail');
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto hub-scroll">
+    <div className="flex-1 min-h-0 overflow-y-auto hub-scroll relative">
+      <HubBackground />
       <div className="relative flex flex-col items-center px-4 pt-4 pb-6 max-w-lg mx-auto w-full">
-        <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950 pointer-events-none" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative z-10 w-full flex flex-col gap-4">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
@@ -126,9 +125,12 @@ export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
             </motion.div>
 
             <div className="flex items-center gap-2 flex-none">
-              <div className="px-2.5 py-1.5 rounded-xl border border-amber-700/40 bg-void-900/80 text-right">
-                <p className="text-[8px] text-amber-500/80 uppercase tracking-wider">{t('home.essenceLabel')}</p>
-                <p className="text-sm font-bold text-amber-200 leading-none">{essenceBalance}</p>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-cyan-700/35 bg-void-900/90 shadow-inner">
+                <span className="text-base leading-none" aria-hidden>💧</span>
+                <div>
+                  <p className="text-[8px] text-cyan-400/90 uppercase tracking-wider leading-none">{t('home.essenceLabel')}</p>
+                  <p className="text-sm font-bold text-cyan-100 leading-tight">{essenceBalance}</p>
+                </div>
               </div>
               <button
                 type="button"
@@ -159,10 +161,10 @@ export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="w-full py-4 rounded-2xl font-display font-bold text-xl tracking-[0.15em] uppercase
-              bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800
-              hover:from-purple-500 hover:via-purple-600 hover:to-purple-700
-              border border-purple-400/30 shadow-lg shadow-purple-900/50 text-purple-50"
+            className="w-full py-4 rounded-2xl font-display font-bold text-xl tracking-[0.2em] uppercase play-cta-glow
+              bg-gradient-to-r from-purple-500 via-purple-600 to-purple-800
+              hover:from-purple-400 hover:via-purple-500 hover:to-purple-700
+              border border-purple-300/40 text-purple-50"
           >
             {playLabel}
           </motion.button>

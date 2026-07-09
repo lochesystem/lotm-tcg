@@ -33,6 +33,7 @@ function matchModeLabel(
   const mode = match.match_mode ?? (match.opponent_type === 'pvp' ? 'pvp' : 'npc');
   if (mode === 'story') return t('profile.modeStory');
   if (mode === 'pvp') return t('profile.modePvp');
+  if (mode === 'ranked') return t('profile.modeRanked');
   return t('profile.modeNpc');
 }
 
@@ -44,9 +45,12 @@ function resultLabel(match: DbMatchHistory, t: (key: string) => string): string 
 export function ProfileModal({ show, onClose }: Props) {
   const { t, locale } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
+  const signOut = useAuthStore((s) => s.signOut);
   const wins = useCollectionStore((s) => s.wins);
   const losses = useCollectionStore((s) => s.losses);
   const winStreak = useCollectionStore((s) => s.winStreak);
+  const rankedWins = useCollectionStore((s) => s.rankedWins);
+  const rankedLosses = useCollectionStore((s) => s.rankedLosses);
   const [matches, setMatches] = useState<DbMatchHistory[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -186,6 +190,27 @@ export function ProfileModal({ show, onClose }: Props) {
                   </ul>
                 )}
               </div>
+
+              {cloudEnabled && (rankedWins > 0 || rankedLosses > 0) && (
+                <div className="rounded-xl border border-red-900/40 bg-red-950/20 px-3 py-2 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-red-300/80">{t('profile.rankedRecord')}</p>
+                  <p className="text-sm font-semibold text-red-100">
+                    {t('profile.rankedRecordValue', { wins: rankedWins, losses: rankedLosses })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 p-4 border-t border-void-800/80">
+              {isSupabaseConfigured && cloudEnabled && (
+                <button
+                  type="button"
+                  onClick={() => void signOut().then(onClose)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 border border-red-900/50 bg-red-950/20 hover:bg-red-950/40 hover:text-red-300 transition-colors"
+                >
+                  {t('profile.signOut')}
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>

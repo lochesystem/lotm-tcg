@@ -116,6 +116,42 @@
   touch-action: pan-y;
 }
 
+.hub-card-glow {
+  box-shadow:
+    0 0 0 1px rgba(168, 85, 247, 0.12),
+    0 8px 32px rgba(88, 28, 135, 0.25);
+}
+
+.hub-panel-glow {
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.15),
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.play-cta-glow {
+  box-shadow:
+    0 0 24px rgba(168, 85, 247, 0.45),
+    0 4px 16px rgba(88, 28, 135, 0.5);
+  animation: play-pulse 3s ease-in-out infinite;
+}
+
+@keyframes play-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(168, 85, 247, 0.35),
+      0 4px 16px rgba(88, 28, 135, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(192, 132, 252, 0.55),
+      0 4px 20px rgba(88, 28, 135, 0.55);
+  }
+}
+
+.play-nav-btn {
+  box-shadow: 0 4px 20px rgba(88, 28, 135, 0.45);
+}
+
 /* Vertical screen scroll — reliable touch scrolling on iOS/Android */
 .screen-scroll {
   overflow-y: auto;

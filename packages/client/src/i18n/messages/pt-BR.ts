@@ -119,6 +119,10 @@ export const ptBR = {
     modeStory: 'História',
     modeNpc: 'NPC',
     modePvp: 'Multiplayer',
+    modeRanked: 'Ranqueado',
+    rankedRecord: 'Placar ranqueado',
+    rankedRecordValue: '{wins}V · {losses}D',
+    signOut: 'Sair da conta',
     unknownOpponent: 'Oponente',
   },
 

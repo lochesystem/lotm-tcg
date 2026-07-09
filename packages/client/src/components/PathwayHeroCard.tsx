@@ -24,9 +24,9 @@ export function PathwayHeroCard({ selectedPathway, onSelectPathway, isPathwayUnl
   const pw = PATHWAYS[selectedPathway];
 
   return (
-    <div className="w-full rounded-2xl border border-purple-500/30 bg-gradient-to-br from-void-900/90 via-purple-950/40 to-void-950/90 p-3 shadow-lg shadow-purple-950/30">
+    <div className="relative w-full rounded-2xl border border-purple-500/35 bg-gradient-to-br from-void-900/95 via-purple-950/50 to-void-950/95 p-3 shadow-lg shadow-purple-950/40 hub-card-glow">
       <div className="flex gap-3">
-        <div className="flex-none w-[72px] h-[72px] rounded-xl border border-purple-400/25 bg-void-950/60 flex items-center justify-center text-4xl shadow-inner">
+        <div className="flex-none w-[76px] h-[76px] rounded-xl border border-purple-400/30 bg-gradient-to-br from-purple-900/40 to-void-950/80 flex items-center justify-center text-4xl shadow-inner shadow-purple-900/30">
           {PATHWAY_ICONS[selectedPathway]}
         </div>
 

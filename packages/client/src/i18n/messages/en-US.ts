@@ -119,6 +119,10 @@ export const enUS = {
     modeStory: 'Story',
     modeNpc: 'NPC',
     modePvp: 'Multiplayer',
+    modeRanked: 'Ranked',
+    rankedRecord: 'Ranked record',
+    rankedRecordValue: '{wins}W · {losses}L',
+    signOut: 'Sign out',
     unknownOpponent: 'Opponent',
   },
 

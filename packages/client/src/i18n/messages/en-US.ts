@@ -36,9 +36,26 @@ export const enUS = {
 
   home: {
     gameSubtitle: 'Lord of the Mysteries TCG',
+    pathwayLabel: 'Active pathway',
     choosePathway: 'Choose your Pathway',
     pathwayPower: 'Pathway Power:',
     pathwayPowerCost: '(Cost 2)',
+    essenceLabel: 'Essence',
+    playButton: 'Play',
+    playStoryReplay: 'Replay chapter',
+    playRanked: 'Ranked',
+    playFriends: 'Friends',
+    playTrail: 'Trail',
+    modeTabStory: 'Story',
+    modeTabPvp: 'PvP',
+    modeTabTrail: 'Trail',
+    continueStory: 'Continue Story',
+    continueStoryReplay: 'Pick chapter',
+    storyStatus: 'Progress: {progress}/5',
+    pvpModeHint: 'Ranked grants Essence and leaderboard wins. Friends is casual with no rewards.',
+    friendsSubtitle: 'Room code · casual',
+    trailModeHint: 'Roguelike with map, relics, and Essence rewards at the end of a run.',
+    enterTrail: 'Enter the Trail',
     storyMode: 'Story Mode',
     storyComplete: 'Story complete! Pick a chapter to replay.',
     defeatBoss: 'Defeat the {name} master to advance.',
@@ -62,6 +79,15 @@ export const enUS = {
     locked: 'LOCKED',
     current: '• current',
     optionsButton: 'Options',
+  },
+
+  nav: {
+    ariaLabel: 'Main navigation',
+    play: 'Play',
+    collection: 'Collection',
+    deck: 'Deck',
+    shop: 'Shop',
+    profile: 'Profile',
   },
 
   options: {

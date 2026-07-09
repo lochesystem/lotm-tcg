@@ -102,6 +102,18 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  .safe-bottom-nav {
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+  }
+}
+
+.hub-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 /* Vertical screen scroll — reliable touch scrolling on iOS/Android */

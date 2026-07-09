@@ -173,9 +173,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         <div className="flex-none flex items-center justify-between p-4 gap-2">
-          <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
-            {t('deck.back')}
-          </button>
+          <div className="w-10" />
           <div className="text-center min-w-0">
             <p className="text-[10px] text-void-500 uppercase tracking-wider">{t('deck.deckPower')}</p>
             <select

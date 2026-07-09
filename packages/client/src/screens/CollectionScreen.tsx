@@ -30,12 +30,10 @@ export function CollectionScreen({ onNavigate }: Props) {
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="flex-none flex items-center justify-between p-4">
-          <button onClick={() => onNavigate('home')} className="text-sm text-void-400 hover:text-void-200">
-            {t('common.back')}
-          </button>
+        <div className="flex-none flex items-center justify-between p-4 pt-3">
+          <div className="w-12" />
           <h2 className="text-xl font-bold">{t('collection.title')}</h2>
-          <div className="text-sm text-void-400">{ownedCount}/{allCards.length}</div>
+          <div className="text-sm text-void-400 w-12 text-right">{ownedCount}/{allCards.length}</div>
         </div>
 
         {/* Filters */}

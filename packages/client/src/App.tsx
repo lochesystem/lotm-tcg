@@ -13,6 +13,8 @@ import { isSupabaseConfigured } from './lib/supabase';
 import { initMultiplayerBridge } from './lib/initMultiplayerBridge';
 import { BgmController } from './components/BgmController';
 import { PortraitLockOverlay } from './components/PortraitLockOverlay';
+import { BottomNav, isNavScreen } from './components/BottomNav';
+import { ProfileModal } from './components/ProfileModal';
 import { useTranslation } from './i18n';
 import { warmCardArtCache } from './utils/cardArtCache';
 
@@ -21,6 +23,7 @@ export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby'
 export default function App() {
   const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>('home');
+  const [showProfile, setShowProfile] = useState(false);
   const { status, bootstrap } = useAuthStore();
   const navigateRef = useRef(setScreen);
   navigateRef.current = setScreen;
@@ -35,6 +38,7 @@ export default function App() {
 
   const isBooting = isSupabaseConfigured && status === 'loading';
   const showAuth = isSupabaseConfigured && status === 'unauthenticated';
+  const showBottomNav = !isBooting && !showAuth && isNavScreen(screen);
 
   useEffect(() => {
     if (isBooting || showAuth) return;
@@ -42,6 +46,7 @@ export default function App() {
   }, [isBooting, showAuth]);
 
   const bgmScreen: Screen = showAuth || isBooting ? 'home' : screen;
+  const openProfile = () => setShowProfile(true);
 
   return (
     <>
@@ -58,16 +63,28 @@ export default function App() {
         </div>
       ) : (
         <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
-          {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
-          {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
-          {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
-          {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
-          {screen === 'lobby' && <LobbyScreen onNavigate={setScreen} />}
-          {screen === 'ranked' && <RankedScreen onNavigate={setScreen} />}
-          {screen === 'roguelike' && <RoguelikeScreen onNavigate={setScreen} />}
-          {screen === 'shop' && <ShopScreen onNavigate={setScreen} />}
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {screen === 'home' && <HomeScreen onNavigate={setScreen} onOpenProfile={openProfile} />}
+            {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
+            {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
+            {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
+            {screen === 'lobby' && <LobbyScreen onNavigate={setScreen} />}
+            {screen === 'ranked' && <RankedScreen onNavigate={setScreen} />}
+            {screen === 'roguelike' && <RoguelikeScreen onNavigate={setScreen} />}
+            {screen === 'shop' && <ShopScreen onNavigate={setScreen} />}
+          </div>
+
+          {showBottomNav && (
+            <BottomNav
+              active={screen}
+              onNavigate={setScreen}
+              onOpenProfile={openProfile}
+            />
+          )}
         </div>
       )}
+
+      <ProfileModal show={showProfile} onClose={() => setShowProfile(false)} />
     </>
   );
 }

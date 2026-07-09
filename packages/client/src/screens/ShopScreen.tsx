@@ -48,18 +48,10 @@ export function ShopScreen({ onNavigate }: Props) {
   };
 
   return (
-    <div className="flex-1 min-h-0 screen-scroll safe-bottom bg-void-950">
+    <div className="flex-1 min-h-0 overflow-y-auto hub-scroll bg-void-950">
       <div className="p-4 max-w-lg mx-auto">
-        <button
-          type="button"
-          onClick={() => onNavigate('home')}
-          className="text-sm text-void-400 hover:text-void-200 mb-4"
-        >
-          ← {t('common.back')}
-        </button>
-
-        <h1 className="text-2xl font-bold text-void-100 mb-1">{t('shop.title')}</h1>
-        <p className="text-sm text-void-400 mb-6">
+        <h1 className="text-2xl font-bold text-void-100 mb-1 text-center">{t('shop.title')}</h1>
+        <p className="text-sm text-void-400 mb-6 text-center">
           {t('shop.balance', { amount: essenceBalance })}
         </p>
 

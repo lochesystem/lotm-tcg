@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import type { Screen } from '../App';
 import { useTranslation } from '../i18n';
+import { PlayIcon } from './PlayIcon';
 
 export type NavScreen = 'home' | 'collection' | 'deck-builder' | 'shop';
 
@@ -18,7 +19,7 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
       className="flex-none border-t border-purple-800/50 bg-void-950/98 backdrop-blur-lg safe-bottom-nav shadow-[0_-8px_32px_rgba(88,28,135,0.15)]"
       aria-label={t('nav.ariaLabel')}
     >
-      <div className="grid grid-cols-5 max-w-lg mx-auto items-end px-1">
+      <div className="grid grid-cols-5 max-w-lg mx-auto items-end px-1 min-h-[4.25rem]">
         <NavItem
           icon="🎭"
           label={t('nav.collection')}
@@ -33,26 +34,42 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
           onClick={() => onNavigate('deck-builder')}
         />
 
-        <div className="flex flex-col items-center -mt-4 pb-0.5">
-          <motion.button
-            type="button"
-            onClick={() => onNavigate('home')}
-            whileTap={{ scale: 0.94 }}
-            animate={active === 'home' ? { boxShadow: ['0 0 20px rgba(168,85,247,0.4)', '0 0 28px rgba(168,85,247,0.55)', '0 0 20px rgba(168,85,247,0.4)'] } : {}}
-            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-            className={`w-13 h-13 w-[3.25rem] h-[3.25rem] rounded-full flex items-center justify-center text-base font-display font-bold border-2 transition-colors play-nav-btn ${
-              active === 'home'
-                ? 'border-purple-200 bg-gradient-to-br from-purple-400 to-purple-800 text-white'
-                : 'border-purple-500/60 bg-gradient-to-br from-purple-700 to-purple-950 text-purple-100'
-            }`}
-            aria-label={t('nav.play')}
-            title={t('nav.play')}
-          >
-            ▶
-          </motion.button>
+        <div className="flex flex-col items-center justify-end pb-0.5 self-stretch">
+          <div className="relative flex items-center justify-center -mt-5 mb-1">
+            {active === 'home' && (
+              <>
+                <span className="absolute inset-0 rounded-full nav-play-ring nav-play-ring-outer" aria-hidden />
+                <span className="absolute inset-0 rounded-full nav-play-ring nav-play-ring-inner" aria-hidden />
+              </>
+            )}
+            <motion.button
+              type="button"
+              onClick={() => onNavigate('home')}
+              whileTap={{ scale: 0.92 }}
+              animate={
+                active === 'home'
+                  ? { scale: [1, 1.04, 1] }
+                  : { scale: 1 }
+              }
+              transition={
+                active === 'home'
+                  ? { scale: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' } }
+                  : { duration: 0.15 }
+              }
+              className={`relative z-10 w-[3.25rem] h-[3.25rem] rounded-full flex items-center justify-center border-2 play-nav-btn ${
+                active === 'home'
+                  ? 'border-purple-200 bg-gradient-to-br from-purple-400 to-purple-800 text-white'
+                  : 'border-purple-500/60 bg-gradient-to-br from-purple-700 to-purple-950 text-purple-100'
+              }`}
+              aria-label={t('nav.play')}
+              title={t('nav.play')}
+            >
+              <PlayIcon className="w-[1.125rem] h-[1.125rem]" opticalCenter />
+            </motion.button>
+          </div>
           <span
-            className={`text-[8px] font-medium tracking-wide uppercase mt-1 ${
-              active === 'home' ? 'text-purple-200' : 'text-void-500'
+            className={`text-[8px] font-medium tracking-wide uppercase ${
+              active === 'home' ? 'text-purple-200 nav-label-active' : 'text-void-500'
             }`}
           >
             {t('nav.play')}
@@ -66,16 +83,13 @@ export function BottomNav({ active, onNavigate, onOpenProfile }: Props) {
           onClick={() => onNavigate('shop')}
         />
 
-        <button
-          type="button"
+        <NavItem
+          icon="👤"
+          label={t('nav.profile')}
+          active={false}
           onClick={onOpenProfile}
-          className="relative flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 text-void-500 hover:text-void-300 transition-colors"
-        >
-          <span className="relative text-xl leading-none">👤</span>
-          <span className="relative text-[9px] font-medium tracking-wide uppercase">
-            {t('nav.profile')}
-          </span>
-        </button>
+          highlightId="nav-profile"
+        />
       </div>
     </nav>
   );
@@ -86,30 +100,66 @@ function NavItem({
   label,
   active,
   onClick,
+  highlightId = 'nav-highlight',
 }: {
   icon: string;
   label: string;
   active: boolean;
   onClick: () => void;
+  highlightId?: string;
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 transition-colors ${
+      whileTap={{ scale: 0.92 }}
+      className={`relative flex flex-col items-center justify-end gap-1 py-2 pb-0.5 px-1 self-stretch min-h-[3.25rem] ${
         active ? 'text-purple-200' : 'text-void-500 hover:text-void-300'
       }`}
     >
       {active && (
         <motion.div
-          layoutId="nav-highlight"
-          className="absolute inset-x-1 top-1 bottom-1 rounded-xl bg-purple-900/35 border border-purple-500/20"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          layoutId={highlightId}
+          className="absolute inset-x-0.5 top-1 bottom-5 rounded-xl bg-purple-900/40 border border-purple-500/25 nav-item-glow"
+          transition={{ type: 'spring', stiffness: 380, damping: 28 }}
         />
       )}
-      <span className="relative text-xl leading-none">{icon}</span>
-      <span className="relative text-[9px] font-medium tracking-wide uppercase">{label}</span>
-    </button>
+
+      <motion.span
+        className="relative flex items-center justify-center w-9 h-9 rounded-xl"
+        animate={
+          active
+            ? {
+                scale: [1, 1.12, 1],
+                y: [0, -2, 0],
+              }
+            : { scale: 1, y: 0 }
+        }
+        transition={
+          active
+            ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+            : { duration: 0.2 }
+        }
+      >
+        {active && (
+          <motion.span
+            className="absolute inset-0 rounded-xl bg-purple-500/20 blur-sm"
+            animate={{ opacity: [0.4, 0.85, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            aria-hidden
+          />
+        )}
+        <span className="relative text-xl leading-none select-none">{icon}</span>
+      </motion.span>
+
+      <span
+        className={`relative text-[9px] font-medium tracking-wide uppercase leading-none ${
+          active ? 'nav-label-active' : ''
+        }`}
+      >
+        {label}
+      </span>
+    </motion.button>
   );
 }
 

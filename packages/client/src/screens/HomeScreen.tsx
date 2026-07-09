@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
-import { useAuthStore } from '../stores/authStore';
 import { useCollectionStore } from '../stores/collectionStore';
 import {
   getCurrentStoryBoss,
@@ -15,12 +14,13 @@ import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal'
 import { OptionsModal } from '../components/OptionsModal';
 import { PathwayHeroCard } from '../components/PathwayHeroCard';
 import { HubBackground } from '../components/HubBackground';
+import { PlayIcon } from '../components/PlayIcon';
+import { EssenceIcon } from '../components/EssenceIcon';
 import {
   GameModesPanel,
   type GameModeTab,
   type PvpSubMode,
 } from '../components/GameModesPanel';
-import { isSupabaseConfigured } from '../lib/supabase';
 import { useTranslation } from '../i18n';
 
 interface Props {
@@ -31,7 +31,6 @@ interface Props {
 export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
   const { t } = useTranslation();
   const { selectedPathway, setPathway, startStoryBattle } = useGameStore();
-  const { profile } = useAuthStore();
   const storyProgress = useCollectionStore((s) => s.storyProgress);
   const essenceBalance = useCollectionStore((s) => s.essenceBalance);
   const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
@@ -101,45 +100,40 @@ export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
       <div className="relative flex flex-col items-center px-4 pt-4 pb-6 max-w-lg mx-auto w-full">
         <div className="relative z-10 w-full flex flex-col gap-4">
           {/* Header */}
-          <div className="flex items-start justify-between gap-3">
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="min-w-0"
-            >
-              <h1 className="text-2xl sm:text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-gold-400 to-purple-200 leading-tight">
-                Beyond the Veil
-              </h1>
-              <p className="text-void-400 text-[10px] tracking-[0.2em] uppercase">
-                {t('home.gameSubtitle')}
-              </p>
-              {isSupabaseConfigured && profile && (
-                <button
-                  type="button"
-                  onClick={onOpenProfile}
-                  className="text-void-500 text-[10px] mt-1 hover:text-purple-300 transition-colors"
+          <div className="w-full">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div className="flex items-center justify-start min-w-0">
+                <div
+                  className="inline-flex items-center gap-1.5 h-7 px-2 rounded-lg border border-void-700/50 bg-void-950/40"
+                  title={t('home.essenceBalance', { amount: essenceBalance })}
                 >
-                  @{profile.username}
-                </button>
-              )}
-            </motion.div>
-
-            <div className="flex items-center gap-2 flex-none">
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-cyan-700/35 bg-void-900/90 shadow-inner">
-                <span className="text-base leading-none" aria-hidden>💧</span>
-                <div>
-                  <p className="text-[8px] text-cyan-400/90 uppercase tracking-wider leading-none">{t('home.essenceLabel')}</p>
-                  <p className="text-sm font-bold text-cyan-100 leading-tight">{essenceBalance}</p>
+                  <EssenceIcon className="w-3.5 h-3.5 text-cyan-500/60" />
+                  <span className="text-xs font-medium tabular-nums leading-none text-void-300">
+                    {essenceBalance}
+                  </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowOptions(true)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border border-void-600 bg-void-900/80 text-void-400 hover:text-void-100 hover:border-void-500 transition-colors"
-                aria-label={t('home.optionsButton')}
+
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center col-start-2 px-1"
               >
-                ⚙️
-              </button>
+                <h1 className="text-3xl sm:text-4xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-gold-400 to-purple-200 leading-tight whitespace-nowrap">
+                  Beyond the Veil
+                </h1>
+              </motion.div>
+
+              <div className="flex items-center justify-end min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowOptions(true)}
+                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-xl border border-void-700/60 bg-void-950/50 text-void-500 hover:text-void-200 hover:border-void-500 transition-colors"
+                  aria-label={t('home.optionsButton')}
+                >
+                  ⚙️
+                </button>
+              </div>
             </div>
           </div>
 
@@ -156,17 +150,26 @@ export function HomeScreen({ onNavigate, onOpenProfile }: Props) {
           <motion.button
             type="button"
             onClick={handlePrimaryPlay}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.025 }}
+            whileTap={{ scale: 0.97 }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="w-full py-4 rounded-2xl font-display font-bold text-xl tracking-[0.2em] uppercase play-cta-glow
-              bg-gradient-to-r from-purple-500 via-purple-600 to-purple-800
-              hover:from-purple-400 hover:via-purple-500 hover:to-purple-700
+            className="relative w-full py-4 rounded-2xl font-display font-bold text-xl tracking-[0.2em] uppercase overflow-hidden
+              play-cta-glow play-cta-gradient
               border border-purple-300/40 text-purple-50"
           >
-            {playLabel}
+            <span className="play-cta-shimmer pointer-events-none" aria-hidden />
+            <span className="relative z-10 flex items-center justify-center gap-2.5">
+              <motion.span
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="flex items-center justify-center"
+              >
+                <PlayIcon className="w-5 h-5" opticalCenter />
+              </motion.span>
+              {playLabel}
+            </span>
           </motion.button>
 
           {/* Game modes panel */}

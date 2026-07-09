@@ -43,6 +43,8 @@ export type DbPlayerProgress = {
   losses: number;
   story_progress: number;
   essence_balance: number;
+  ranked_wins?: number;
+  ranked_losses?: number;
   updated_at: string;
 };
 
@@ -62,7 +64,7 @@ export type DbMatchHistory = {
   id: string;
   player_id: string;
   opponent_type: 'npc' | 'pvp';
-  match_mode: 'story' | 'npc' | 'pvp' | null;
+  match_mode: 'story' | 'npc' | 'pvp' | 'ranked' | null;
   opponent_label: string | null;
   npc_tier: number | null;
   won: boolean;
@@ -71,4 +73,4 @@ export type DbMatchHistory = {
   played_at: string;
 };
 
-export type MatchMode = 'story' | 'npc' | 'pvp';
+export type MatchMode = 'story' | 'npc' | 'pvp' | 'ranked';

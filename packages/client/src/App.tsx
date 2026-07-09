@@ -4,6 +4,7 @@ import { BattleScreen } from './screens/BattleScreen';
 import { CollectionScreen } from './screens/CollectionScreen';
 import { DeckBuilderScreen } from './screens/DeckBuilderScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
+import { RankedScreen } from './screens/RankedScreen';
 import { RoguelikeScreen } from './screens/RoguelikeScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { AuthScreen } from './screens/AuthScreen';
@@ -15,7 +16,7 @@ import { PortraitLockOverlay } from './components/PortraitLockOverlay';
 import { useTranslation } from './i18n';
 import { warmCardArtCache } from './utils/cardArtCache';
 
-export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby' | 'roguelike' | 'shop';
+export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby' | 'ranked' | 'roguelike' | 'shop';
 
 export default function App() {
   const { t } = useTranslation();
@@ -62,6 +63,7 @@ export default function App() {
           {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
           {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}
           {screen === 'lobby' && <LobbyScreen onNavigate={setScreen} />}
+          {screen === 'ranked' && <RankedScreen onNavigate={setScreen} />}
           {screen === 'roguelike' && <RoguelikeScreen onNavigate={setScreen} />}
           {screen === 'shop' && <ShopScreen onNavigate={setScreen} />}
         </div>

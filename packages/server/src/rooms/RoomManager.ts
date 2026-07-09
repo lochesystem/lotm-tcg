@@ -1,13 +1,18 @@
 import { GameState, Deck } from 'game-engine';
 
+export type RoomMode = 'friendly' | 'ranked';
+
 export interface Room {
   code: string;
+  mode: RoomMode;
   hostSocketId: string;
   guestSocketId: string | null;
   hostDeck: Deck | null;
   guestDeck: Deck | null;
   hostDisplayName: string | null;
   guestDisplayName: string | null;
+  hostUserId: string | null;
+  guestUserId: string | null;
   hostReady: boolean;
   guestReady: boolean;
   gameState: GameState | null;
@@ -44,12 +49,15 @@ export class RoomManager {
     const code = this.generateCode();
     const room: Room = {
       code,
+      mode: 'friendly',
       hostSocketId,
       guestSocketId: null,
       hostDeck: null,
       guestDeck: null,
       hostDisplayName: null,
       guestDisplayName: null,
+      hostUserId: null,
+      guestUserId: null,
       hostReady: false,
       guestReady: false,
       gameState: null,
@@ -66,6 +74,40 @@ export class RoomManager {
     if (!room || room.guestSocketId || room.status !== 'waiting') return null;
     room.guestSocketId = guestSocketId;
     room.status = 'ready';
+    this.socketToRoom.set(guestSocketId, code);
+    return room;
+  }
+
+  createRankedRoom(
+    hostSocketId: string,
+    guestSocketId: string,
+    hostDeck: Deck,
+    guestDeck: Deck,
+    hostDisplayName: string,
+    guestDisplayName: string,
+    hostUserId: string,
+    guestUserId: string
+  ): Room {
+    const code = this.generateCode();
+    const room: Room = {
+      code,
+      mode: 'ranked',
+      hostSocketId,
+      guestSocketId,
+      hostDeck,
+      guestDeck,
+      hostDisplayName,
+      guestDisplayName,
+      hostUserId: hostUserId || null,
+      guestUserId: guestUserId || null,
+      hostReady: true,
+      guestReady: true,
+      gameState: null,
+      createdAt: Date.now(),
+      status: 'ready',
+    };
+    this.rooms.set(code, room);
+    this.socketToRoom.set(hostSocketId, code);
     this.socketToRoom.set(guestSocketId, code);
     return room;
   }

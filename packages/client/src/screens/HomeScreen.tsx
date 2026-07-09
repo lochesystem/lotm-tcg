@@ -304,6 +304,15 @@ export function HomeScreen({ onNavigate }: Props) {
             </span>
           </motion.button>
           <motion.button
+            onClick={() => onNavigate('ranked')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3.5 bg-gradient-to-r from-red-900 to-amber-900 hover:from-red-800 hover:to-amber-800 rounded-xl font-semibold transition-all border border-red-500/30"
+          >
+            {t('home.rankedButton')}
+            <span className="block text-[10px] text-red-200/80 mt-0.5">{t('home.rankedSubtitle')}</span>
+          </motion.button>
+          <motion.button
             onClick={() => onNavigate('lobby')}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

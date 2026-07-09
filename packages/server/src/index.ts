@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { RoomManager } from './rooms/RoomManager.js';
+import { MatchmakingQueue } from './matchmaking/MatchmakingQueue.js';
 import { setupSocketHandlers } from './game/socketHandlers.js';
 import { initDatabase } from './db/database.js';
 
@@ -27,19 +28,25 @@ const io = new Server(httpServer, {
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', rooms: RoomManager.getInstance().getRoomCount() });
+  res.json({
+    status: 'ok',
+    rooms: RoomManager.getInstance().getRoomCount(),
+    rankedQueue: MatchmakingQueue.getInstance().getQueueSize(),
+  });
 });
 
 // Initialize
 const db = initDatabase();
 const roomManager = RoomManager.getInstance();
+const matchmakingQueue = MatchmakingQueue.getInstance();
 
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
-  setupSocketHandlers(io, socket, roomManager, db);
+  setupSocketHandlers(io, socket, roomManager, matchmakingQueue, db);
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
+    matchmakingQueue.removeBySocket(socket.id);
     roomManager.handleDisconnect(socket.id);
   });
 });

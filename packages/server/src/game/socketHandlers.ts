@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { RoomManager, type Room } from '../rooms/RoomManager.js';
+import { MatchmakingQueue } from '../matchmaking/MatchmakingQueue.js';
 import {
   createGame,
   applyAction,
@@ -25,6 +26,7 @@ export function setupSocketHandlers(
   io: Server,
   socket: Socket,
   roomManager: RoomManager,
+  matchmakingQueue: MatchmakingQueue,
   db: Database.Database
 ): void {
   // ─── Room management ─────────────────────────────────────────────────
@@ -61,6 +63,61 @@ export function setupSocketHandlers(
     if (roomManager.isGameReady(room)) {
       startGame(io, room.code, roomManager);
     }
+  });
+
+  // ─── Ranked matchmaking ──────────────────────────────────────────────
+
+  socket.on(
+    'join-ranked-queue',
+    (
+      data: { deck: Deck; displayName?: string; userId?: string },
+      callback: (resp: { success: boolean; queued: boolean; queueSize: number; error?: string }) => void
+    ) => {
+      if (!data?.deck || data.deck.cards.length !== 30) {
+        callback({ success: false, queued: false, queueSize: matchmakingQueue.getQueueSize(), error: 'Invalid deck' });
+        return;
+      }
+
+      const match = matchmakingQueue.enqueue({
+        socketId: socket.id,
+        userId: data.userId ?? '',
+        displayName: data.displayName?.trim() || 'Player',
+        deck: data.deck,
+        joinedAt: Date.now(),
+      });
+
+      if (!match) {
+        callback({ success: true, queued: true, queueSize: matchmakingQueue.getQueueSize() });
+        return;
+      }
+
+      const room = roomManager.createRankedRoom(
+        match.host.socketId,
+        match.guest.socketId,
+        match.host.deck,
+        match.guest.deck,
+        match.host.displayName,
+        match.guest.displayName,
+        match.host.userId,
+        match.guest.userId
+      );
+
+      const hostSocket = io.sockets.sockets.get(match.host.socketId);
+      const guestSocket = io.sockets.sockets.get(match.guest.socketId);
+
+      hostSocket?.join(room.code);
+      guestSocket?.join(room.code);
+
+      hostSocket?.emit('ranked-match-found', { code: room.code, role: 'host' });
+      guestSocket?.emit('ranked-match-found', { code: room.code, role: 'guest' });
+
+      startGame(io, room.code, roomManager);
+      callback({ success: true, queued: false, queueSize: matchmakingQueue.getQueueSize() });
+    }
+  );
+
+  socket.on('leave-ranked-queue', () => {
+    matchmakingQueue.removeBySocket(socket.id);
   });
 
   // ─── Game actions ────────────────────────────────────────────────────
@@ -179,5 +236,6 @@ function startGame(io: Server, roomCode: string, roomManager: RoomManager): void
     state: serializeState(gameState),
     hostDisplayName: room.hostDisplayName ?? 'Host',
     guestDisplayName: room.guestDisplayName ?? 'Guest',
+    isRanked: room.mode === 'ranked',
   });
 }

@@ -14,8 +14,7 @@ import { HeroPowerImpact } from '../components/HeroPowerImpact';
 import { RitualEffect } from '../components/RitualEffect';
 import { NpcPlayReveal } from '../components/NpcPlayReveal';
 import { SecretReveal } from '../components/SecretReveal';
-import { PackOpening } from '../components/PackOpening';
-import { GameAction, validateAction, openPack, getPackTypeForReward, PackResult, PATHWAYS, calculateStoryWinEssence, type Pathway, type StoryEssenceReward } from 'game-engine';
+import { GameAction, validateAction, PATHWAYS, calculateStoryWinEssence, calculateRankedEssence, type Pathway, type StoryEssenceReward, type RankedEssenceReward } from 'game-engine';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAttackTargets, formatAttackError } from '../utils/combatTargets';
@@ -88,7 +87,7 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export function BattleScreen({ onNavigate }: Props) {
   const { t, locale } = useTranslation();
   const { cardDescription, cardType, rarity, pathwayPowerDescription, noEffect } = useLocalizedCardText();
-  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, pendingSecret, npcPlayReveal, npcTier, isOnline, isStoryMode, isRoguelikeMode, roguelikeOpponentName, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
+  const { gameState, playerId, opponentId, performAction, reset, npcThinking, pendingAttack, pendingHeroPower, pendingRitual, pendingSecret, npcPlayReveal, npcTier, isOnline, isRankedMode, isStoryMode, isRoguelikeMode, roguelikeOpponentName, storyOpponentPathway, storyAdvancesOnWin, opponentDisplayName } = useGameStore();
   const completeBattle = useRoguelikeStore((s) => s.completeBattle);
   const [selectedAttacker, setSelectedAttacker] = useState<string | null>(null);
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
@@ -127,8 +126,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const rewardGrantedRef = useRef(false);
   const heroPowerBtnRef = useRef<HTMLButtonElement>(null);
   const [heroPowerHover, setHeroPowerHover] = useState(false);
-  const [rewardPack, setRewardPack] = useState<PackResult | null>(null);
   const [storyEssenceReward, setStoryEssenceReward] = useState<StoryEssenceReward | null>(null);
+  const [rankedEssenceReward, setRankedEssenceReward] = useState<RankedEssenceReward | null>(null);
   const [unlockedPathway, setUnlockedPathway] = useState<Pathway | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [battlefieldReady, setBattlefieldReady] = useState(false);
@@ -137,6 +136,8 @@ export function BattleScreen({ onNavigate }: Props) {
   const recordNpcWin = useCollectionStore((s) => s.recordNpcWin);
   const recordStoryWin = useCollectionStore((s) => s.recordStoryWin);
   const recordNpcLoss = useCollectionStore((s) => s.recordNpcLoss);
+  const recordRankedWin = useCollectionStore((s) => s.recordRankedWin);
+  const recordRankedLoss = useCollectionStore((s) => s.recordRankedLoss);
   const addEssence = useCollectionStore((s) => s.addEssence);
 
   // Sync battle log from game engine events (player + NPC)
@@ -168,8 +169,8 @@ export function BattleScreen({ onNavigate }: Props) {
     setBattleLog([]);
     logIdRef.current = 0;
     rewardGrantedRef.current = false;
-    setRewardPack(null);
     setStoryEssenceReward(null);
+    setRankedEssenceReward(null);
     setUnlockedPathway(null);
     setTargetingHeroPower(false);
     setWeaponAttackMode(false);
@@ -193,13 +194,34 @@ export function BattleScreen({ onNavigate }: Props) {
       const isDraw = gameState.winner === null;
 
       if (isOnline) {
-        if (won) {
-          await recordNpcWin();
-        } else if (lost) {
-          await recordNpcLoss();
-        }
+        if (isRankedMode) {
+          const playerState = gameState.players.find((p) => p.id === playerId);
+          const remainingHealth = playerState?.health ?? 0;
+          const maxHealth = playerState?.maxHealth ?? 30;
+          const reward = calculateRankedEssence(won, turns, remainingHealth, maxHealth);
 
-        if (userId) {
+          if (reward.total > 0) {
+            await addEssence(reward.total);
+            setRankedEssenceReward(reward);
+          }
+
+          if (won) {
+            await recordRankedWin();
+          } else if (lost) {
+            await recordRankedLoss();
+          }
+
+          if (userId) {
+            await recordMatch(userId, {
+              opponentType: 'pvp',
+              matchMode: 'ranked',
+              opponentLabel: opponentDisplayName ?? 'Player',
+              won,
+              isDraw,
+              durationTurns: turns,
+            });
+          }
+        } else if (userId) {
           await recordMatch(userId, {
             opponentType: 'pvp',
             matchMode: 'pvp',
@@ -284,9 +306,7 @@ export function BattleScreen({ onNavigate }: Props) {
             }
           }
         } else {
-          streak = await recordNpcWin();
-          const packType = getPackTypeForReward(npcTier, streak);
-          setRewardPack(openPack(packType, Date.now()));
+          await recordNpcWin();
         }
         if (userId) {
           await recordMatch(userId, {
@@ -332,6 +352,7 @@ export function BattleScreen({ onNavigate }: Props) {
     playerId,
     opponentId,
     isOnline,
+    isRankedMode,
     isStoryMode,
     isRoguelikeMode,
     roguelikeOpponentName,
@@ -341,6 +362,8 @@ export function BattleScreen({ onNavigate }: Props) {
     opponentDisplayName,
     recordNpcWin,
     recordStoryWin,
+    recordRankedWin,
+    recordRankedLoss,
     addEssence,
     completeBattle,
   ]);
@@ -1473,12 +1496,16 @@ export function BattleScreen({ onNavigate }: Props) {
                               total: storyEssenceReward.total,
                             })
                           : t('battle.winStoryEssenceChapter', { amount: storyEssenceReward.total })
-                      : rewardPack
-                        ? t('battle.winPackReward')
+                      : rankedEssenceReward
+                        ? rankedEssenceReward.won
+                          ? t('battle.winRankedEssence', { amount: rankedEssenceReward.total })
+                          : t('battle.lossRankedEssence', { amount: rankedEssenceReward.total })
                         : t('battle.winOpponentDefeated')
                   : gameState.winner === null
                   ? t('battle.drawBothFallen')
-                  : playerConceded
+                  : rankedEssenceReward
+                    ? t('battle.lossRankedEssence', { amount: rankedEssenceReward.total })
+                    : playerConceded
                     ? t('battle.lossConceded')
                     : t('battle.lossZeroHealth')}
               </motion.p>
@@ -1518,39 +1545,22 @@ export function BattleScreen({ onNavigate }: Props) {
                   {t('battle.storyEssenceHint')}
                 </motion.p>
               )}
-              {gameState.winner === playerId && rewardPack && !isStoryMode && (
-                <motion.p
-                  className="text-xs text-gold-400 mb-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.65 }}
-                >
-                  {t('battle.openPackHint')}
-                </motion.p>
-              )}
               <motion.button
                 onClick={() => {
                   reset();
-                  onNavigate(isRoguelikeMode ? 'roguelike' : 'home');
+                  onNavigate(isRoguelikeMode ? 'roguelike' : isRankedMode ? 'ranked' : 'home');
                 }}
                 className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold transition-all shadow-lg"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
-                {isRoguelikeMode ? t('roguelike.backToTrail') : t('battle.backToMenu')}
+                {isRoguelikeMode ? t('roguelike.backToTrail') : isRankedMode ? t('ranked.backToRanked') : t('battle.backToMenu')}
               </motion.button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {rewardPack && !isStoryMode && (
-        <PackOpening
-          pack={rewardPack}
-          onClose={() => setRewardPack(null)}
-        />
-      )}
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* ─── Opponent area ─────────────────────────────────────────────── */}

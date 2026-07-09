@@ -6,6 +6,8 @@ import {
   addCardsToCloud,
   recordNpcWinCloud,
   recordNpcLossCloud,
+  recordRankedWinCloud,
+  recordRankedLossCloud,
   recordStoryWinCloud,
   saveProgress,
   addEssenceToCloud,
@@ -21,6 +23,8 @@ interface CollectionStore {
   losses: number;
   storyProgress: number;
   essenceBalance: number;
+  rankedWins: number;
+  rankedLosses: number;
   totalOwned: () => number;
   ownsCard: (cardId: string) => boolean;
   getQuantity: (cardId: string) => number;
@@ -32,6 +36,8 @@ interface CollectionStore {
   recordNpcWin: () => Promise<number>;
   recordStoryWin: () => Promise<{ streak: number; unlockedPathway: Pathway | null }>;
   recordNpcLoss: () => Promise<void>;
+  recordRankedWin: () => Promise<void>;
+  recordRankedLoss: () => Promise<void>;
   initStarterCollection: (pathway: Pathway) => void;
   syncToCloud: () => Promise<void>;
 }
@@ -44,6 +50,8 @@ function applyProgress(set: (p: Partial<CollectionStore>) => void, progress: Pla
     losses: progress.losses,
     storyProgress: progress.storyProgress,
     essenceBalance: progress.essenceBalance,
+    rankedWins: progress.rankedWins,
+    rankedLosses: progress.rankedLosses,
   });
 }
 
@@ -56,6 +64,8 @@ export const useCollectionStore = create<CollectionStore>()(
       losses: 0,
       storyProgress: 0,
       essenceBalance: 0,
+      rankedWins: 0,
+      rankedLosses: 0,
 
       totalOwned: () => Object.values(get().ownedCardIds).reduce((sum, qty) => sum + qty, 0),
 
@@ -80,6 +90,8 @@ export const useCollectionStore = create<CollectionStore>()(
           losses: state.losses,
           storyProgress: state.storyProgress,
           essenceBalance: state.essenceBalance,
+          rankedWins: state.rankedWins,
+          rankedLosses: state.rankedLosses,
         });
       },
 
@@ -161,6 +173,26 @@ export const useCollectionStore = create<CollectionStore>()(
         set({ winStreak: 0, losses: get().losses + 1 });
       },
 
+      recordRankedWin: async () => {
+        const userId = getCurrentUserId();
+        if (userId && isSupabaseConfigured) {
+          const progress = await recordRankedWinCloud(userId);
+          applyProgress(set, progress);
+          return;
+        }
+        set({ rankedWins: get().rankedWins + 1 });
+      },
+
+      recordRankedLoss: async () => {
+        const userId = getCurrentUserId();
+        if (userId && isSupabaseConfigured) {
+          const progress = await recordRankedLossCloud(userId);
+          applyProgress(set, progress);
+          return;
+        }
+        set({ rankedLosses: get().rankedLosses + 1 });
+      },
+
       initStarterCollection: (pathway: Pathway) => {
         const { ownedCardIds } = get();
         if (Object.keys(ownedCardIds).length > 0) return;
@@ -182,6 +214,8 @@ export const useCollectionStore = create<CollectionStore>()(
         losses: state.losses,
         storyProgress: state.storyProgress,
         essenceBalance: state.essenceBalance,
+        rankedWins: state.rankedWins,
+        rankedLosses: state.rankedLosses,
       }),
     }
   )

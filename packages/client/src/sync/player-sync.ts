@@ -14,10 +14,21 @@ export interface PlayerProgress {
   losses: number;
   storyProgress: number;
   essenceBalance: number;
+  rankedWins: number;
+  rankedLosses: number;
 }
 
 function emptyProgress(): PlayerProgress {
-  return { ownedCards: {}, winStreak: 0, wins: 0, losses: 0, storyProgress: 0, essenceBalance: 0 };
+  return {
+    ownedCards: {},
+    winStreak: 0,
+    wins: 0,
+    losses: 0,
+    storyProgress: 0,
+    essenceBalance: 0,
+    rankedWins: 0,
+    rankedLosses: 0,
+  };
 }
 
 function fromDb(row: DbPlayerProgress): PlayerProgress {
@@ -28,6 +39,8 @@ function fromDb(row: DbPlayerProgress): PlayerProgress {
     losses: row.losses ?? 0,
     storyProgress: row.story_progress ?? 0,
     essenceBalance: row.essence_balance ?? 0,
+    rankedWins: row.ranked_wins ?? 0,
+    rankedLosses: row.ranked_losses ?? 0,
   };
 }
 
@@ -120,6 +133,8 @@ export async function saveProgress(userId: string, progress: PlayerProgress): Pr
     losses: progress.losses,
     story_progress: progress.storyProgress,
     essence_balance: progress.essenceBalance,
+    ranked_wins: progress.rankedWins,
+    ranked_losses: progress.rankedLosses,
     updated_at: new Date().toISOString(),
   };
 
@@ -173,6 +188,56 @@ export async function recordNpcLossCloud(userId: string): Promise<PlayerProgress
   };
   await saveProgress(userId, next);
   return next;
+}
+
+export async function recordRankedWinCloud(userId: string): Promise<PlayerProgress> {
+  const current = await fetchProgress(userId);
+  const next: PlayerProgress = {
+    ...current,
+    rankedWins: current.rankedWins + 1,
+  };
+  await saveProgress(userId, next);
+  return next;
+}
+
+export async function recordRankedLossCloud(userId: string): Promise<PlayerProgress> {
+  const current = await fetchProgress(userId);
+  const next: PlayerProgress = {
+    ...current,
+    rankedLosses: current.rankedLosses + 1,
+  };
+  await saveProgress(userId, next);
+  return next;
+}
+
+export interface RankedLeaderboardEntry {
+  userId: string;
+  username: string;
+  displayName: string;
+  rankedWins: number;
+  rankedLosses: number;
+}
+
+export async function fetchRankedLeaderboard(limit = 10): Promise<RankedLeaderboardEntry[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb.rpc('get_ranked_leaderboard', { result_limit: limit });
+  if (error) throw error;
+
+  return (data ?? []).map((row: {
+    user_id: string;
+    username: string;
+    display_name: string;
+    ranked_wins: number;
+    ranked_losses: number;
+  }) => ({
+    userId: row.user_id,
+    username: row.username,
+    displayName: row.display_name,
+    rankedWins: row.ranked_wins,
+    rankedLosses: row.ranked_losses,
+  }));
 }
 
 export async function addEssenceToCloud(userId: string, amount: number): Promise<PlayerProgress> {

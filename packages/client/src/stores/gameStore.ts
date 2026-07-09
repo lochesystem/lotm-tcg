@@ -143,6 +143,7 @@ interface GameStore {
   deck: Deck | null;
   activeDeckId: string | null;
   isOnline: boolean;
+  isRankedMode: boolean;
   roomCode: string | null;
   opponentDisplayName: string | null;
   npcTier: number;
@@ -166,10 +167,9 @@ interface GameStore {
 
   setPathway: (pathway: Pathway) => void;
   setActiveDeckFromCloud: (cardIds: string[], pathway: Pathway, deckId: string) => void;
-  startLocalGame: () => void;
   startStoryBattle: (bossPathway?: Pathway, playerDeckOverride?: Deck) => void;
   startRoguelikeBattle: (run: RunState, nodeType: NodeType) => void;
-  enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null, opponentDisplayName: string) => void;
+  enterOnlineBattle: (state: GameState, role: 'host' | 'guest', roomCode: string | null, opponentDisplayName: string, isRanked?: boolean) => void;
   syncOnlineState: (state: GameState) => void;
   applyDeferredOnlineState: () => boolean;
   shiftRemoteOpponentAnim: () => void;
@@ -710,6 +710,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   deck: null,
   activeDeckId: null,
   isOnline: false,
+  isRankedMode: false,
   roomCode: null,
   opponentDisplayName: null,
   npcTier: 1,
@@ -752,31 +753,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setActiveDeckFromCloud: (cardIds, pathway, deckId) => {
     const deck: Deck = { pathway, cards: cardIds };
     set({ deck, activeDeckId: deckId });
-  },
-
-  startLocalGame: () => {
-    const { playerId, opponentId, selectedPathway, deck } = get();
-    const playerDeck =
-      deck && deck.cards.length === 30 && deck.pathway === selectedPathway
-        ? deck
-        : createStarterDeck(selectedPathway);
-    const npcDeck = createStarterDeck('red-priest');
-
-    if (!isSupabaseConfigured || !getCurrentUserId()) {
-      useCollectionStore.getState().initStarterCollection(selectedPathway);
-    }
-
-    const state = createGame(
-      `game-${Date.now()}`,
-      { id: playerId, deck: playerDeck },
-      { id: opponentId, deck: npcDeck },
-      Date.now()
-    );
-
-    const stateAfterMulligan = applyAction(state, playerId, { type: 'mulligan', indices: [] });
-    const finalState = applyAction(stateAfterMulligan, opponentId, { type: 'mulligan', indices: [] });
-
-    set({ gameState: finalState, deck: playerDeck, isStoryMode: false, storyOpponentPathway: null, storyAdvancesOnWin: false });
   },
 
   startStoryBattle: (bossPathway, playerDeckOverride) => {
@@ -863,12 +839,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
-  enterOnlineBattle: (state, role, roomCode, opponentDisplayName) => {
+  enterOnlineBattle: (state, role, roomCode, opponentDisplayName, isRanked = false) => {
     set({
       gameState: state,
       playerId: role,
       opponentId: role === 'host' ? 'guest' : 'host',
       isOnline: true,
+      isRankedMode: isRanked,
       roomCode,
       opponentDisplayName,
       isStoryMode: false,
@@ -1072,6 +1049,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerId: 'player-1',
       opponentId: 'npc-1',
       isOnline: false,
+      isRankedMode: false,
       roomCode: null,
       opponentDisplayName: null,
       isStoryMode: false,

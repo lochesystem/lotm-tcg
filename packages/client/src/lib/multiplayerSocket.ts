@@ -12,19 +12,22 @@ export interface RoomUpdatePayload {
   guestReady?: boolean;
 }
 
-type GameStartListener = (state: GameState, role: OnlineRole, opponentDisplayName: string) => void;
+type GameStartListener = (state: GameState, role: OnlineRole, opponentDisplayName: string, isRanked: boolean) => void;
 type GameStateListener = (state: GameState) => void;
 type RoomUpdateListener = (data: RoomUpdatePayload) => void;
 type ConnectionListener = (connected: boolean) => void;
+type RankedMatchFoundListener = (data: { code: string; role: OnlineRole }) => void;
 
 let socket: Socket | null = null;
 let onlineRole: OnlineRole | null = null;
 let roomCode: string | null = null;
+let rankedSession = false;
 
 const gameStartListeners = new Set<GameStartListener>();
 const gameStateListeners = new Set<GameStateListener>();
 const roomUpdateListeners = new Set<RoomUpdateListener>();
 const connectionListeners = new Set<ConnectionListener>();
+const rankedMatchFoundListeners = new Set<RankedMatchFoundListener>();
 
 function emitConnection(connected: boolean) {
   for (const listener of connectionListeners) listener(connected);
@@ -52,16 +55,25 @@ function ensureSocket(): Socket {
         state: unknown;
         hostDisplayName?: string;
         guestDisplayName?: string;
+        isRanked?: boolean;
       };
       state = deserializeState(payload.state);
       hostDisplayName = payload.hostDisplayName ?? hostDisplayName;
       guestDisplayName = payload.guestDisplayName ?? guestDisplayName;
+      if (payload.isRanked) rankedSession = true;
     } else {
       state = deserializeState(raw);
     }
 
     const opponentDisplayName = role === 'host' ? guestDisplayName : hostDisplayName;
-    for (const listener of gameStartListeners) listener(state, role, opponentDisplayName);
+    for (const listener of gameStartListeners) listener(state, role, opponentDisplayName, rankedSession);
+  });
+
+  socket.on('ranked-match-found', (data: { code: string; role: OnlineRole }) => {
+    onlineRole = data.role;
+    roomCode = data.code;
+    rankedSession = true;
+    for (const listener of rankedMatchFoundListeners) listener(data);
   });
 
   socket.on('game-state', (raw: unknown) => {
@@ -86,6 +98,15 @@ export function getOnlineRoomCode(): string | null {
 
 export function getOnlineRole(): OnlineRole | null {
   return onlineRole;
+}
+
+export function isRankedSession(): boolean {
+  return rankedSession;
+}
+
+export function subscribeRankedMatchFound(listener: RankedMatchFoundListener): () => void {
+  rankedMatchFoundListeners.add(listener);
+  return () => rankedMatchFoundListeners.delete(listener);
 }
 
 export function subscribeConnection(listener: ConnectionListener): () => void {
@@ -189,7 +210,35 @@ export function sendMultiplayerAction(action: GameAction): Promise<boolean> {
   });
 }
 
+export function joinRankedQueue(
+  deck: Deck,
+  displayName?: string,
+  userId?: string
+): Promise<{ success: boolean; queued: boolean; queueSize: number; error?: string }> {
+  return new Promise((resolve) => {
+    const s = connectMultiplayer();
+
+    const emitJoin = () => {
+      s.emit(
+        'join-ranked-queue',
+        { deck, displayName, userId },
+        (data: { success: boolean; queued: boolean; queueSize: number; error?: string }) => {
+          resolve(data);
+        }
+      );
+    };
+
+    if (s.connected) emitJoin();
+    else s.once('connect', emitJoin);
+  });
+}
+
+export function leaveRankedQueue(): void {
+  connectMultiplayer().emit('leave-ranked-queue');
+}
+
 export function clearMultiplayerSession(): void {
   onlineRole = null;
   roomCode = null;
+  rankedSession = false;
 }

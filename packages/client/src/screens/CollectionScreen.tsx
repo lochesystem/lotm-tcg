@@ -1,12 +1,11 @@
 import { Screen } from '../App';
 import { getAllCards, Card, Pathway, PATHWAYS } from 'game-engine';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCollectionStore } from '../stores/collectionStore';
 import { MiniCard, LockedMiniCard } from '../components/MiniCard';
 import { CollectionCardModal } from '../components/CollectionCardModal';
 import { useTranslation } from '../i18n';
-import { prefetchCardArt } from '../utils/cardArtCache';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
@@ -23,9 +22,6 @@ export function CollectionScreen({ onNavigate }: Props) {
     ? allCards
     : allCards.filter((c) => c.pathway === filterPathway);
 
-  useEffect(() => {
-    void prefetchCardArt(filtered.map((c) => c.id));
-  }, [filterPathway]);
 
   const ownedCount = allCards.filter((c) => ownsCard(c.id)).length;
 

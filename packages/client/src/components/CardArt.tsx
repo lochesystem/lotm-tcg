@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ensureCardArtInMemory, getMemoryCachedCardArtUrl } from '../utils/cardArtCache';
 import { getCardArtUrl } from '../utils/cardArt';
 
 interface Props {
@@ -13,7 +12,12 @@ interface Props {
   onMissing?: () => void;
 }
 
-export function CardArt({
+// Reset load/error state when a slot is reused for a different card.
+export function CardArt(props: Props) {
+  return <CardArtImage key={props.cardId} {...props} />;
+}
+
+function CardArtImage({
   cardId,
   className,
   opacityClass = 'opacity-60',
@@ -22,40 +26,35 @@ export function CardArt({
   onLoaded,
   onMissing,
 }: Props) {
-  const [hasImage, setHasImage] = useState(true);
-  const [src, setSrc] = useState(() => getMemoryCachedCardArtUrl(cardId) ?? getCardArtUrl(cardId));
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    setHasImage(true);
-
-    const cached = getMemoryCachedCardArtUrl(cardId);
-    if (cached) {
-      setSrc(cached);
-      return;
-    }
-
-    setSrc(getCardArtUrl(cardId));
-
-    let cancelled = false;
-    void ensureCardArtInMemory(cardId).then((blobUrl) => {
-      if (!cancelled && blobUrl) setSrc(blobUrl);
-    });
-
-    return () => {
-      cancelled = true;
+    if (!failed) return;
+    // Retry once automatically, and recover hidden images after reconnection.
+    const retry = () => {
+      setAttempt((value) => value + 1);
+      setFailed(false);
     };
-  }, [cardId]);
+    const timer = attempt === 0 ? window.setTimeout(retry, 1500) : undefined;
+    window.addEventListener('online', retry);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('online', retry);
+    };
+  }, [failed, attempt]);
 
-  if (!hasImage) return null;
+  if (failed) return null;
 
   return (
     <img
-      src={src}
+      key={attempt}
+      src={getCardArtUrl(cardId)}
       alt=""
       decoding="async"
       onLoad={() => onLoaded?.()}
       onError={() => {
-        setHasImage(false);
+        setFailed(true);
         onMissing?.();
       }}
       className={`absolute inset-0 w-full h-full object-top ${

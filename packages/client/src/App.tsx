@@ -17,7 +17,6 @@ import { BottomNav, isNavScreen } from './components/BottomNav';
 import { ProfileModal } from './components/ProfileModal';
 import { OptionsModal } from './components/OptionsModal';
 import { useTranslation } from './i18n';
-import { warmCardArtCache } from './utils/cardArtCache';
 
 export type Screen = 'home' | 'battle' | 'collection' | 'deck-builder' | 'lobby' | 'ranked' | 'roguelike' | 'shop';
 
@@ -42,10 +41,6 @@ export default function App() {
   const showAuth = isSupabaseConfigured && status === 'unauthenticated';
   const showBottomNav = !isBooting && !showAuth && isNavScreen(screen);
 
-  useEffect(() => {
-    if (isBooting || showAuth) return;
-    void warmCardArtCache();
-  }, [isBooting, showAuth]);
 
   const bgmScreen: Screen = showAuth || isBooting ? 'home' : screen;
   const openProfile = () => setShowProfile(true);

@@ -65,7 +65,7 @@ export default function App() {
       ) : (
         <div className="h-dvh w-screen overflow-hidden bg-void-950 flex flex-col">
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            {screen === 'home' && <HomeScreen onNavigate={setScreen} />}
+            {screen === 'home' && <HomeScreen onNavigate={setScreen} onOpenProfile={openProfile} onOpenOptions={() => setShowOptions(true)} />}
             {screen === 'battle' && <BattleScreen onNavigate={setScreen} />}
             {screen === 'collection' && <CollectionScreen onNavigate={setScreen} />}
             {screen === 'deck-builder' && <DeckBuilderScreen onNavigate={setScreen} />}

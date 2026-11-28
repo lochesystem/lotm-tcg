@@ -1,189 +1,80 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Screen } from '../App';
+import type { Screen } from '../App';
 import { useGameStore } from '../stores/gameStore';
 import { useCollectionStore } from '../stores/collectionStore';
-import {
-  getCurrentStoryBoss,
-  getSelectableStoryBosses,
-  isStoryComplete,
-  type Pathway,
-} from 'game-engine';
+import { useAuthStore } from '../stores/authStore';
+import { getCurrentStoryBoss, getSelectableStoryBosses, type Pathway } from 'game-engine';
 import { HowToPlay } from '../components/HowToPlay';
 import { DeckSelectModal, type DeckChoice } from '../components/DeckSelectModal';
-import { PathwayHeroCard } from '../components/PathwayHeroCard';
-import { HubBackground } from '../components/HubBackground';
-import { PlayIcon } from '../components/PlayIcon';
-import {
-  GameModesPanel,
-  type GameModeTab,
-  type PvpSubMode,
-} from '../components/GameModesPanel';
-import { useTranslation } from '../i18n';
+import { GameButton, HeroArtwork, PathwaySelector, PlayerHeader, useMenuLanguage } from '../components/menu/MenuPrimitives';
+import { ModeTabs, OpponentPanel, PvpPanel, TrailPanel, type MenuMode, type PvpMode } from '../components/menu/ModePanel';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
+  onOpenProfile?: () => void;
+  onOpenOptions?: () => void;
 }
 
-export function HomeScreen({ onNavigate }: Props) {
-  const { t } = useTranslation();
-  const { selectedPathway, setPathway, startStoryBattle } = useGameStore();
-  const storyProgress = useCollectionStore((s) => s.storyProgress);
-  const essenceBalance = useCollectionStore((s) => s.essenceBalance);
-  const isPathwayUnlocked = useCollectionStore((s) => s.isPathwayUnlocked);
-
-  const [showHowToPlay, setShowHowToPlay] = useState(false);
-  const [showDeckSelect, setShowDeckSelect] = useState(false);
-  const [modeTab, setModeTab] = useState<GameModeTab>('story');
-  const [pvpSubMode, setPvpSubMode] = useState<PvpSubMode>('ranked');
-
-  const nextBoss = getCurrentStoryBoss(storyProgress);
-  const selectableBosses = getSelectableStoryBosses(storyProgress);
-  const storyDone = isStoryComplete(storyProgress);
-  const [selectedStoryBoss, setSelectedStoryBoss] = useState<Pathway>(
-    () => nextBoss ?? selectableBosses[selectableBosses.length - 1] ?? 'red-priest'
-  );
+export function HomeScreen({ onNavigate, onOpenProfile, onOpenOptions }: Props) {
+  const { text, pathwayName } = useMenuLanguage();
+  const selectedPathway = useGameStore((s) => s.selectedPathway);
+  const setPathway = useGameStore((s) => s.setPathway);
+  const startStoryBattle = useGameStore((s) => s.startStoryBattle);
+  const progress = useCollectionStore((s) => s.storyProgress);
+  const essence = useCollectionStore((s) => s.essenceBalance);
+  const unlocked = useCollectionStore((s) => s.isPathwayUnlocked);
+  const profile = useAuthStore((s) => s.profile);
+  const [mode, setMode] = useState<MenuMode>('story');
+  const [pvpMode, setPvpMode] = useState<PvpMode>('ranked');
+  const [showPathways, setShowPathways] = useState(false);
+  const [showDecks, setShowDecks] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [boss, setBoss] = useState<Pathway>(() => getCurrentStoryBoss(progress) ?? 'red-priest');
+  const selectable = getSelectableStoryBosses(progress);
 
   useEffect(() => {
-    if (nextBoss) {
-      setSelectedStoryBoss(nextBoss);
-    } else if (!selectableBosses.includes(selectedStoryBoss)) {
-      setSelectedStoryBoss(selectableBosses[0] ?? 'red-priest');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset boss when story progress advances
-  }, [storyProgress, nextBoss, selectableBosses]);
+    const choices = getSelectableStoryBosses(progress);
+    setBoss(getCurrentStoryBoss(progress) ?? choices[choices.length - 1] ?? 'red-priest');
+  }, [progress]);
 
   useEffect(() => {
-    if (!isPathwayUnlocked(selectedPathway)) {
-      setPathway('fool');
-    }
-  }, [selectedPathway, isPathwayUnlocked, setPathway]);
+    if (!unlocked(selectedPathway)) setPathway('fool');
+  }, [selectedPathway, unlocked, setPathway]);
 
-  const handleDeckChosen = (choice: DeckChoice) => {
-    setShowDeckSelect(false);
-    startStoryBattle(selectedStoryBoss, choice.deck);
+  const play = () => {
+    if (mode === 'story') setShowDecks(true);
+    else if (mode === 'pvp') onNavigate(pvpMode === 'ranked' ? 'ranked' : 'lobby');
+    else onNavigate('roguelike');
+  };
+  const chooseDeck = (choice: DeckChoice) => {
+    setShowDecks(false);
+    startStoryBattle(boss, choice.deck);
     onNavigate('battle');
   };
+  const playLabel = mode === 'story' ? text('Jogar', 'Play') : mode === 'trail' ? text('Entrar na trilha', 'Enter the trail') : pvpMode === 'ranked' ? text('Jogar ranqueado', 'Play ranked') : text('Jogar com amigos', 'Play with friends');
 
-  const handlePrimaryPlay = () => {
-    switch (modeTab) {
-      case 'story':
-        setShowDeckSelect(true);
-        break;
-      case 'pvp':
-        onNavigate(pvpSubMode === 'ranked' ? 'ranked' : 'lobby');
-        break;
-      case 'trail':
-        onNavigate('roguelike');
-        break;
-    }
-  };
-
-  const playLabel =
-    modeTab === 'story'
-      ? storyDone
-        ? t('home.playStoryReplay')
-        : t('home.playButton')
-      : modeTab === 'pvp'
-        ? pvpSubMode === 'ranked'
-          ? t('home.playRanked')
-          : t('home.playFriends')
-        : t('home.playTrail');
-
-  return (
-    <div className="flex-1 min-h-0 overflow-y-auto hub-scroll relative">
-      <HubBackground />
-      <div className="relative flex flex-col items-center px-4 pt-4 pb-6 max-w-lg mx-auto w-full">
-        <div className="relative z-10 w-full flex flex-col gap-4">
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full text-center pt-1 pb-0.5"
-          >
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-gold-400 to-purple-200 leading-tight">
-              Beyond the Veil
-            </h1>
-          </motion.div>
-
-          {/* Pathway hero card */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <PathwayHeroCard
-              selectedPathway={selectedPathway}
-              onSelectPathway={setPathway}
-              isPathwayUnlocked={isPathwayUnlocked}
-            />
-          </motion.div>
-
-          {/* Primary play CTA */}
-          <motion.button
-            type="button"
-            onClick={handlePrimaryPlay}
-            whileHover={{ scale: 1.025 }}
-            whileTap={{ scale: 0.97 }}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="relative w-full py-4 rounded-2xl font-display font-bold text-xl tracking-[0.2em] uppercase overflow-hidden
-              play-cta-glow play-cta-gradient
-              border border-purple-300/40 text-purple-50"
-          >
-            <span className="play-cta-shimmer pointer-events-none" aria-hidden />
-            <span className="relative z-10 flex items-center justify-center gap-2.5">
-              <motion.span
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                className="flex items-center justify-center"
-              >
-                <PlayIcon className="w-5 h-5" opticalCenter />
-              </motion.span>
-              {playLabel}
-            </span>
-          </motion.button>
-
-          {/* Game modes panel */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <GameModesPanel
-              activeTab={modeTab}
-              onTabChange={setModeTab}
-              storyProgress={storyProgress}
-              essenceBalance={essenceBalance}
-              nextBoss={nextBoss}
-              selectedStoryBoss={selectedStoryBoss}
-              onSelectStoryBoss={setSelectedStoryBoss}
-              selectableBosses={selectableBosses}
-              storyDone={storyDone}
-              pvpSubMode={pvpSubMode}
-              onPvpSubModeChange={setPvpSubMode}
-              onContinueStory={() => setShowDeckSelect(true)}
-              onOpenRanked={() => onNavigate('ranked')}
-              onOpenFriends={() => onNavigate('lobby')}
-              onOpenTrail={() => onNavigate('roguelike')}
-            />
-          </motion.div>
-
-          <button
-            type="button"
-            onClick={() => setShowHowToPlay(true)}
-            className="text-xs text-void-500 hover:text-purple-300 transition-all text-center underline underline-offset-2"
-          >
-            {t('home.howToPlayLink')}
-          </button>
+  return <main className="veil-ui veil-home">
+    <div className="veil-home-inner">
+      <PlayerHeader name={profile?.display_name || profile?.username || text('Beyonder', 'Beyonder')} essence={essence} pathway={selectedPathway} onOpenProfile={onOpenProfile ?? (() => {})} onOpenOptions={onOpenOptions ?? (() => {})} />
+      <h1 className="veil-wordmark"><span>Beyond the Veil</span></h1>
+      <section className="veil-hero" aria-label={pathwayName(selectedPathway)}>
+        <HeroArtwork key={selectedPathway} pathway={selectedPathway} priority />
+        <div className="veil-pathway-summary">
+          <div><p className="veil-eyebrow">{text('Caminho selecionado', 'Selected pathway')}</p><h2>{pathwayName(selectedPathway)}</h2></div>
+          <GameButton onClick={() => setShowPathways(true)}>{text('Trocar caminho', 'Change pathway')}</GameButton>
         </div>
+      </section>
+      <div className="veil-play-area">
+        <ModeTabs value={mode} onChange={setMode} />
+        {mode === 'story' && <OpponentPanel boss={boss} selectable={selectable} progress={progress} onSelect={setBoss} />}
+        {mode === 'pvp' && <PvpPanel value={pvpMode} onChange={setPvpMode} />}
+        {mode === 'trail' && <TrailPanel />}
+        <GameButton variant="primary" onClick={play}>{playLabel}</GameButton>
+        <GameButton variant="quiet" onClick={() => setShowHelp(true)}>{text('Como jogar', 'How to play')}</GameButton>
       </div>
-
-      <HowToPlay show={showHowToPlay} onClose={() => setShowHowToPlay(false)} />
-      <DeckSelectModal
-        show={showDeckSelect}
-        starterPathway={selectedPathway}
-        title={t('home.deckSelectTitle')}
-        onSelect={handleDeckChosen}
-        onClose={() => setShowDeckSelect(false)}
-      />
     </div>
-  );
+    {showPathways && <PathwaySelector selected={selectedPathway} unlocked={unlocked} onSelect={setPathway} onClose={() => setShowPathways(false)} />}
+    <HowToPlay show={showHelp} onClose={() => setShowHelp(false)} />
+    <DeckSelectModal show={showDecks} starterPathway={selectedPathway} title={text('Escolha seu baralho', 'Choose your deck')} onSelect={chooseDeck} onClose={() => setShowDecks(false)} />
+  </main>;
 }

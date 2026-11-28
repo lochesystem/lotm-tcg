@@ -1,3 +1,4 @@
+import './menu/overlays.css';
 import { useLocaleStore } from '../i18n/localeStore';
 import { SUPPORTED_LOCALES, type Locale } from '../i18n/types';
 import { useTranslation } from '../i18n';
@@ -27,15 +28,11 @@ export function LocaleSwitcher({ className = '', variant = 'toggle' }: Props) {
               key={code}
               type="button"
               onClick={() => setLocale(code)}
-              className={`w-full px-4 py-3 rounded-xl text-sm font-medium border text-left transition-colors ${
-                selected
-                  ? 'border-purple-400 bg-purple-900/40 text-purple-100'
-                  : 'border-void-600 bg-void-800/60 text-void-300 hover:border-void-500 hover:bg-void-800'
-              }`}
+              className="veil-language-option"
               aria-pressed={selected}
             >
               <span>{t(`options.languages.${code}`)}</span>
-              {selected && <span className="float-right text-purple-300">✓</span>}
+              {selected && <span className="float-right text-[#edccd0]">✓</span>}
             </button>
           );
         })}
@@ -52,9 +49,10 @@ export function LocaleSwitcher({ className = '', variant = 'toggle' }: Props) {
           onClick={() => setLocale(code)}
           className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-colors ${
             locale === code
-              ? 'border-purple-400 bg-purple-900/50 text-purple-100'
+              ? 'border-[#c2939b] bg-[#571c2c] text-[#fff0e6]'
               : 'border-void-600 bg-void-900/60 text-void-500 hover:border-void-500'
           }`}
+          aria-pressed={locale === code}
           aria-label={t(`options.languages.${code}`)}
         >
           {SHORT_LABELS[code]}

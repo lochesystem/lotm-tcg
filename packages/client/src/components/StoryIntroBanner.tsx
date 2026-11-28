@@ -1,3 +1,4 @@
+import './menu/overlays.css';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Pathway } from 'game-engine';
@@ -27,12 +28,12 @@ export function StoryIntroBanner({ matchId, pathway }: Props) {
       {visible && (
         <motion.div
           key={matchId}
-          className="absolute top-11 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+          className="veil-story-notice"
           initial={{ opacity: 0, y: -10, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.35 } }}
           exit={{ opacity: 0, y: -8, scale: 0.97, transition: { duration: 0.45 } }}
         >
-          <div className="px-4 py-1.5 rounded-full bg-purple-900/90 border border-purple-500/40 text-[10px] font-medium text-purple-100 shadow-lg shadow-purple-900/30 backdrop-blur-sm whitespace-nowrap">
+          <div className="veil-announcement veil-announcement--compact" role="status">
             {t('battle.storyIntro', { chapter: storyChapter(pathway) })}
           </div>
         </motion.div>

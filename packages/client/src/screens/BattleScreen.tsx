@@ -1465,7 +1465,7 @@ export function BattleScreen({ onNavigate }: Props) {
             animate={{ opacity: 1 }}
           >
             <motion.div
-              className="text-center p-8 rounded-2xl bg-void-900/95 border border-void-500 shadow-2xl max-w-xs w-full mx-4"
+              className="veil-ui veil-battle-result text-center mx-4"
               initial={{ scale: 0.8, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 200 }}
@@ -1557,7 +1557,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   reset();
                   onNavigate(isRoguelikeMode ? 'roguelike' : isRankedMode ? 'ranked' : 'home');
                 }}
-                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-xl font-bold transition-all shadow-lg"
+                className="veil-button veil-button--primary w-full"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}

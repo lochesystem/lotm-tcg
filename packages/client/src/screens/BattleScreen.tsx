@@ -1,3 +1,4 @@
+import { BattleCardInspect, HoldToInspect } from '../components/BattleCardInspect';
 import { getHandFanPose } from '../utils/handFan';
 import '../components/menu/battle.css';
 import { Screen } from '../App';
@@ -37,8 +38,7 @@ import {
   ritualPathway,
   resolveRitualTargets,
 } from '../utils/ritualTargets';
-import { getLocalizedKeywordInfo } from '../components/KeywordTooltip';
-import type { Keyword } from 'game-engine';
+import type { Card as GameCard } from 'game-engine';
 import { formatGameEvent } from '../utils/battleLog';
 import { getBattlefieldUrl, getBattlefieldVideoUrl } from '../utils/battlefieldArt';
 import { BattlefieldBackground } from '../components/BattlefieldBackground';
@@ -96,7 +96,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const [selectedHandIndex, setSelectedHandIndex] = useState<number | null>(null);
   const [targetingHandIndex, setTargetingHandIndex] = useState<number | null>(null);
   const [hoveredHandIndex, setHoveredHandIndex] = useState<number | null>(null);
-  const [hoveredKeyword, setHoveredKeyword] = useState<Keyword | null>(null);
+  const [inspectedCard, setInspectedCard] = useState<GameCard | null>(null);
   const [showAttackAnim, setShowAttackAnim] = useState(false);
   const [showHeroPowerAnim, setShowHeroPowerAnim] = useState(false);
   const [showRitualAnim, setShowRitualAnim] = useState(false);
@@ -180,7 +180,6 @@ export function BattleScreen({ onNavigate }: Props) {
     setSelectedHandIndex(null);
     setTargetingHandIndex(null);
     setHoveredHandIndex(null);
-    setHoveredKeyword(null);
   }, [gameState?.id]);
 
   // Record match outcome + rewards when game ends
@@ -628,12 +627,6 @@ export function BattleScreen({ onNavigate }: Props) {
       ? getHeroPowerFriendlyMinionTargets(heroPowerMode, player)
       : null;
 
-  const previewHandIndex =
-    targetingHandIndex ?? selectedHandIndex ?? hoveredHandIndex;
-
-  const previewCard =
-    previewHandIndex !== null ? player.hand[previewHandIndex] : null;
-
   const clearArrowPreview = () => {
     setArrowTargetId(null);
     setArrowTargetHero(false);
@@ -798,7 +791,6 @@ export function BattleScreen({ onNavigate }: Props) {
     setSelectedHandIndex(null);
     setTargetingHandIndex(null);
     setHoveredHandIndex(null);
-    setHoveredKeyword(null);
   };
 
   const clearRitualTimers = () => {
@@ -1789,50 +1781,6 @@ export function BattleScreen({ onNavigate }: Props) {
 
         {/* ─── Hand ──────────────────────────────────────────────────────── */}
         <div className="battle-hand-area flex-none flex flex-col pt-1 pb-1 min-w-0 w-full safe-bottom">
-          <div className="battle-hand-preview shrink-0 flex items-end justify-center px-3 relative z-50">
-            {previewCard && (
-              <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
-                {targetingHandIndex !== null ? (
-                  <p className="text-[10px] text-gold-200">
-                    {t('battle.selectTargetForCard', { name: previewCard.name })}
-                  </p>
-                ) : hoveredKeyword ? (
-                  (() => {
-                    const kwInfo = getLocalizedKeywordInfo(hoveredKeyword, locale);
-                    return (
-                  <>
-                    <p className="text-[11px] font-semibold text-purple-200">
-                      {kwInfo.icon} {kwInfo.name}
-                    </p>
-                    <p className="text-[10px] text-void-200 mt-1 leading-snug">
-                      {kwInfo.description}
-                    </p>
-                  </>
-                    );
-                  })()
-                ) : (
-                  <>
-                    <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
-                    <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
-                      {cardDescription(previewCard.description) ||
-                        (previewCard.type === 'sealed-artifact'
-                          ? t('battle.weaponEquipHint')
-                          : noEffect)}
-                    </p>
-                    {previewCard.keywords && previewCard.keywords.length > 0 && (
-                      <p className="text-[9px] text-purple-300 mt-1">
-                        {t('battle.hoverKeywordHint')}
-                      </p>
-                    )}
-                    {selectedHandIndex !== null && targetingHandIndex === null && (
-                      <p className="text-[9px] text-gold-300 mt-1">{t('battle.clickAgainToPlay')}</p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
         {/* ─── Player area ───────────────────────────────────────────────── */}
         <div className="battle-hero-bar battle-hero-bar--player flex-none p-2 pt-1">
           <div className="flex items-center gap-3">
@@ -2011,36 +1959,43 @@ export function BattleScreen({ onNavigate }: Props) {
                       className="relative flex-shrink-0"
                       style={{
                         transformOrigin: '50% 100%',
-                        marginLeft: index === 0 ? 0 : `clamp(-2.25rem, calc((100vw - 8rem) / ${Math.max(1, player.hand.length - 1)} - 5rem), 0.375rem)`,
+                        marginLeft: index === 0 ? 0 : `clamp(-2.25rem, calc((100vw - 8rem) / ${Math.max(1, player.hand.length - 1)} - 6rem), 0.375rem)`,
                         zIndex: fanActive ? 60 : index + 1,
                       }}
                     >
-                      <CardComponent
-                        card={card}
-                        playable={isMyTurn && card.cost <= player.spirituality && !isGameOver}
-                        selected={isSelected}
-                        compactHand
-                        suppressHoverLift={anotherSelected}
-                        showHoverPreview={anotherSelected}
-                        onKeywordHover={setHoveredKeyword}
-                        onHoverChange={(hovering) => {
-                          if (hovering && !isSelected) {
-                            setHoveredHandIndex(index);
-                          } else if (hoveredHandIndex === index) {
-                            setHoveredHandIndex(null);
-                          }
-                          if (!hovering) setHoveredKeyword(null);
-                        }}
-                        onClick={() => handleHandCardClick(index)}
-                      />
+                      <HoldToInspect onInspect={() => setInspectedCard(card)}>
+                        <CardComponent
+                          card={card}
+                          playable={isMyTurn && card.cost <= player.spirituality && !isGameOver}
+                          selected={isSelected}
+                          compactHand
+                          suppressHoverLift={anotherSelected}
+                          showHoverPreview={false}
+                          onHoverChange={(hovering) => {
+                            if (hovering && !isSelected) {
+                              setHoveredHandIndex(index);
+                            } else if (hoveredHandIndex === index) {
+                              setHoveredHandIndex(null);
+                            }
+                          }}
+                          onClick={() => handleHandCardClick(index)}
+                        />
+                      </HoldToInspect>
                     </motion.div>
                   );
                 })}
               </AnimatePresence>
             </div>
           </div>
+          <div className="battle-hand-help" aria-live="polite">
+            <span>{targetingHandIndex !== null && player.hand[targetingHandIndex]
+              ? t('battle.selectTargetForCard', { name: player.hand[targetingHandIndex].name })
+              : selectedHandIndex !== null && isMyTurn ? t('battle.clickAgainToPlay') : t('battle.holdToInspect')}</span>
+            {selectedHandIndex !== null && player.hand[selectedHandIndex] && <button type="button" onClick={() => setInspectedCard(player.hand[selectedHandIndex])}>{t('battle.inspectCard')}</button>}
+          </div>
         </div>
       </div>
+      {inspectedCard && !isGameOver && <BattleCardInspect card={inspectedCard} onClose={() => setInspectedCard(null)} />}
 
       {/* ─── Battle Log Sidebar ──────────────────────────────────────────── */}
       <AnimatePresence>

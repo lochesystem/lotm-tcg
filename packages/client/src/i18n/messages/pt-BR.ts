@@ -325,6 +325,8 @@ export const ptBR = {
     costBadge: 'Custo: {cost}',
     enemyPlays: 'Inimigo joga',
     heroPowerCost: 'Custo: 2',
+    holdToInspect: 'Segure uma carta para ampliar',
+    inspectCard: 'Ver carta',
     handAria: 'Mão de cartas',
     tempestSelectField: 'Tempest: escolha um minion no seu campo',
     enemyPowerPrefix: 'Inimigo: {power}',

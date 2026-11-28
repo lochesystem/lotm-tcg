@@ -325,6 +325,8 @@ export const enUS = {
     costBadge: 'Cost: {cost}',
     enemyPlays: 'Enemy plays',
     heroPowerCost: 'Cost: 2',
+    holdToInspect: 'Hold a card to inspect it',
+    inspectCard: 'Inspect card',
     handAria: 'Hand of cards',
     tempestSelectField: 'Tempest: choose a minion on your board',
     enemyPowerPrefix: 'Enemy: {power}',

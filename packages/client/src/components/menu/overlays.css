@@ -1,0 +1,43 @@
+/* Shared surfaces for utility menus and battle announcements. */
+.veil-modal-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #76616a; background: linear-gradient(105deg, #451c29, #201b22 75%); }
+.veil-modal-heading h2 { font: 1.6rem/1.2 Georgia, serif; }
+.veil-modal-actions { display: flex; gap: .25rem; }
+.veil-icon-button { display: grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; border: 1px solid #806b75; color: #eee0e5; background: #ffffff05; border-radius: .15rem; }
+.veil-icon-button:hover { background: #ffffff12; }
+.veil-modal-content { padding: 1.25rem; }
+.veil-modal-footer { padding: 1rem 1.25rem; border-top: 1px solid #62515e; }
+.veil-modal-footer:empty { display: none; }
+.veil-settings-link { display: block; width: 100%; padding: 1rem; text-align: left; border: 1px solid #a57b87; border-left: 3px solid #bd7d8c; color: #f1ece4; background: linear-gradient(110deg, #401c29, #231e26); }
+.veil-settings-link:hover { border-color: #e2b0ba; }
+.veil-settings-section { padding-top: .5rem; }
+.veil-section-label { margin-bottom: .4rem !important; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #e3c5cb; }
+.veil-language-option { min-height: 3.25rem; padding: .75rem 1rem; border: 1px solid #77616e; background: #201c24; color: #d5c8d0; text-align: left; border-radius: .15rem; }
+.veil-language-option[aria-pressed="true"] { border-color: #d6a5ae; background: linear-gradient(110deg, #592032, #321b27); color: #fff0e6; box-shadow: inset 3px 0 #daa5ac; }
+.veil-language-option:hover { border-color: #e2b0ba; }
+.veil-profile-handle { padding: .75rem; text-align: center; font: 1.25rem Georgia, serif; overflow-wrap: anywhere; color: #eacbd2; }
+.veil-profile-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #7c636e; background: #17141a; }
+.veil-profile-stat { padding: 1rem .35rem; text-align: center; min-width: 0; }
+.veil-profile-stat + .veil-profile-stat { border-left: 1px solid #62515e; }
+.veil-profile-stat p:first-child { color: #c8b7c1; font-size: .65rem; letter-spacing: .08em; overflow-wrap: anywhere; }
+.veil-profile-stat p:last-child { margin-top: .4rem; font: 2rem Georgia, serif; color: #f1ece4; font-variant-numeric: tabular-nums; }
+.veil-match-row { border: 1px solid #62515e; border-left: 2px solid #a77a88; background: #211b24; padding: .8rem; }
+.veil-turn-overlay { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 1rem; }
+.veil-announcement { position: relative; border: 1px solid #b59b9f; color: #f1ece4; background: linear-gradient(115deg, #461b29f5, #17151cf5 70%); box-shadow: 0 12px 40px #0008, inset 0 0 0 3px #1c171f, inset 0 0 0 4px #76606c; padding: 1.25rem 1.5rem; text-align: center; font-family: Inter, system-ui, sans-serif; overflow-wrap: anywhere; }
+.veil-turn-banner { display: flex; align-items: center; justify-content: center; gap: 1rem; width: min(100%, 30rem); border-block: 1px solid #d1a6ac; }
+.veil-turn-banner--enemy { background: linear-gradient(115deg, #26242bf5, #17151cf5 70%); border-color: #9e9aa5; }
+.veil-announcement-seal { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid #ba8f99; color: #e3b3bc; font-size: 1.6rem; flex: none; }
+.veil-turn-banner--enemy .veil-announcement-seal { border-color: #a5a1ae; color: #ddd8e1; }
+.veil-announcement h2 { margin: .3rem 0 0; color: #fff0e6; font: clamp(1.5rem, 5vw, 2rem)/1.2 Georgia, serif; }
+.veil-announcement-kicker { margin: 0; font-size: .7rem; letter-spacing: .2em; text-transform: uppercase; color: #d5bfc7; }
+.veil-story-notice { position: absolute; top: 2.75rem; left: 0; right: 0; z-index: 30; display: flex; justify-content: center; padding-inline: 1rem; pointer-events: none; }
+.veil-announcement--compact { max-width: min(90vw, 30rem); padding: .8rem 1.2rem; font-size: .8rem; line-height: 1.5; }
+.veil-battle-result { width: min(100% - 2rem, 28rem); max-height: calc(100dvh - 3rem); overflow-y: auto; padding: 2rem 1.5rem; border: 1px solid #b59b9f; background: radial-gradient(ellipse at top, #532131, #19151d 65%); box-shadow: 0 20px 70px #0009, inset 0 0 0 4px #201a23, inset 0 0 0 5px #806570; }
+.veil-battle-result h2 { font-family: Georgia, serif; margin-bottom: .75rem; }
+.veil-battle-result p { line-height: 1.6; margin-bottom: 1rem; color: #d2c3cc; }
+@media (max-width: 380px) { .veil-modal-content { padding: 1rem; }.veil-modal-heading { padding: .75rem 1rem; }.veil-turn-banner { gap: .65rem; padding: 1rem; } }
+@media (prefers-reduced-motion: reduce) { .veil-turn-overlay *, .veil-story-notice { animation: none !important; transition: none !important; } }
+.veil-help-sections { display: flex; gap: .5rem; padding: .75rem; overflow-x: auto; flex: none; border-bottom: 1px solid #62515e; }
+.veil-help-section { flex: none; min-height: 2.75rem; padding: .5rem .75rem; border: 1px solid #77616e; background: #201c24; color: #d5c8d0; font-size: .8rem !important; }
+.veil-help-section[aria-pressed="true"] { border-color: #d6a5ae; background: #592032; color: #fff0e6; }
+.veil-event-notice { position: fixed; top: 5rem; inset-inline: 0; padding-inline: 1rem; z-index: 50; display: flex; justify-content: center; pointer-events: none; }
+.veil-event-notice--secret { top: 6rem; z-index: 55; }

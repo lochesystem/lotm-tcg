@@ -1,4 +1,4 @@
-import { ModalFrame } from './menu/ModalFrame';
+import { ModalFrame, ModalHeading } from './menu/ModalFrame';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
@@ -27,21 +27,15 @@ export function HowToPlay({ show, onClose }: Props) {
             exit={{ scale: 0.9, y: 20 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-void-700">
-              <h2 className="text-lg font-display font-bold">{t('howToPlay.title')}</h2>
-              <button onClick={onClose} className="text-void-400 hover:text-white text-lg">✕</button>
-            </div>
+            <ModalHeading title={t('howToPlay.title')} onClose={onClose} closeLabel={t('common.close')} />
 
-            <div className="flex overflow-x-auto gap-1 p-2 border-b border-void-800">
+            <div className="veil-help-sections">
               {sections.map((section, i) => (
                 <button
                   key={i}
+                  aria-pressed={currentSection === i}
                   onClick={() => setCurrentSection(i)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                    currentSection === i
-                      ? 'bg-[#702333] text-purple-100'
-                      : 'bg-void-800 text-void-400 hover:bg-void-700'
-                  }`}
+                  className="veil-help-section"
                 >
                   {section.title}
                 </button>

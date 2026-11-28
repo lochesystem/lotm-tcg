@@ -1,5 +1,5 @@
 import { MenuIcon } from './menu/MenuPrimitives';
-import { ModalFrame } from './menu/ModalFrame';
+import { ModalFrame, ModalHeading } from './menu/ModalFrame';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
@@ -100,54 +100,33 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
       {show && (
         <ModalFrame title={t('profile.title')} onClose={onClose}>
           <motion.div
-            className="veil-floating-surface bg-void-900 border border-void-500 rounded-2xl max-w-sm w-full max-h-[85vh] flex flex-col shadow-2xl"
+            className="veil-floating-surface veil-profile flex flex-col"
             initial={{ scale: 0.92, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 16 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-void-700 shrink-0">
-              <h2 className="text-lg font-display font-bold">{t('profile.title')}</h2>
-              <div className="flex items-center gap-1">
-                {onOpenOptions && (
-                  <button
-                    type="button"
-                    onClick={onOpenOptions}
-                    className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-white hover:bg-void-800"
-                    aria-label={t('home.optionsButton')}
-                    title={t('home.optionsButton')}
-                  >
-                    <MenuIcon name="settings" />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="min-w-[2rem] min-h-[2rem] flex items-center justify-center rounded-lg text-void-400 hover:text-white hover:bg-void-800"
-                  aria-label={t('common.close')}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
+            <ModalHeading title={t('profile.title')} onClose={onClose} closeLabel={t('common.close')}>
+              {onOpenOptions && <button type="button" className="veil-icon-button" aria-label={t('home.optionsButton')} onClick={() => { onClose(); onOpenOptions(); }}><MenuIcon name="settings" /></button>}
+            </ModalHeading>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="veil-modal-content flex-1 overflow-y-auto space-y-4">
               {profile && (
-                <p className="text-sm text-center text-void-300">
+                <p className="veil-profile-handle">
                   @{profile.username}
                 </p>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-green-900/50 bg-green-950/30 p-3 text-center">
+              <div className="veil-profile-stats">
+                <div className="veil-profile-stat">
                   <p className="text-xs uppercase tracking-wider text-green-400/80">{t('profile.wins')}</p>
                   <p className="text-2xl font-bold text-green-300">{wins}</p>
                 </div>
-                <div className="rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-center">
+                <div className="veil-profile-stat">
                   <p className="text-xs uppercase tracking-wider text-red-400/80">{t('profile.losses')}</p>
                   <p className="text-2xl font-bold text-red-300">{losses}</p>
                 </div>
-                <div className="rounded-xl border border-purple-900/50 bg-purple-950/30 p-3 text-center">
+                <div className="veil-profile-stat">
                   <p className="text-xs uppercase tracking-wider text-purple-400/80">{t('profile.winStreak')}</p>
                   <p className="text-2xl font-bold text-[#edccd0]">{winStreak}</p>
                 </div>
@@ -186,7 +165,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                       return (
                         <li
                           key={match.id}
-                          className="rounded-xl border border-void-700 bg-void-800/50 px-3 py-2.5"
+                          className="veil-match-row"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -221,12 +200,12 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
               )}
             </div>
 
-            <div className="shrink-0 p-4 border-t border-void-800/80">
+            <div className="veil-modal-footer">
               {isSupabaseConfigured && cloudEnabled && (
                 <button
                   type="button"
                   onClick={() => void signOut().then(onClose)}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 border border-red-900/50 bg-red-950/20 hover:bg-red-950/40 hover:text-red-300 transition-colors"
+                  className="veil-button veil-button--secondary w-full"
                 >
                   {t('profile.signOut')}
                 </button>

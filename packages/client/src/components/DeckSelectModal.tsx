@@ -1,5 +1,5 @@
 import { HeroArtwork } from './menu/MenuPrimitives';
-import { ModalFrame } from './menu/ModalFrame';
+import { ModalFrame, ModalHeading } from './menu/ModalFrame';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -84,7 +84,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
   return (
     <AnimatePresence>
       {show && (
-        <ModalFrame title={t('deckSelect.defaultTitle')} onClose={onClose}>
+        <ModalFrame title={title ?? t('deckSelect.defaultTitle')} onClose={onClose}>
 
           <motion.div
             className="veil-floating-surface relative w-full max-w-md bg-void-900 border border-void-600 rounded-2xl shadow-2xl overflow-hidden"
@@ -92,14 +92,8 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
           >
-            <div className="p-4 border-b border-void-700">
-              <h3 className="text-lg font-bold text-void-100">
-                {title ?? t('deckSelect.defaultTitle')}
-              </h3>
-              <p className="text-xs text-void-400 mt-1">
-                {t('deckSelect.subtitle')}
-              </p>
-            </div>
+            <ModalHeading title={title ?? t('deckSelect.defaultTitle')} onClose={onClose} closeLabel={t('common.close')} />
+            <p className="px-4 pt-4 text-sm text-void-400">{t('deckSelect.subtitle')}</p>
 
             <div className="p-4 flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
               {starterUnlocked ? (

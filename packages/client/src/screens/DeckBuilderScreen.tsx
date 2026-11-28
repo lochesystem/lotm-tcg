@@ -32,6 +32,7 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
   const { text, pathwayName } = useMenuLanguage();
   const [query, setQuery] = useState('');
   const [showDeck, setShowDeck] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const ownedCards = useCollectionStore((s) => s.ownedCardIds);
   const { activeDeckId, setActiveDeckFromCloud } = useGameStore();
   const ownsCard = useCollectionStore((s) => s.ownsCard);
@@ -180,6 +181,9 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
 
   return <main className="veil-ui archive-screen deck-screen">
     <ArchiveHeader title={text('Baralhos', 'Decks')} subtitle={text('Prepare sua próxima estratégia.', 'Prepare your next strategy.')}><span className="archive-counter"><strong>{deckCards.length}</strong> / 30<small>{text('cartas', 'cards')}</small></span></ArchiveHeader>
+    <details className="deck-setup">
+      <summary><span className="deck-setup-summary"><strong>{deckName || t('deck.defaultName')}</strong><span>{pathwayName(deckHeroPathway)}{cloudEnabled ? ` · ${t('deck.slot', { n: selectedSlot + 1 })}` : ''}{cloudEnabled && savedSlots[selectedSlot]?.id === activeDeckId ? text(' · Ativo', ' · Active') : ''}</span></span><span className="deck-setup-action">{text('Editar', 'Edit')}</span></summary>
+      <div className="deck-setup-body">
     {cloudEnabled && <div className="deck-slots" role="group" aria-label={t('deck.cloudDecks')}>
       {Array.from({ length: DECK_SLOT_COUNT }, (_, slot) => <button type="button" key={slot} disabled={loadingSlots || saving} aria-pressed={selectedSlot === slot} onClick={() => void selectSlot(slot)}><span>{t('deck.slot', { n: slot + 1 })}{savedSlots[slot]?.is_active && <small>{t('deck.inUse')}</small>}</span><strong>{savedSlots[slot]?.name ?? t('deck.empty')}</strong><span>{savedSlots[slot]?.cards.length ?? 0}/30</span></button>)}
     </div>}
@@ -187,8 +191,16 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
       <label><span>{text('Nome do baralho', 'Deck name')}</span><input value={deckName} onChange={(e) => setDeckName(e.target.value)} placeholder={t('deck.namePlaceholder')} /></label>
       <label><span>{t('deck.deckPower')}</span><select value={deckHeroPathway} onChange={(e) => setDeckHeroPathway(e.target.value as Pathway)}>{Object.values(PATHWAYS).filter((pw) => isPathwayUnlocked(pw.id as Pathway)).map((pw) => <option key={pw.id} value={pw.id}>{pathwayName(pw.id as Pathway)}</option>)}</select></label>
     </div>
-    <div className="archive-toolbar"><label className="archive-search"><span className="sr-only">{text('Buscar carta', 'Search cards')}</span><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={text('Buscar carta para adicionar', 'Search for a card to add')} /></label><select value={filterType} onChange={(e) => setFilterType(e.target.value as typeof filterType)} aria-label={text('Tipo de carta', 'Card type')}>{(['all', 'beyonder', 'ritual', 'sealed-artifact', 'mystical-item'] as const).map((id) => <option key={id} value={id}>{id === 'all' ? t('deck.filterAll') : t(`cardTypes.${id}`)}</option>)}</select></div>
-    <PathwayFilterBar value={collectionPathwayFilter} onChange={setCollectionPathwayFilter} />
+      </div>
+    </details>
+    <div className="archive-toolbar deck-search-row">
+      <label className="archive-search"><span className="sr-only">{text('Buscar carta', 'Search cards')}</span><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={text('Buscar carta para adicionar', 'Search for a card to add')} /></label>
+      <button type="button" className="deck-filter-toggle" aria-expanded={showFilters} aria-controls="deck-filters" onClick={() => setShowFilters(!showFilters)}>{text('Filtros', 'Filters')}{(filterType !== 'all' || collectionPathwayFilter !== 'all') && <span className="deck-filter-count">{Number(filterType !== 'all') + Number(collectionPathwayFilter !== 'all')}</span>}</button>
+    </div>
+    {showFilters && <section className="deck-filter-panel" id="deck-filters" aria-label={text('Filtros de cartas', 'Card filters')}>
+      <label className="deck-type-filter"><span>{text('Tipo de carta', 'Card type')}</span><select value={filterType} onChange={(e) => setFilterType(e.target.value as typeof filterType)}>{(['all', 'beyonder', 'ritual', 'sealed-artifact', 'mystical-item'] as const).map((id) => <option key={id} value={id}>{id === 'all' ? t('deck.filterAll') : t(`cardTypes.${id}`)}</option>)}</select></label>
+      <PathwayFilterBar value={collectionPathwayFilter} onChange={setCollectionPathwayFilter} />
+    </section>}
     <div className="deck-workspace">
       <div className="archive-gallery"><div className="archive-grid">{available.map((card) => {
         const count = deckCards.filter((c) => c.id === card.id).length;
@@ -201,6 +213,6 @@ export function DeckBuilderScreen({ onNavigate }: Props) {
         <div className="deck-card-list" id="deck-card-list">{deckCards.length === 0 ? <p className="archive-empty">{t('deck.tapCards')}</p> : deckCards.map((card, i) => <button type="button" key={`${card.id}-${i}`} onClick={() => removeCard(i)} aria-label={`${text('Remover', 'Remove')}: ${card.name}`}><span className="deck-card-cost">{card.cost}</span><span>{card.name}</span><span aria-hidden="true">−</span></button>)}</div>
       </aside>
     </div>
-    <footer className="deck-save-bar"><GameButton variant="primary" onClick={() => void handleSave()} disabled={saving || deckCards.length !== 30 || !cloudEnabled}>{saving ? t('deck.saving') : cloudEnabled ? t('deck.saveCloud') : t('deck.loginRequiredSave')}</GameButton>{saveMessage && <p role="status">{saveMessage}</p>}{cloudEnabled && activeDeckId && savedSlots[selectedSlot]?.id === activeDeckId && <p>{t('deck.deckActive')}</p>}</footer>
+    <footer className="deck-save-bar"><GameButton variant="primary" onClick={() => void handleSave()} disabled={saving || deckCards.length !== 30 || !cloudEnabled}>{saving ? t('deck.saving') : cloudEnabled ? t('deck.saveCloud') : t('deck.loginRequiredSave')}</GameButton>{saveMessage && <p role="status">{saveMessage}</p>}</footer>
   </main>;
 }

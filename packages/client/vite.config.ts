@@ -15,6 +15,15 @@ export default defineConfig({
         clientsClaim: true,
         runtimeCaching: [
           {
+            urlPattern: /\\/hub\\/[^/]+\\.png$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'hub-art-v1',
+              expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
             urlPattern: /\/cards\/[^/]+\.png$/i,
             handler: 'CacheFirst',
             options: {

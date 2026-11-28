@@ -31,3 +31,7 @@
   .battle-hand-scroll { height: 10.5rem; }
   .battle-hand-fan { padding-top: 1rem; padding-bottom: 1.5rem; }
 }
+
+/* Hide only the visual track; keep horizontal touch/keyboard scrolling. */
+.veil-battle .battle-hand-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.veil-battle .battle-hand-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }

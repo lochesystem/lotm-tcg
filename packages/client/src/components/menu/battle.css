@@ -35,3 +35,17 @@
 /* Hide only the visual track; keep horizontal touch/keyboard scrolling. */
 .veil-battle .battle-hand-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 .veil-battle .battle-hand-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* Larger hand, lower resting position, and no description panel above the hero. */
+.veil-battle .battle-hand-scroll { height: 12rem; }
+.veil-battle .battle-hand-fan { padding: 1.25rem 1.75rem .5rem; }
+.battle-hold-card { touch-action: pan-x; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.battle-hold-card > div > button { width: 6rem; height: 9.5rem; }
+.battle-hand-help { min-height: 1.25rem; display: flex; align-items: center; justify-content: center; gap: .6rem; padding: 0 .75rem; text-align: center; color: #d1c0ca; font-size: .65rem; line-height: 1.35; }
+.battle-hand-help button { padding: .25rem .4rem; min-height: 2rem; color: #f1d1d7; text-decoration: underline; flex: none; }
+.battle-card-inspect { display: flex; justify-content: center; padding-bottom: .5rem; }
+.battle-card-inspect > div { width: min(100%, 19rem); }
+.battle-card-inspect p.text-\[10px\] { font-size: .8125rem; line-height: 1.5; }
+.battle-card-inspect h3 { font-size: 1.1rem; }
+.battle-card-inspect .max-h-24 { max-height: none; overflow: visible; }
+@media (max-height: 640px) { .veil-battle .battle-hand-scroll { height: 10rem; }.battle-hold-card > div > button { width: 5.5rem; height: 8.5rem; }.veil-battle .battle-hand-fan { padding-top: .75rem; } }

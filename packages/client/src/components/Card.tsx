@@ -178,7 +178,7 @@ export function CardComponent({
         <CardHoverPreviewContent card={card} />
       </AnchorTooltip>
 
-      <AnchorTooltip anchorEl={descAnchorRef.current} show={descHovered && !!card.description}>
+      <AnchorTooltip anchorEl={descAnchorRef.current} show={!compactHand && descHovered && !!card.description}>
         <p className="text-[8px] font-semibold text-blue-200 mb-0.5">Efeito</p>
         <p className="text-[9px] text-void-100 leading-snug">{cardDescription(card.description)}</p>
       </AnchorTooltip>
@@ -187,7 +187,7 @@ export function CardComponent({
         <AnchorTooltip
           key={kw}
           anchorEl={hoveredKeyword === kw ? (keywordRefs.current[kw] ?? null) : null}
-          show={hoveredKeyword === kw}
+          show={!compactHand && hoveredKeyword === kw}
         >
           <KeywordTooltipContent keyword={kw} />
         </AnchorTooltip>

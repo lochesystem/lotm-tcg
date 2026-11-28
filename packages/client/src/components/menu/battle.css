@@ -1,0 +1,22 @@
+/* Combat colors and targeting rings are intentionally independent of the menu accent. */
+.veil-battle { background: #101014; color: #eee8e2; box-shadow: inset 0 0 0 1px #a18b94; }
+.veil-battle::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-inline: 1px solid #b9a3aa44; background: linear-gradient(90deg, #100c1438, transparent 15%, transparent 85%, #100c1438); }
+.battle-hero-bar { background: linear-gradient(100deg, #16131ce8, #34202bd9, #16131ce8); border-block: 1px solid #86717c77; box-shadow: 0 4px 16px #0004; }
+.battle-hero-bar--enemy { border-top: 0; padding-top: max(.5rem, env(safe-area-inset-top)); }
+.battle-hero-bar--player { border-bottom: 0; }
+.battle-command-bar { background: linear-gradient(90deg, transparent, #1c151ce8 18%, #1c151ce8 82%, transparent); border-block: 1px solid #a58a942e; }
+.battle-end-turn { min-height: 2.75rem; padding: .6rem 1.2rem; background: linear-gradient(120deg, #4a1222, #842d42, #4a1222); border: 1px solid #dbc4bc; color: #fff0e5; box-shadow: inset 0 0 0 2px #251922, 0 3px 12px #0007; border-radius: .15rem; font-family: Georgia, serif; font-size: .875rem; font-weight: 600; }
+.battle-end-turn:hover { filter: brightness(1.15); }
+.battle-log-toggle { width: 2.75rem; height: 2.75rem; color: #eee0e8; border: 1px solid #9c818f; border-radius: .15rem; background: #231c28; }
+.battle-card-back { background: radial-gradient(circle at center, #ab7f8f 0 5%, #3c2133 7% 25%, #9d7c8b 27% 29%, #251b2a 31%); border: 1px solid #ac8d9a; box-shadow: inset 0 0 0 2px #17151c; }
+.battle-portrait-art { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; background: #211b26; }
+.battle-portrait-art img { width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 1; }
+.battle-portrait-art > span { position: absolute; inset: 0; display: grid; place-items: center; }
+.battle-hero-bar :is(.text-void-500,.text-void-600) { color: #c1b2bf; }
+.battle-hero-bar button:focus-visible, .battle-command-bar button:focus-visible { outline: 2px solid #f1c4b0; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .veil-battle * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+.battle-drawer { background: linear-gradient(145deg, #2b202c, #15151b) !important; border-color: #9c818f !important; width: min(19rem, 88vw) !important; }
+.battle-drawer :is(.text-void-500,.text-void-600) { color: #bdb0bd; }
+.battle-drawer [class*="text-[8px]"], .battle-drawer [class*="text-[9px]"], .battle-drawer [class*="text-[10px]"] { font-size: .75rem; }
+.battle-drawer button { min-height: 2.75rem; }

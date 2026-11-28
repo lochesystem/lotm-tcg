@@ -1,3 +1,4 @@
+import { ModalFrame } from './menu/ModalFrame';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
@@ -18,15 +19,9 @@ export function HowToPlay({ show, onClose }: Props) {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
+        <ModalFrame title={t('howToPlay.title')} onClose={onClose}>
           <motion.div
-            className="bg-void-900 border border-void-500 rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl"
+            className="veil-floating-surface bg-void-900 border border-void-500 rounded-2xl max-w-md w-full max-h-[80vh] flex flex-col shadow-2xl"
             initial={{ scale: 0.9, y: 20 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.9, y: 20 }}
@@ -42,9 +37,9 @@ export function HowToPlay({ show, onClose }: Props) {
                 <button
                   key={i}
                   onClick={() => setCurrentSection(i)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition-all ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
                     currentSection === i
-                      ? 'bg-purple-700 text-purple-100'
+                      ? 'bg-[#702333] text-purple-100'
                       : 'bg-void-800 text-void-400 hover:bg-void-700'
                   }`}
                 >
@@ -62,7 +57,7 @@ export function HowToPlay({ show, onClose }: Props) {
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <h3 className="text-base font-bold mb-3 text-purple-200">
+                  <h3 className="text-base font-bold mb-3 text-[#edccd0]">
                     {sections[currentSection].title}
                   </h3>
                   <p className="text-sm text-void-200 leading-relaxed whitespace-pre-line">
@@ -80,7 +75,7 @@ export function HowToPlay({ show, onClose }: Props) {
               >
                 {t('howToPlay.previous')}
               </button>
-              <span className="text-[10px] text-void-500">
+              <span className="text-xs text-void-500">
                 {t('howToPlay.pageOf', { current: currentSection + 1, total: sections.length })}
               </span>
               <button
@@ -92,7 +87,7 @@ export function HowToPlay({ show, onClose }: Props) {
               </button>
             </div>
           </motion.div>
-        </motion.div>
+        </ModalFrame>
       )}
     </AnimatePresence>
   );

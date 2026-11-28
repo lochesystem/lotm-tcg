@@ -1,3 +1,4 @@
+import { PATHWAY_PRESENTATION } from './menu/presentation';
 import { motion } from 'framer-motion';
 import { Pathway } from 'game-engine';
 
@@ -38,7 +39,7 @@ export function HeroPortrait({ health, maxHealth, pathway, isEnemy, onClick, has
 
   const content = (
     <>
-      <span className="text-xl drop-shadow-md">{theme.icon}</span>
+      <span className="battle-portrait-art" aria-hidden="true"><img src={PATHWAY_PRESENTATION[pathway].artwork} alt="" width="1024" height="1536" style={{ objectPosition: PATHWAY_PRESENTATION[pathway].focalPoint }} decoding="async" onError={(event) => { event.currentTarget.style.display = 'none'; }} /><span>{theme.icon}</span></span>
 
       {/* Health bar underneath */}
       <div className="absolute -bottom-1 left-1 right-1">

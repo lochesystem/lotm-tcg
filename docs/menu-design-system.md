@@ -62,3 +62,15 @@ No build or browser QA was possible in the authoring session because the executi
 7. Check asset requests and scrolling on an actual mobile device.
 
 The concept image is a visual reference, not a pixel-accuracy verification. Further crop, spacing and contrast tuning may be needed after screenshots from the implemented screen.
+
+## Archive, deck editor, overlays and battle surfaces
+
+The same obsidian/crimson language now extends to the collection and deck editor through ArchiveHeader, PathwayFilterBar and ArchiveCard. Original full-resolution art is retained. Collection filters include pathway, type, ownership and a case-insensitive name search. Empty states are explicit.
+
+On phones, the deck list is an expandable panel below the card gallery; desktop retains a side list. Existing ownership/copy/deck-size validation and cloud slots are preserved. Buttons replace clickable divs for card actions and keep keyboard focus visible.
+
+Profile, settings, help and deck selection share ModalFrame (native dialog): focus containment, Escape dismissal and restoration are supplied by the browser. Collection details reuse GameModal. Card rarity colors remain distinct from crimson selection accents.
+
+Battle updates are a presentation layer: silver/crimson hero bars, portrait art with icon fallback, opponent card backs, command bar, end-turn control and drawer surfaces. Targeting, board coordinates, hit/attack animations, health/mana meaning and rule handlers remain intact.
+
+Validation for this extension: TypeScript and production build; server-render smoke checks of collection, deck editor, and modal components. Browser preview could not connect to the local dev server in this session. Mobile interaction, native-dialog focus, card hit targets, cloud save/activation and a full battle still require visual/manual verification before release. No battle-rule or persistence changes are intended.

@@ -1,3 +1,5 @@
+import { MenuIcon } from './menu/MenuPrimitives';
+import { ModalFrame } from './menu/ModalFrame';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
@@ -96,15 +98,9 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
+        <ModalFrame title={t('profile.title')} onClose={onClose}>
           <motion.div
-            className="bg-void-900 border border-void-500 rounded-2xl max-w-sm w-full max-h-[85vh] flex flex-col shadow-2xl"
+            className="veil-floating-surface bg-void-900 border border-void-500 rounded-2xl max-w-sm w-full max-h-[85vh] flex flex-col shadow-2xl"
             initial={{ scale: 0.92, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 16 }}
@@ -121,7 +117,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                     aria-label={t('home.optionsButton')}
                     title={t('home.optionsButton')}
                   >
-                    ⚙️
+                    <MenuIcon name="settings" />
                   </button>
                 )}
                 <button
@@ -144,21 +140,21 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
 
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-xl border border-green-900/50 bg-green-950/30 p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-green-400/80">{t('profile.wins')}</p>
+                  <p className="text-xs uppercase tracking-wider text-green-400/80">{t('profile.wins')}</p>
                   <p className="text-2xl font-bold text-green-300">{wins}</p>
                 </div>
                 <div className="rounded-xl border border-red-900/50 bg-red-950/30 p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-red-400/80">{t('profile.losses')}</p>
+                  <p className="text-xs uppercase tracking-wider text-red-400/80">{t('profile.losses')}</p>
                   <p className="text-2xl font-bold text-red-300">{losses}</p>
                 </div>
                 <div className="rounded-xl border border-purple-900/50 bg-purple-950/30 p-3 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-purple-400/80">{t('profile.winStreak')}</p>
-                  <p className="text-2xl font-bold text-purple-300">{winStreak}</p>
+                  <p className="text-xs uppercase tracking-wider text-purple-400/80">{t('profile.winStreak')}</p>
+                  <p className="text-2xl font-bold text-[#edccd0]">{winStreak}</p>
                 </div>
               </div>
 
               {!cloudEnabled && (
-                <p className="text-[11px] text-void-500 text-center leading-relaxed">
+                <p className="text-xs text-void-500 text-center leading-relaxed">
                   {profile ? t('profile.localStatsHint') : t('profile.loginHint')}
                 </p>
               )}
@@ -169,11 +165,11 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                 </p>
 
                 {loading && (
-                  <p className="text-[11px] text-void-500 text-center py-4">{t('common.loading')}</p>
+                  <p className="text-xs text-void-500 text-center py-4">{t('common.loading')}</p>
                 )}
 
                 {!loading && cloudEnabled && matches.length === 0 && (
-                  <p className="text-[11px] text-void-500 text-center py-4">{t('profile.noMatches')}</p>
+                  <p className="text-xs text-void-500 text-center py-4">{t('profile.noMatches')}</p>
                 )}
 
                 {!loading && matches.length > 0 && (
@@ -197,7 +193,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                               <p className="text-sm font-medium text-void-100 truncate">
                                 {t('profile.vs', { opponent })}
                               </p>
-                              <p className="text-[10px] text-void-500 mt-0.5">
+                              <p className="text-xs text-void-500 mt-0.5">
                                 {matchModeLabel(match, t)} · {t('profile.turns', { n: match.duration_turns })}
                               </p>
                             </div>
@@ -205,7 +201,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
                               {result}
                             </span>
                           </div>
-                          <p className="text-[9px] text-void-600 mt-1">
+                          <p className="text-xs text-void-600 mt-1">
                             {formatPlayedAt(match.played_at, locale)}
                           </p>
                         </li>
@@ -217,7 +213,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
 
               {cloudEnabled && (rankedWins > 0 || rankedLosses > 0) && (
                 <div className="rounded-xl border border-red-900/40 bg-red-950/20 px-3 py-2 text-center">
-                  <p className="text-[10px] uppercase tracking-wider text-red-300/80">{t('profile.rankedRecord')}</p>
+                  <p className="text-xs uppercase tracking-wider text-red-300/80">{t('profile.rankedRecord')}</p>
                   <p className="text-sm font-semibold text-red-100">
                     {t('profile.rankedRecordValue', { wins: rankedWins, losses: rankedLosses })}
                   </p>
@@ -237,7 +233,7 @@ export function ProfileModal({ show, onClose, onOpenOptions }: Props) {
               )}
             </div>
           </motion.div>
-        </motion.div>
+        </ModalFrame>
       )}
     </AnimatePresence>
   );

@@ -1,3 +1,4 @@
+import { ModalFrame } from './menu/ModalFrame';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../i18n';
 import { LocaleSwitcher } from './LocaleSwitcher';
@@ -17,15 +18,9 @@ export function OptionsModal({ show, onClose, onOpenProfile }: Props) {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
+        <ModalFrame title={t('options.title')} onClose={onClose}>
           <motion.div
-            className="bg-void-900 border border-void-500 rounded-2xl max-w-sm w-full shadow-2xl"
+            className="veil-floating-surface bg-void-900 border border-void-500 rounded-2xl max-w-sm w-full shadow-2xl"
             initial={{ scale: 0.92, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.92, y: 16 }}
@@ -51,11 +46,11 @@ export function OptionsModal({ show, onClose, onOpenProfile }: Props) {
                     onClose();
                     onOpenProfile?.();
                   }}
-                  className="w-full px-4 py-3 rounded-xl text-sm font-medium border border-void-600 bg-void-800/60 text-void-200 hover:border-purple-500/50 hover:bg-void-800 transition-colors text-left"
+                  className="w-full px-4 py-3 rounded-xl text-sm font-medium border border-void-600 bg-void-800/60 text-void-200 hover:border-[#b28b91] hover:bg-void-800 transition-colors text-left"
                 >
                   {t('options.profileLink')}
                   {!isSupabaseConfigured || !getCurrentUserId() ? (
-                    <span className="block text-[10px] text-void-500 mt-0.5 font-normal">
+                    <span className="block text-xs text-void-500 mt-0.5 font-normal">
                       {t('profile.loginHint')}
                     </span>
                   ) : null}
@@ -66,14 +61,14 @@ export function OptionsModal({ show, onClose, onOpenProfile }: Props) {
                 <p className="text-xs font-semibold text-void-300 uppercase tracking-wider mb-1">
                   {t('options.language')}
                 </p>
-                <p className="text-[11px] text-void-500 mb-3 leading-relaxed">
+                <p className="text-xs text-void-500 mb-3 leading-relaxed">
                   {t('options.languageHint')}
                 </p>
                 <LocaleSwitcher variant="menu" />
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </ModalFrame>
       )}
     </AnimatePresence>
   );

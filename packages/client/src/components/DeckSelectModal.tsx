@@ -1,3 +1,5 @@
+import { HeroArtwork } from './menu/MenuPrimitives';
+import { ModalFrame } from './menu/ModalFrame';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -82,21 +84,10 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={onClose}
-            aria-label={t('deckSelect.closeAria')}
-          />
+        <ModalFrame title={t('deckSelect.defaultTitle')} onClose={onClose}>
 
           <motion.div
-            className="relative w-full max-w-md bg-void-900 border border-void-600 rounded-2xl shadow-2xl overflow-hidden"
+            className="veil-floating-surface relative w-full max-w-md bg-void-900 border border-void-600 rounded-2xl shadow-2xl overflow-hidden"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
@@ -130,7 +121,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
 
               {!loading && customDecks.length > 0 && (
                 <>
-                  <p className="text-[10px] text-void-500 uppercase tracking-wider mt-2 mb-1">
+                  <p className="text-xs text-void-500 uppercase tracking-wider mt-2 mb-1">
                     {t('deckSelect.yourDecks')}
                   </p>
                   {customDecks.map((saved) => {
@@ -166,7 +157,7 @@ export function DeckSelectModal({ show, starterPathway, title, onSelect, onClose
               </button>
             </div>
           </motion.div>
-        </motion.div>
+        </ModalFrame>
       )}
     </AnimatePresence>
   );
@@ -189,19 +180,19 @@ function DeckOptionButton({
     <button
       type="button"
       onClick={() => onSelect(choice)}
-      className="w-full flex items-center gap-3 p-3 rounded-xl border border-void-600 bg-void-800/80 hover:border-purple-500/60 hover:bg-purple-900/20 text-left transition-all"
+      className="w-full flex items-center gap-3 p-3 rounded-xl border border-void-600 bg-void-800/80 hover:border-[#b28b91] hover:bg-[#702333]/20 text-left transition-all"
     >
-      <span className="text-2xl shrink-0">{icon}</span>
+      <HeroArtwork pathway={choice.deck.pathway} className="deck-option-art" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm text-void-100 truncate">{choice.label}</span>
           {badge && (
-            <span className="text-[8px] font-bold text-green-400 uppercase shrink-0">{badge}</span>
+            <span className="text-xs font-bold text-green-400 uppercase shrink-0">{badge}</span>
           )}
         </div>
-        <p className="text-[10px] text-void-400 mt-0.5">{subtitle}</p>
+        <p className="text-xs text-void-400 mt-0.5">{subtitle}</p>
       </div>
-      <span className="text-void-500 text-lg shrink-0">›</span>
+
     </button>
   );
 }

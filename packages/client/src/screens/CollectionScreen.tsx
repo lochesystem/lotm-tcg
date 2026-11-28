@@ -1,121 +1,40 @@
-import { Screen } from '../App';
-import { getAllCards, Card, Pathway, PATHWAYS } from 'game-engine';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useMemo, useState } from 'react';
+import type { Screen } from '../App';
+import { getAllCards, type Card } from 'game-engine';
 import { useCollectionStore } from '../stores/collectionStore';
-import { MiniCard, LockedMiniCard } from '../components/MiniCard';
 import { CollectionCardModal } from '../components/CollectionCardModal';
-import { useTranslation } from '../i18n';
+import { ArchiveCard, ArchiveHeader, PathwayFilterBar, type PathwayFilter } from '../components/menu/ArchivePrimitives';
+import { useMenuLanguage } from '../components/menu/MenuPrimitives';
+import { useLocalizedCardText } from '../hooks/useLocalizedCardText';
 
-interface Props {
-  onNavigate: (screen: Screen) => void;
-}
-
-export function CollectionScreen({ onNavigate }: Props) {
-  const { t } = useTranslation();
-  const [filterPathway, setFilterPathway] = useState<Pathway | 'neutral' | 'all'>('all');
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const { ownsCard, getQuantity } = useCollectionStore();
-  const allCards = getAllCards();
-
-  const filtered = filterPathway === 'all'
-    ? allCards
-    : allCards.filter((c) => c.pathway === filterPathway);
-
-
-  const ownedCount = allCards.filter((c) => ownsCard(c.id)).length;
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-col relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-void-900/50 via-void-950 to-void-950" />
-
-      <div className="relative z-10 flex flex-col flex-1 min-h-0">
-        {/* Header */}
-        <div className="flex-none flex items-center justify-between p-4 pt-3">
-          <div className="w-12" />
-          <h2 className="text-xl font-bold">{t('collection.title')}</h2>
-          <div className="text-sm text-void-400 w-12 text-right">{ownedCount}/{allCards.length}</div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex-none flex gap-1.5 px-4 pb-3 overflow-x-auto">
-          {(['all', 'neutral', 'fool', 'red-priest', 'tyrant', 'sun', 'door', 'demoness'] as const).map((pw) => (
-            <button
-              key={pw}
-              onClick={() => setFilterPathway(pw)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                filterPathway === pw
-                  ? 'bg-purple-700 text-purple-100'
-                  : 'bg-void-800 text-void-400 hover:bg-void-700'
-              }`}
-            >
-              {pw === 'all'
-                ? t('collection.filterAll')
-                : pw === 'neutral'
-                  ? t('collection.filterNeutral')
-                  : PATHWAYS[pw].name}
-            </button>
-          ))}
-        </div>
-
-        {/* Card grid */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2">
-            {filtered.map((card, index) => {
-              const owned = ownsCard(card.id);
-              const qty = getQuantity(card.id);
-              const globalIndex = allCards.findIndex((c) => c.id === card.id) + 1;
-
-              return (
-                <div key={card.id} className="relative">
-                  {/* Card number */}
-                  <div className="absolute -top-1 -right-1 z-20 w-5 h-5 rounded-full bg-void-700 border border-void-500 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-void-300">#{globalIndex}</span>
-                  </div>
-
-                  {/* Quantity badge */}
-                  {owned && qty > 1 && (
-                    <div className="absolute -top-1 -left-1 z-20 w-5 h-5 rounded-full bg-purple-600 border border-purple-400 flex items-center justify-center">
-                      <span className="text-[8px] font-bold text-white">x{qty}</span>
-                    </div>
-                  )}
-
-                  {/* Card or locked placeholder */}
-                  {owned ? (
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedCard(card)}
-                      className="cursor-pointer"
-                    >
-                      <MiniCard card={card} />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      onClick={() => setSelectedCard(card)}
-                      className="cursor-pointer"
-                    >
-                      <LockedMiniCard card={card} />
-                    </motion.div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {selectedCard && (
-            <CollectionCardModal
-              card={selectedCard}
-              owned={ownsCard(selectedCard.id)}
-              quantity={getQuantity(selectedCard.id)}
-              onClose={() => setSelectedCard(null)}
-            />
-          )}
-        </AnimatePresence>
-      </div>
+const CARDS = getAllCards();
+export function CollectionScreen({ onNavigate: _onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  const { text } = useMenuLanguage();
+  const { cardType } = useLocalizedCardText();
+  // Subscribe to data as well as stable methods so cloud hydration updates the gallery.
+  const ownedCards = useCollectionStore((s) => s.ownedCardIds);
+  const ownsCard = useCollectionStore((s) => s.ownsCard);
+  const getQuantity = useCollectionStore((s) => s.getQuantity);
+  const [pathway, setPathway] = useState<PathwayFilter>('all');
+  const [query, setQuery] = useState('');
+  const [type, setType] = useState('all');
+  const [ownership, setOwnership] = useState('all');
+  const [selected, setSelected] = useState<Card | null>(null);
+  const filtered = useMemo(() => CARDS.filter((card) =>
+    (pathway === 'all' || card.pathway === pathway) &&
+    (type === 'all' || card.type === type) &&
+    (ownership === 'all' || (ownership === 'owned' ? ownsCard(card.id) : !ownsCard(card.id))) &&
+    card.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+  ), [pathway, type, ownership, query, ownsCard, ownedCards]);
+  const count = CARDS.filter((card) => ownsCard(card.id)).length;
+  return <main className="veil-ui archive-screen">
+    <ArchiveHeader title={text('Coleção', 'Collection')} subtitle={text('Seu arquivo de poderes e mistérios.', 'Your archive of powers and mysteries.')}><span className="archive-counter"><strong>{count}</strong> / {CARDS.length}<small>{text('descobertas', 'discovered')}</small></span></ArchiveHeader>
+    <div className="archive-toolbar"><label className="archive-search"><span className="sr-only">{text('Buscar carta', 'Search cards')}</span><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={text('Buscar pelo nome da carta', 'Search by card name')} /></label>
+      <div className="archive-selects"><select value={type} onChange={(e) => setType(e.target.value)} aria-label={text('Tipo de carta', 'Card type')}><option value="all">{text('Todos os tipos', 'All types')}</option>{['beyonder', 'ritual', 'sealed-artifact', 'mystical-item'].map((id) => <option key={id} value={id}>{cardType(id)}</option>)}</select><select value={ownership} onChange={(e) => setOwnership(e.target.value)} aria-label={text('Disponibilidade', 'Ownership')}><option value="all">{text('Todas as cartas', 'All cards')}</option><option value="owned">{text('Obtidas', 'Owned')}</option><option value="missing">{text('Não obtidas', 'Missing')}</option></select></div>
     </div>
-  );
+    <PathwayFilterBar value={pathway} onChange={setPathway} />
+    <div className="archive-results" aria-live="polite">{filtered.length} {text('cartas', 'cards')}</div>
+    <div className="archive-gallery"><div className="archive-grid">{filtered.map((card) => <ArchiveCard key={card.id} card={card} owned={ownsCard(card.id)} quantity={getQuantity(card.id)} onClick={() => setSelected(card)} />)}</div>{filtered.length === 0 && <p className="archive-empty">{text('Nenhuma carta encontrada. Experimente outros filtros.', 'No cards found. Try different filters.')}</p>}</div>
+    {selected && <CollectionCardModal card={selected} owned={ownsCard(selected.id)} quantity={getQuantity(selected.id)} onClose={() => setSelected(null)} />}
+  </main>;
 }

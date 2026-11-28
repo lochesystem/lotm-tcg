@@ -1,3 +1,4 @@
+import '../components/menu/battle.css';
 import { Screen } from '../App';
 import { useGameStore, type PendingAttack, type PendingHeroPower, type PendingRitual } from '../stores/gameStore';
 import { CardComponent } from '../components/Card';
@@ -1258,7 +1259,7 @@ export function BattleScreen({ onNavigate }: Props) {
   const showBattlefield = Boolean(battlefieldUrl && battlefieldReady);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden select-none">
+    <div className="veil-battle flex-1 min-h-0 flex flex-col relative overflow-hidden select-none">
       {/* Background */}
       {!showBattlefield && (
         <div className="absolute inset-0 z-0 bg-gradient-to-b from-void-900 via-void-950 to-void-900" />
@@ -1569,7 +1570,7 @@ export function BattleScreen({ onNavigate }: Props) {
 
       <div className="relative z-10 flex flex-col flex-1 min-h-0">
         {/* ─── Opponent area ─────────────────────────────────────────────── */}
-        <div className="flex-none p-2 pb-1">
+        <div className="battle-hero-bar battle-hero-bar--enemy flex-none p-2 pb-1">
           <div className="flex items-center gap-3">
             <div
               data-hero-enemy
@@ -1670,7 +1671,7 @@ export function BattleScreen({ onNavigate }: Props) {
                 key={i}
                 initial={{ scale: 0, rotate: -10 }}
                 animate={{ scale: 1, rotate: 0 }}
-                className="w-5 h-7 rounded bg-gradient-to-b from-indigo-800 to-indigo-950 border border-indigo-500/40 shadow-sm"
+                className="battle-card-back w-5 h-7 rounded shadow-sm"
                 style={{ marginLeft: i > 0 ? '-4px' : 0 }}
               />
             ))}
@@ -1695,7 +1696,7 @@ export function BattleScreen({ onNavigate }: Props) {
         />
 
         {/* ─── Center divider + controls ─────────────────────────────────── */}
-        <div className="flex-none flex items-center justify-center py-2 px-3">
+        <div className="battle-command-bar flex-none flex items-center justify-center py-2 px-3">
           <div className="flex flex-col items-center gap-2 w-full max-w-sm">
             {targetingHeroPower && heroPowerMode && (
               <motion.p
@@ -1719,7 +1720,7 @@ export function BattleScreen({ onNavigate }: Props) {
                   onClick={handleEndTurn}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-5 py-2 bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700 rounded-xl text-xs font-bold transition-all shadow-lg shadow-green-900/30 border border-green-500/30"
+                  className="battle-end-turn"
                 >
                   {t('battle.endTurn')}
                 </motion.button>
@@ -1739,7 +1740,7 @@ export function BattleScreen({ onNavigate }: Props) {
               {/* Battle log toggle */}
               <button
                 onClick={() => setShowLog(!showLog)}
-                className="w-8 h-8 rounded-full bg-void-800 border border-void-600 flex items-center justify-center text-xs hover:bg-void-700 transition-all"
+                className="battle-log-toggle flex items-center justify-center"
                 title={t('battle.logTitle')}
               >
                 📜
@@ -1786,7 +1787,7 @@ export function BattleScreen({ onNavigate }: Props) {
         )}
 
         {/* ─── Player area ───────────────────────────────────────────────── */}
-        <div className="flex-none p-2 pt-1">
+        <div className="battle-hero-bar battle-hero-bar--player flex-none p-2 pt-1">
           <div className="flex items-center gap-3">
             <div
               data-hero-player
@@ -2047,7 +2048,7 @@ export function BattleScreen({ onNavigate }: Props) {
               onClick={() => setShowLog(false)}
             />
             <motion.div
-              className="absolute right-0 top-0 bottom-0 w-[min(13rem,85vw)] bg-void-950/98 border-l border-void-700 z-[50] flex flex-col shadow-2xl"
+              className="battle-drawer absolute right-0 top-0 bottom-0 w-[min(13rem,85vw)] bg-void-950/98 border-l border-void-700 z-[50] flex flex-col shadow-2xl"
               initial={{ x: 200 }}
               animate={{ x: 0 }}
               exit={{ x: 200 }}
@@ -2104,7 +2105,7 @@ export function BattleScreen({ onNavigate }: Props) {
               onClick={() => setShowGraveyard(null)}
             />
             <motion.div
-              className="absolute left-0 top-0 bottom-0 w-[min(14rem,85vw)] bg-void-950/98 border-r border-void-700 z-[50] flex flex-col shadow-2xl"
+              className="battle-drawer absolute left-0 top-0 bottom-0 w-[min(14rem,85vw)] bg-void-950/98 border-r border-void-700 z-[50] flex flex-col shadow-2xl"
               initial={{ x: -240 }}
               animate={{ x: 0 }}
               exit={{ x: -240 }}

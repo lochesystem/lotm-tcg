@@ -1,3 +1,4 @@
+import { getHandFanPose } from '../utils/handFan';
 import '../components/menu/battle.css';
 import { Screen } from '../App';
 import { useGameStore, type PendingAttack, type PendingHeroPower, type PendingRitual } from '../stores/gameStore';
@@ -1786,6 +1787,52 @@ export function BattleScreen({ onNavigate }: Props) {
           </div>
         )}
 
+        {/* ─── Hand ──────────────────────────────────────────────────────── */}
+        <div className="battle-hand-area flex-none flex flex-col pt-1 pb-1 min-w-0 w-full safe-bottom">
+          <div className="battle-hand-preview shrink-0 flex items-end justify-center px-3 relative z-50">
+            {previewCard && (
+              <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
+                {targetingHandIndex !== null ? (
+                  <p className="text-[10px] text-gold-200">
+                    {t('battle.selectTargetForCard', { name: previewCard.name })}
+                  </p>
+                ) : hoveredKeyword ? (
+                  (() => {
+                    const kwInfo = getLocalizedKeywordInfo(hoveredKeyword, locale);
+                    return (
+                  <>
+                    <p className="text-[11px] font-semibold text-purple-200">
+                      {kwInfo.icon} {kwInfo.name}
+                    </p>
+                    <p className="text-[10px] text-void-200 mt-1 leading-snug">
+                      {kwInfo.description}
+                    </p>
+                  </>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
+                    <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
+                      {cardDescription(previewCard.description) ||
+                        (previewCard.type === 'sealed-artifact'
+                          ? t('battle.weaponEquipHint')
+                          : noEffect)}
+                    </p>
+                    {previewCard.keywords && previewCard.keywords.length > 0 && (
+                      <p className="text-[9px] text-purple-300 mt-1">
+                        {t('battle.hoverKeywordHint')}
+                      </p>
+                    )}
+                    {selectedHandIndex !== null && targetingHandIndex === null && (
+                      <p className="text-[9px] text-gold-300 mt-1">{t('battle.clickAgainToPlay')}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
         {/* ─── Player area ───────────────────────────────────────────────── */}
         <div className="battle-hero-bar battle-hero-bar--player flex-none p-2 pt-1">
           <div className="flex items-center gap-3">
@@ -1942,59 +1989,15 @@ export function BattleScreen({ onNavigate }: Props) {
           </div>
         </div>
 
-        {/* ─── Hand ──────────────────────────────────────────────────────── */}
-        <div className="flex-none flex flex-col gap-4 pt-1 pb-1 min-w-0 w-full safe-bottom">
-          <div className="min-h-[5.25rem] shrink-0 flex items-end justify-center px-3 relative z-50">
-            {previewCard && (
-              <div className="max-w-sm w-full px-3 py-2.5 rounded-xl bg-void-900/98 border border-gold-400/40 text-center shadow-xl">
-                {targetingHandIndex !== null ? (
-                  <p className="text-[10px] text-gold-200">
-                    {t('battle.selectTargetForCard', { name: previewCard.name })}
-                  </p>
-                ) : hoveredKeyword ? (
-                  (() => {
-                    const kwInfo = getLocalizedKeywordInfo(hoveredKeyword, locale);
-                    return (
-                  <>
-                    <p className="text-[11px] font-semibold text-purple-200">
-                      {kwInfo.icon} {kwInfo.name}
-                    </p>
-                    <p className="text-[10px] text-void-200 mt-1 leading-snug">
-                      {kwInfo.description}
-                    </p>
-                  </>
-                    );
-                  })()
-                ) : (
-                  <>
-                    <p className="text-[11px] font-semibold text-white">{previewCard.name}</p>
-                    <p className="text-[10px] text-void-300 mt-0.5 leading-snug">
-                      {cardDescription(previewCard.description) ||
-                        (previewCard.type === 'sealed-artifact'
-                          ? t('battle.weaponEquipHint')
-                          : noEffect)}
-                    </p>
-                    {previewCard.keywords && previewCard.keywords.length > 0 && (
-                      <p className="text-[9px] text-purple-300 mt-1">
-                        {t('battle.hoverKeywordHint')}
-                      </p>
-                    )}
-                    {selectedHandIndex !== null && targetingHandIndex === null && (
-                      <p className="text-[9px] text-gold-300 mt-1">{t('battle.clickAgainToPlay')}</p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="hand-scroll h-[8.5rem] w-full min-w-0 relative z-20" aria-label={t('battle.handAria')}>
-            <div className="flex flex-nowrap items-end justify-center gap-1.5 w-max min-w-full px-3 pb-1 pt-2">
+          <div className="hand-scroll battle-hand-scroll w-full min-w-0 relative z-20" aria-label={t('battle.handAria')}>
+            <div className="battle-hand-fan flex flex-nowrap items-end justify-center w-max min-w-full">
               <AnimatePresence mode="popLayout">
                 {player.hand.map((card, index) => {
                   const isSelected = selectedHandIndex === index || targetingHandIndex === index;
                   const anotherSelected =
                     (selectedHandIndex !== null || targetingHandIndex !== null) && !isSelected;
+                  const fanActive = isSelected || (!anotherSelected && hoveredHandIndex === index);
+                  const fanPose = getHandFanPose(index, player.hand.length, fanActive);
 
                   return (
                     <motion.div
@@ -2002,10 +2005,15 @@ export function BattleScreen({ onNavigate }: Props) {
                       data-hand-index={index}
                       layout
                       initial={{ scale: 0.5, y: 60, opacity: 0, rotate: -5 }}
-                      animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
+                      animate={{ scale: 1, opacity: 1, ...fanPose }}
                       exit={{ scale: 0.5, y: -60, opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                      className={`relative flex-shrink-0 ${isSelected ? 'z-30' : anotherSelected ? 'z-10' : 'z-20'}`}
+                      className="relative flex-shrink-0"
+                      style={{
+                        transformOrigin: '50% 100%',
+                        marginLeft: index === 0 ? 0 : `clamp(-2.25rem, calc((100vw - 8rem) / ${Math.max(1, player.hand.length - 1)} - 5rem), 0.375rem)`,
+                        zIndex: fanActive ? 60 : index + 1,
+                      }}
                     >
                       <CardComponent
                         card={card}

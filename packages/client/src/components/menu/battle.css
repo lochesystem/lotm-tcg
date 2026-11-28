@@ -2,7 +2,7 @@
 .veil-battle { background: #101014; color: #eee8e2; box-shadow: inset 0 0 0 1px #a18b94; }
 .veil-battle::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; border-inline: 1px solid #b9a3aa44; background: linear-gradient(90deg, #100c1438, transparent 15%, transparent 85%, #100c1438); }
 .battle-hero-bar { background: linear-gradient(100deg, #16131ce8, #34202bd9, #16131ce8); border-block: 1px solid #86717c77; box-shadow: 0 4px 16px #0004; }
-.battle-hero-bar--enemy { border-top: 0; padding-top: max(.5rem, env(safe-area-inset-top)); }
+.battle-hero-bar--enemy { background: linear-gradient(100deg, #16131c52, #34202b38, #16131c52); border-color: #86717c38; box-shadow: none; border-top: 0; padding-top: max(.5rem, env(safe-area-inset-top)); }
 .battle-hero-bar--player { border-bottom: 0; }
 .battle-command-bar { background: linear-gradient(90deg, transparent, #1c151ce8 18%, #1c151ce8 82%, transparent); border-block: 1px solid #a58a942e; }
 .battle-end-turn { min-height: 2.75rem; padding: .6rem 1.2rem; background: linear-gradient(120deg, #4a1222, #842d42, #4a1222); border: 1px solid #dbc4bc; color: #fff0e5; box-shadow: inset 0 0 0 2px #251922, 0 3px 12px #0007; border-radius: .15rem; font-family: Georgia, serif; font-size: .875rem; font-weight: 600; }
@@ -20,3 +20,14 @@
 .battle-drawer :is(.text-void-500,.text-void-600) { color: #bdb0bd; }
 .battle-drawer [class*="text-[8px]"], .battle-drawer [class*="text-[9px]"], .battle-drawer [class*="text-[10px]"] { font-size: .75rem; }
 .battle-drawer button { min-height: 2.75rem; }
+
+/* Keep the player status beside the hand, not suspended above its preview. */
+.battle-hand-area { gap: .25rem; }
+.battle-hand-preview { min-height: clamp(2rem, 7svh, 4rem); }
+.battle-hand-scroll { height: 11.25rem; }
+.battle-hand-fan { padding: 1.5rem 1.75rem 1.75rem; }
+@media (max-height: 740px) {
+  .battle-hand-preview { min-height: 1.5rem; }
+  .battle-hand-scroll { height: 10.5rem; }
+  .battle-hand-fan { padding-top: 1rem; padding-bottom: 1.5rem; }
+}

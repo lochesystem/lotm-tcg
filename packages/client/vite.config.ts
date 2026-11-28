@@ -15,7 +15,7 @@ export default defineConfig({
         clientsClaim: true,
         runtimeCaching: [
           {
-            urlPattern: /\\/hub\\/[^/]+\\.png$/i,
+            urlPattern: ({ url }) => url.pathname.includes('/hub/') && url.pathname.endsWith('.png'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'hub-art-v1',
